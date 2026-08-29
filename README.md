@@ -208,6 +208,7 @@ salvage/
 - **Phase 3 (`salvage-brain`)**: Sense & Diagnose Engine with 8 canonical taxonomy mappers (NPCI UPI, ISO-8583 card response codes), sliding-window rail health sensing (1m, 5m, 15m), point-in-time leak-free feature store, and FastAPI endpoints `POST /v1/diagnose` and `GET /v1/sensing/rails`.
 - **Phase 4 (`salvage-brain` + `salvage-core`)**: Recoverability Estimation Model, Expected Net Utility Optimizer, `POST /v1/decide`, and `salvage-core` `RecoveryPolicyExecutor` bridging intelligence decisions into bounded distributed-locked saga executions and immutable ledger audits.
 - **Phase 5 (`salvage-eval`)**: Off-Policy Evaluation Harness implementing 4 classical estimators (IPS, SNIPS, Direct Method, Doubly Robust), 95% bootstrap confidence intervals, Kish Effective Sample Size diagnostics, calibration curves, and automated regret accounting generated via `make eval` (8/8 tests).
+- **Phase 6 (`salvage-mcp`)**: Model Context Protocol Server providing AI assistants with read-only causal decision explainability (`explain_decision`), real-time rail health telemetry (`get_rail_health`), aggregate recovery statistics (`get_recovery_stats`), incident monitoring (`list_open_incidents`), and counterfactual policy simulation (`simulate_policy_change`) (10/10 tests).
 
 ## Documentation
 
@@ -220,6 +221,7 @@ salvage/
 - [docs/PHASE_3_SUMMARY.md](docs/PHASE_3_SUMMARY.md) — Phase 3 delivery summary
 - [docs/PHASE_4_SUMMARY.md](docs/PHASE_4_SUMMARY.md) — Phase 4 delivery summary
 - [docs/PHASE_5_SUMMARY.md](docs/PHASE_5_SUMMARY.md) — Phase 5 delivery summary
+- [docs/PHASE_6_SUMMARY.md](docs/PHASE_6_SUMMARY.md) — Phase 6 delivery summary
 - [docs/OPEN_NUMBERS.md](docs/OPEN_NUMBERS.md) — where real-world figures are needed
 
 ## Engineering principles

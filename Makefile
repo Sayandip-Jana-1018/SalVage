@@ -87,11 +87,13 @@ ps: ## Show container status
 logs: ## Tail container logs
 	$(COMPOSE) --profile apps logs -f
 
+MCP_DIR   := services/salvage-mcp
+
 # ---------------------------------------------------------------------------
 # Test
 # ---------------------------------------------------------------------------
 
-test: test-java test-python ## Run every test
+test: test-java test-python test-mcp ## Run every test
 
 test-java: ## salvage-core tests (starts its own containers via Testcontainers)
 	cd $(CORE_DIR) && $(GRADLE) test
@@ -100,6 +102,9 @@ test-python: ## Run all Python test suites (salvage-brain, salvage-sim, salvage-
 	cd $(BRAIN_DIR) && uv run pytest tests -q
 	uv run --project packages/salvage-sim pytest packages/salvage-sim/tests -q
 	uv run --project packages/salvage-eval pytest packages/salvage-eval/tests -q
+
+test-mcp: ## salvage-mcp tests (Vitest)
+	cd $(MCP_DIR) && npm test
 
 test-python-unit: ## salvage-brain tests that do not need Docker
 	cd $(BRAIN_DIR) && uv run pytest tests -q -m 'not integration'
