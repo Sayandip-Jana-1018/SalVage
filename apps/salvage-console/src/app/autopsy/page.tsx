@@ -17,49 +17,47 @@ export default function AutopsyIndexPage(): React.ReactElement {
   );
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 flex flex-col items-center text-center">
       {/* Header */}
-      <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-sm sm:text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-              <Stethoscope className="w-4 h-4 text-emerald-600" />
-              The Autopsy View — Causal Failure Dissections
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Select a payment failure attempt to dissect diagnosis, utility calculus, bounds checks, and cryptographic hash-chain proof
-            </p>
-          </div>
+      <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
+        <div className="flex flex-col items-center justify-center mb-4 space-y-1">
+          <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
+            <Stethoscope className="w-4 h-4 text-emerald-600" />
+            The Autopsy View — Causal Failure Dissections
+          </h2>
+          <p className="text-xs text-slate-500 max-w-lg">
+            Select a payment failure attempt to dissect diagnosis, utility calculus, bounds checks, and cryptographic hash-chain proof
+          </p>
         </div>
 
         {/* Search */}
-        <div className="relative">
+        <div className="relative w-full max-w-2xl mx-auto">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by Payment Attempt ID, Merchant ID, or Failure Taxonomy..."
-            className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
+            className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm text-center"
           />
         </div>
       </div>
 
       {/* Attempts List */}
-      <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
-        <h3 className="text-xs font-mono uppercase text-slate-500 mb-4 tracking-wider font-semibold">
+      <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
+        <h3 className="text-xs font-mono uppercase text-slate-500 mb-5 tracking-wider font-semibold">
           Recent Payment Failure Episodes ({filtered.length})
         </h3>
 
-        <div className="divide-y divide-slate-100 font-mono text-xs">
+        <div className="w-full divide-y divide-slate-100 font-mono text-xs">
           {filtered.map((item) => (
             <Link
               key={item.id}
               href={`/autopsy/${item.id}`}
-              className="py-3.5 px-3 flex flex-wrap items-center justify-between hover:bg-slate-50 rounded-xl transition-all group gap-2"
+              className="py-4 px-3 flex flex-wrap items-center justify-between hover:bg-slate-50 rounded-xl transition-all group gap-3"
             >
               <div className="flex flex-wrap items-center gap-4">
-                <div className="flex flex-col">
+                <div className="flex flex-col text-left">
                   <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                     {item.id}
                   </span>
@@ -68,7 +66,7 @@ export default function AutopsyIndexPage(): React.ReactElement {
                   </span>
                 </div>
 
-                <span className="px-2.5 py-0.5 rounded-md text-[10px] bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
+                <span className="px-2.5 py-0.5 rounded-lg text-[10px] bg-amber-50 text-amber-800 border border-amber-200 font-bold">
                   {item.taxonomy_code}
                 </span>
 
@@ -76,7 +74,7 @@ export default function AutopsyIndexPage(): React.ReactElement {
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="px-2.5 py-0.5 rounded-md text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200 font-semibold">
+                <span className="px-2.5 py-0.5 rounded-lg text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold">
                   {item.chosen_action}
                 </span>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />

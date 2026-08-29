@@ -148,69 +148,69 @@ export default function CheckoutPage(): React.ReactElement {
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-6 flex flex-col items-center text-center">
         {/* Header */}
-        <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm sm:text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                Live In-Project Checkout & Autonomous Recovery Simulator
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Trigger real-world payment failures inside this app and watch Salvage diagnose, bound, and recover them in real time
-              </p>
+        <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
+          <div className="flex flex-col items-center justify-center space-y-1">
+            <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-emerald-600" />
+              Live In-Project Checkout & Autonomous Recovery Simulator
+            </h2>
+            <p className="text-xs text-slate-500 max-w-lg">
+              Trigger real-world payment failures inside this app and watch Salvage diagnose, bound, and recover them in real time
+            </p>
+            <div className="pt-2">
+              <span className="text-[11px] font-mono px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold inline-flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Razorpay Test Key Active
+              </span>
             </div>
-            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold flex items-center gap-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Razorpay Test Key Active
-            </span>
           </div>
         </div>
 
         {/* 2-Column Layout: Checkout on Left, Recovery Pipeline on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* LEFT: Checkout Card */}
-          <div className="lg:col-span-5 rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 font-mono text-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
-                <span className="text-sm font-serif font-bold text-slate-900">Merchant Checkout</span>
-                <span className="text-xs text-slate-500 font-medium">Swiggy Gourmet Delivery</span>
+          <div className="lg:col-span-5 rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 font-mono text-xs flex flex-col justify-between text-center items-center">
+            <div className="w-full flex flex-col items-center">
+              <div className="w-full flex flex-col items-center pb-3 border-b border-slate-100 font-sans">
+                <span className="text-base font-serif font-bold text-slate-900">Merchant Checkout</span>
+                <span className="text-xs text-slate-500 font-medium mt-0.5">Swiggy Gourmet Delivery</span>
               </div>
 
               {/* Order Items */}
-              <div className="py-3.5 space-y-2 border-b border-slate-100 text-[11px]">
-                <div className="flex justify-between text-slate-700">
+              <div className="w-full py-4 space-y-2.5 border-b border-slate-100 text-xs">
+                <div className="flex justify-between items-center text-slate-700 px-2">
                   <span>1x Chef's Gourmet Tasting Box</span>
                   <span className="text-slate-900 font-bold">₹1,450.00</span>
                 </div>
-                <div className="flex justify-between text-slate-700">
+                <div className="flex justify-between items-center text-slate-700 px-2">
                   <span>1x Artisanal Belgian Dessert</span>
                   <span className="text-slate-900 font-bold">₹400.00</span>
                 </div>
-                <div className="flex justify-between text-slate-500 pt-1 text-[10px]">
+                <div className="flex justify-between items-center text-slate-500 pt-1 text-[11px] px-2">
                   <span>Delivery & GST</span>
                   <span className="text-emerald-700 font-semibold">FREE (Salvage Pass)</span>
                 </div>
               </div>
 
               {/* Total */}
-              <div className="py-3.5 flex justify-between items-center text-xs">
-                <span className="text-slate-500 uppercase tracking-wider font-sans font-medium">Total Amount</span>
-                <span className="text-xl font-bold text-slate-900 font-mono">
+              <div className="w-full py-4 flex justify-between items-center text-xs px-2 border-b border-slate-100">
+                <span className="text-slate-500 uppercase tracking-wider font-sans font-semibold">Total Amount</span>
+                <span className="text-2xl font-bold text-slate-900 font-mono">
                   {formatRupees(amountPaise)}
                 </span>
               </div>
 
               {/* Payment Methods */}
-              <div className="mt-2 space-y-2">
-                <label className="text-[10px] text-slate-500 uppercase tracking-wider block font-sans font-medium">
+              <div className="w-full mt-4 space-y-2">
+                <label className="text-[10px] text-slate-500 uppercase tracking-wider block font-sans font-semibold text-center mb-1">
                   Select Simulated Payment Rail
                 </label>
 
                 <div
                   onClick={() => setSelectedMethod("SBI|UPI|RAZORPAY")}
-                  className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
+                  className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
                     selectedMethod === "SBI|UPI|RAZORPAY"
                       ? "bg-rose-50/80 border-rose-300 text-rose-900 shadow-sm"
                       : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -225,7 +225,7 @@ export default function CheckoutPage(): React.ReactElement {
 
                 <div
                   onClick={() => setSelectedMethod("HDFC|UPI|RAZORPAY")}
-                  className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
+                  className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
                     selectedMethod === "HDFC|UPI|RAZORPAY"
                       ? "bg-emerald-50/80 border-emerald-300 text-emerald-900 shadow-sm"
                       : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -241,42 +241,42 @@ export default function CheckoutPage(): React.ReactElement {
             </div>
 
             {/* Simulation Action Buttons */}
-            <div className="mt-6 pt-4 border-t border-slate-100 space-y-3 font-sans">
-              <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+            <div className="w-full mt-6 pt-4 border-t border-slate-100 space-y-3 font-sans flex flex-col items-center">
+              <div className="text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
                 <span>Test Failure Ingestion Scenarios:</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   onClick={() => handleSimulatePayment("SBI_OUTAGE")}
-                  className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 text-[11px] font-semibold transition-all text-left flex flex-col shadow-sm cursor-pointer"
+                  className="px-3 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 text-xs font-semibold transition-all text-center flex flex-col items-center shadow-sm cursor-pointer"
                 >
                   <span className="font-bold">1. SBI Outage</span>
-                  <span className="text-[9px] text-rose-600 font-mono">Code U30</span>
+                  <span className="text-[10px] text-rose-600 font-mono">Code U30</span>
                 </button>
 
                 <button
                   onClick={() => handleSimulatePayment("LOW_BALANCE")}
-                  className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-[11px] font-semibold transition-all text-left flex flex-col shadow-sm cursor-pointer"
+                  className="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-xs font-semibold transition-all text-center flex flex-col items-center shadow-sm cursor-pointer"
                 >
                   <span className="font-bold">2. Low Balance</span>
-                  <span className="text-[9px] text-amber-600 font-mono">Code U69</span>
+                  <span className="text-[10px] text-amber-600 font-mono">Code U69</span>
                 </button>
 
                 <button
                   onClick={() => handleSimulatePayment("TIMEOUT")}
-                  className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 text-[11px] font-semibold transition-all text-left flex flex-col shadow-sm cursor-pointer"
+                  className="px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 text-xs font-semibold transition-all text-center flex flex-col items-center shadow-sm cursor-pointer"
                 >
                   <span className="font-bold">3. Timeout</span>
-                  <span className="text-[9px] text-indigo-600 font-mono">Transient</span>
+                  <span className="text-[10px] text-indigo-600 font-mono">Transient</span>
                 </button>
               </div>
 
               {/* Real Razorpay Popup Button */}
               <button
                 onClick={handleOpenRazorpayModal}
-                className="w-full mt-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                className="w-full mt-2 px-4 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
               >
                 <CreditCard className="w-4 h-4 text-emerald-400" />
                 <span>Open Real Razorpay Popup Checkout Modal</span>
@@ -285,22 +285,22 @@ export default function CheckoutPage(): React.ReactElement {
           </div>
 
           {/* RIGHT: Live Autonomous Salvage Pipeline Monitor */}
-          <div className="lg:col-span-7 rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 font-mono text-xs flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
+          <div className="lg:col-span-7 rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 font-mono text-xs flex flex-col items-center text-center justify-between">
+            <div className="w-full flex flex-col items-center pb-3 border-b border-slate-100 space-y-1">
+              <div className="flex items-center justify-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-600" />
-                <h3 className="text-sm font-serif font-bold text-slate-900">
+                <h3 className="text-base font-serif font-bold text-slate-900">
                   Salvage Autonomous Recovery Engine Monitor
                 </h3>
               </div>
-              <span className="text-[10px] text-slate-500 font-medium">Sub-50ms SLA Execution</span>
+              <span className="text-[11px] text-slate-500 font-medium">Sub-50ms SLA Execution · Deterministic Safety Bounds</span>
             </div>
 
             {/* Pipeline State Display */}
             {processingState === "IDLE" && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400">
-                <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 mb-3">
-                  <Zap className="w-6 h-6" />
+              <div className="my-auto flex flex-col items-center justify-center text-center p-8 text-slate-400">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 mb-3 shadow-inner">
+                  <Zap className="w-7 h-7 text-amber-500" />
                 </div>
                 <h4 className="text-sm font-semibold text-slate-800 font-sans">Pipeline Standing By</h4>
                 <p className="text-xs text-slate-500 max-w-sm mt-1 font-sans">
@@ -310,9 +310,9 @@ export default function CheckoutPage(): React.ReactElement {
             )}
 
             {processingState === "PROCESSING" && (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
-                <span className="text-sm font-semibold text-slate-900 font-sans">
+              <div className="my-auto flex flex-col items-center justify-center p-8 text-center">
+                <RefreshCw className="w-10 h-10 text-emerald-600 animate-spin mb-3" />
+                <span className="text-base font-semibold text-slate-900 font-sans">
                   Intercepting Payment Attempt...
                 </span>
                 <span className="text-xs text-slate-500 mt-1">
@@ -324,15 +324,15 @@ export default function CheckoutPage(): React.ReactElement {
             {(processingState === "FAILED" ||
               processingState === "RECOVERING" ||
               processingState === "RECOVERED") && (
-              <div className="mt-3 space-y-3 flex-1 flex flex-col justify-between">
+              <div className="w-full mt-4 space-y-4 flex-1 flex flex-col justify-between items-center text-center">
                 {/* Steps Log */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2 text-[11px]">
+                <div className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs text-center flex flex-col items-center">
                   {recoveryLog.map((log, index) => (
                     <div
                       key={index}
-                      className={`flex items-start gap-2 ${
+                      className={`flex items-center justify-center gap-2 ${
                         index === recoveryLog.length - 1
-                          ? "text-emerald-800 font-semibold"
+                          ? "text-emerald-800 font-bold"
                           : "text-slate-600"
                       }`}
                     >
@@ -344,31 +344,31 @@ export default function CheckoutPage(): React.ReactElement {
 
                 {/* Final Recovery Card */}
                 {processingState === "RECOVERED" && recoveredPayload && (
-                  <div className="p-4 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-white font-mono text-xs shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="w-full p-5 rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white font-mono text-xs shadow-sm flex flex-col items-center text-center">
+                    <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
                       <span className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs uppercase font-sans">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         RECOVERY ACTION EXECUTED & AUDITED
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                      <span className="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
                         {recoveredPayload.action}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700 mt-2">
-                      <div>
+                    <div className="w-full grid grid-cols-2 gap-4 text-xs text-slate-700 py-3 border-y border-emerald-100 text-center">
+                      <div className="flex flex-col items-center">
                         <span className="text-slate-400 block text-[10px]">Target Rail</span>
-                        <span className="font-bold text-slate-900">{recoveredPayload.targetRail}</span>
+                        <span className="font-bold text-slate-900 mt-0.5">{recoveredPayload.targetRail}</span>
                       </div>
-                      <div className="text-right">
+                      <div className="flex flex-col items-center">
                         <span className="text-slate-400 block text-[10px]">Expected Net Salvaged</span>
-                        <span className="font-bold text-emerald-700">
+                        <span className="font-bold text-emerald-700 mt-0.5">
                           {formatRupees(recoveredPayload.netUtility)}
                         </span>
                       </div>
                     </div>
 
-                    <p className="mt-2.5 pt-2 border-t border-emerald-100 text-[11px] text-slate-600 font-sans">
+                    <p className="mt-3 text-xs text-slate-600 font-sans max-w-md mx-auto font-medium">
                       {recoveredPayload.message}
                     </p>
                   </div>

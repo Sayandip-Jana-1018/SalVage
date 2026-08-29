@@ -245,9 +245,9 @@ export function ScrollFrameSequence(): React.ReactElement {
             <span>Interactive 3D Causal Recovery Timeline</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif tracking-tight text-slate-900 leading-tight font-normal">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold tracking-tight text-slate-900 leading-normal pb-1">
             The Anatomy of an{" "}
-            <span className="italic font-normal bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+            <span className="font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
               Autonomous Recovery
             </span>
           </h1>

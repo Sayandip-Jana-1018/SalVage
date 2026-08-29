@@ -26,23 +26,23 @@ export function Header(): React.ReactElement {
   }, []);
 
   return (
-    <header className="w-full border-b border-slate-200/80 bg-white/85 backdrop-blur-2xl sticky top-0 z-50 shadow-[0_4px_25px_rgba(0,0,0,0.03)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+    <header className="w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-2xl sticky top-0 z-50 shadow-[0_4px_25px_rgba(0,0,0,0.03)] py-3 px-4 flex flex-col items-center">
+      <div className="max-w-6xl w-full mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Brand & Status */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
           <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-25 group-hover:opacity-60 transition duration-500" />
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-30 group-hover:opacity-70 transition duration-500" />
             <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-serif font-bold text-base shadow-sm">
               SV
             </div>
           </div>
 
-          <div>
+          <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-serif font-bold text-slate-900 text-base tracking-tight">
                 SALVAGE
               </span>
-              <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center gap-1">
+              <span className="text-[9px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex items-center gap-1 shadow-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                 AUTONOMOUS ENGINE
               </span>
@@ -50,20 +50,20 @@ export function Header(): React.ReactElement {
             <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
               <span>v1.4.0</span>
               <span>·</span>
-              <span className="text-emerald-700 font-medium flex items-center gap-1">
+              <span className="text-emerald-700 font-semibold flex items-center gap-1">
                 <Lock className="w-2.5 h-2.5" /> SHA-256 AUDITED
               </span>
             </div>
           </div>
         </div>
 
-        {/* Global Key Metrics Ticker */}
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6 font-mono text-xs">
+        {/* Global Key Metrics Ticker - Center Balanced */}
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 font-mono text-xs text-center">
           {/* Money at Risk */}
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider flex items-center gap-1 font-sans font-medium">
               <AlertCircle className="w-3 h-3 text-rose-500" />
-              Money at Risk (Live)
+              Money at Risk
             </span>
             <span className="text-sm font-bold text-rose-600 tabular-nums">
               {formatRupees(moneyAtRiskPaise)}
@@ -73,10 +73,10 @@ export function Header(): React.ReactElement {
           <div className="hidden sm:block h-6 w-px bg-slate-200" />
 
           {/* Recovered Revenue */}
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider flex items-center gap-1 font-sans font-medium">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              Recovered Revenue (24h)
+              Recovered (24h)
             </span>
             <span className="text-sm font-bold text-emerald-600 tabular-nums">
               {formatRupees(recoveredRevenuePaise)}
@@ -86,7 +86,7 @@ export function Header(): React.ReactElement {
           <div className="hidden sm:block h-6 w-px bg-slate-200" />
 
           {/* Recovery Rate */}
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider flex items-center gap-1 font-sans font-medium">
               <ShieldCheck className="w-3 h-3 text-indigo-600" />
               Recovery Rate
@@ -99,7 +99,7 @@ export function Header(): React.ReactElement {
           <div className="hidden md:block h-6 w-px bg-slate-200" />
 
           {/* Clock */}
-          <div className="hidden md:flex flex-col text-right">
+          <div className="hidden md:flex flex-col items-center text-center">
             <span className="text-[10px] text-slate-400 uppercase tracking-wider font-sans font-medium">
               IST (Asia/Kolkata)
             </span>
