@@ -1,9 +1,31 @@
 """FastAPI application factory for salvage-brain."""
 
+from __future__ import annotations
+
+import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from salvage_brain import __version__
+from salvage_brain.attempts import router as attempts_router
+from salvage_brain.config import settings
+from salvage_brain.database import engine
 from salvage_brain.health import router as health_router
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+    logging.basicConfig(
+        level=settings.log_level,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    yield
+    # Returning connections to PostgreSQL on shutdown rather than leaving the
+    # server to time them out keeps a rolling restart from exhausting
+    # max_connections.
+    engine.dispose()
 
 
 def create_app() -> FastAPI:
@@ -14,8 +36,10 @@ def create_app() -> FastAPI:
             "Decision service for Salvage. This service never moves money. "
             "It returns a recommended action and its reasoning."
         ),
+        lifespan=lifespan,
     )
     app.include_router(health_router)
+    app.include_router(attempts_router)
     return app
 
 
