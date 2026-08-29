@@ -26,7 +26,7 @@ export function ScrollFrameSequence(): React.ReactElement {
   const [currentFrame, setCurrentFrame] = useState<number>(0);
   const [loadedPercent, setLoadedPercent] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isManualScrubbing, setIsManualScrubbing] = useState<boolean>(false);
 
   // Preload all 50 frames into memory with high-quality settings
@@ -237,7 +237,7 @@ export function ScrollFrameSequence(): React.ReactElement {
       className="relative w-full min-h-[220vh] mb-8 flex flex-col items-center"
     >
       {/* Sticky Hero Viewport - Pulled Up & Perfectly Centered in 100vh */}
-      <div className="sticky top-16 sm:top-20 w-full max-w-5xl mx-auto flex flex-col items-center">
+      <div className="sticky top-16 sm:top-20 w-full max-w-7xl mx-auto flex flex-col items-center">
         {/* Compact High-Impact Typography Header */}
         <div className="text-center max-w-2xl mx-auto px-4 mb-3 space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-mono tracking-wider uppercase font-semibold shadow-sm">
@@ -257,137 +257,136 @@ export function ScrollFrameSequence(): React.ReactElement {
           </p>
         </div>
 
-        {/* 3D Canvas + Liquid Glass Frame Container */}
-        <div className="relative w-full rounded-2xl liquid-glass overflow-hidden border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-2 sm:p-3 transition-all">
-          {/* Top Glass Toolbar */}
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-200/70 text-xs font-mono text-slate-600 mb-1.5">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-slate-900 font-bold tracking-tight text-[11px]">LIVE 3D RECOVERY FEED</span>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              {/* Play / Pause Toggle Button */}
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="px-2.5 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-semibold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
-              >
-                {isPlaying ? (
-                  <>
-                    <Pause className="w-2.5 h-2.5 fill-current" />
-                    <span>Pause</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-2.5 h-2.5 fill-current" />
-                    <span>Play</span>
-                  </>
-                )}
-              </button>
-
-              <span className="hidden sm:inline text-[10px] text-slate-500 font-semibold">
-                FRAME {String(currentFrame + 1).padStart(2, "0")}/{TOTAL_FRAMES}
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[9px] border border-emerald-200 font-bold">
-                60 FPS
-              </span>
-            </div>
-          </div>
-
-          {/* Canvas Viewport */}
-          <div className="relative w-full h-[320px] sm:h-[390px] lg:h-[430px] rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner">
-            {!isLoaded && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 space-y-3">
-                <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
-                <span className="text-xs font-mono text-slate-300">
-                  Preloading High-Definition 3D Frames ({loadedPercent}%)...
+        {/* Video + Speech Bubble Side-by-Side Layout */}
+        <div className="w-full flex flex-col lg:flex-row items-start gap-4">
+          {/* 3D Canvas + Liquid Glass Frame Container */}
+          <div className="relative flex-1 w-full rounded-2xl liquid-glass overflow-hidden border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-2 sm:p-3 transition-all">
+            {/* Top Glass Toolbar */}
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-200/70 text-xs font-mono text-slate-600 mb-1.5">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+                <span className="text-slate-900 font-bold tracking-tight text-[11px]">
+                  {isPlaying ? 'LIVE 3D RECOVERY FEED' : '3D RECOVERY FEED — PAUSED'}
                 </span>
-                <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-400 transition-all duration-150"
-                    style={{ width: `${loadedPercent}%` }}
-                  />
-                </div>
               </div>
-            )}
 
-            <canvas
-              ref={canvasRef}
-              className="w-full h-full object-cover pointer-events-none"
-            />
+              <div className="flex items-center gap-2.5">
+                {/* Play / Pause Toggle Button */}
+                <button
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="px-2.5 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-semibold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                >
+                  {isPlaying ? (
+                    <>
+                      <Pause className="w-2.5 h-2.5 fill-current" />
+                      <span>Pause</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-2.5 h-2.5 fill-current" />
+                      <span>Play</span>
+                    </>
+                  )}
+                </button>
 
-            {/* ✨ SPEECH BUBBLE — Top-Right Corner, as if the video is narrating */}
-            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 w-[280px] sm:w-[320px] z-10 animate-bubble-in">
-              {/* Bubble Body */}
-              <div className="relative bg-white/95 backdrop-blur-2xl rounded-2xl rounded-br-sm p-3.5 sm:p-4 border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.15)]">
-                {/* Speech tail — bottom-right triangle pointing into the video */}
-                <div className="absolute -bottom-2 right-4 w-4 h-4 bg-white/95 border-r border-b border-slate-200/90 rotate-45 shadow-sm" />
+                <span className="hidden sm:inline text-[10px] text-slate-500 font-semibold">
+                  FRAME {String(currentFrame + 1).padStart(2, "0")}/{TOTAL_FRAMES}
+                </span>
+              </div>
+            </div>
 
-                {/* Phase badge row */}
-                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                  <span className="text-[10px] font-mono font-bold text-slate-900 tracking-wide">
-                    PHASE {stage.stage}
+            {/* Canvas Viewport */}
+            <div className="relative w-full h-[320px] sm:h-[390px] lg:h-[430px] rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner">
+              {!isLoaded && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 space-y-3">
+                  <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+                  <span className="text-xs font-mono text-slate-300">
+                    Preloading High-Definition 3D Frames ({loadedPercent}%)...
                   </span>
-                  <span className={`text-[8px] font-mono px-1.5 py-px rounded-full border font-bold ${stage.badgeColor}`}>
-                    {stage.badge}
-                  </span>
+                  <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-400 transition-all duration-150"
+                      style={{ width: `${loadedPercent}%` }}
+                    />
+                  </div>
                 </div>
+              )}
 
-                {/* Title */}
-                <h4 className="text-xs font-serif font-bold text-slate-900 leading-snug mb-1">
-                  {stage.title}
-                </h4>
+              <canvas
+                ref={canvasRef}
+                className="w-full h-full object-cover pointer-events-none"
+              />
+            </div>
 
-                {/* Description */}
-                <p className="text-[11px] text-slate-600 font-sans leading-relaxed">
-                  {stage.description}
-                </p>
+            {/* Bottom Interactive Scrubber Bar */}
+            <div className="mt-2 px-3 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-mono text-slate-600 border-t border-slate-200/70">
+              <span className="text-[10px] flex items-center gap-1.5 text-slate-800 font-semibold font-sans">
+                <Cpu className="w-3 h-3 text-emerald-600" />
+                <span>Scrubber:</span>
+              </span>
 
-                {/* Footer metadata */}
-                <div className="mt-2 pt-1.5 border-t border-slate-200/70 flex items-center justify-between text-[9px] font-mono text-slate-400">
-                  <span className="truncate max-w-[160px]">{stage.subtext}</span>
-                  <span className="flex items-center gap-0.5 text-emerald-700 font-bold shrink-0">
-                    SLA: &lt;50ms <ArrowRight className="w-2.5 h-2.5" />
-                  </span>
-                </div>
+              <div className="w-full sm:w-1/2 flex items-center gap-2.5">
+                <span className="text-[9px] text-slate-400 font-semibold">START</span>
+                <input
+                  type="range"
+                  min="0"
+                  max={TOTAL_FRAMES - 1}
+                  value={currentFrame}
+                  onChange={handleScrubberChange}
+                  onMouseDown={() => {
+                    setIsPlaying(false);
+                    setIsManualScrubbing(true);
+                  }}
+                  onMouseUp={() => {
+                    setIsManualScrubbing(false);
+                  }}
+                  onTouchStart={() => {
+                    setIsPlaying(false);
+                    setIsManualScrubbing(true);
+                  }}
+                  onTouchEnd={() => {
+                    setIsManualScrubbing(false);
+                  }}
+                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 focus:outline-none"
+                />
+                <span className="text-[9px] text-slate-400 font-semibold">RECOVERED</span>
               </div>
             </div>
           </div>
 
-          {/* Bottom Interactive Scrubber Bar */}
-          <div className="mt-2 px-3 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-mono text-slate-600 border-t border-slate-200/70">
-            <span className="text-[10px] flex items-center gap-1.5 text-slate-800 font-semibold font-sans">
-              <Cpu className="w-3 h-3 text-emerald-600" />
-              <span>Scrubber:</span>
-            </span>
+          {/* ✨ SPEECH BUBBLE — Outside the video, to the right */}
+          <div className="w-full lg:w-[300px] shrink-0 animate-bubble-in">
+            <div className="relative bg-white/95 backdrop-blur-2xl rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.08)] lg:mt-12">
+              {/* Speech tail — pointing left toward the video */}
+              <div className="hidden lg:block absolute top-8 -left-2 w-4 h-4 bg-white/95 border-l border-b border-slate-200/90 rotate-45" />
 
-            <div className="w-full sm:w-1/2 flex items-center gap-2.5">
-              <span className="text-[9px] text-slate-400 font-semibold">START</span>
-              <input
-                type="range"
-                min="0"
-                max={TOTAL_FRAMES - 1}
-                value={currentFrame}
-                onChange={handleScrubberChange}
-                onMouseDown={() => {
-                  setIsPlaying(false);
-                  setIsManualScrubbing(true);
-                }}
-                onMouseUp={() => {
-                  setIsManualScrubbing(false);
-                  setIsPlaying(true);
-                }}
-                onTouchStart={() => {
-                  setIsPlaying(false);
-                  setIsManualScrubbing(true);
-                }}
-                onTouchEnd={() => {
-                  setIsManualScrubbing(false);
-                  setIsPlaying(true);
-                }}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 focus:outline-none"
-              />
-              <span className="text-[9px] text-slate-400 font-semibold">RECOVERED</span>
+              {/* Phase badge row */}
+              <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                <span className="text-[10px] font-mono font-bold text-slate-900 tracking-wide">
+                  PHASE {stage.stage}
+                </span>
+                <span className={`text-[8px] font-mono px-1.5 py-px rounded-full border font-bold ${stage.badgeColor}`}>
+                  {stage.badge}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h4 className="text-sm font-serif font-bold text-slate-900 leading-snug mb-1.5">
+                {stage.title}
+              </h4>
+
+              {/* Description */}
+              <p className="text-[11px] text-slate-600 font-sans leading-relaxed">
+                {stage.description}
+              </p>
+
+              {/* Footer metadata */}
+              <div className="mt-3 pt-2 border-t border-slate-200/70 flex items-center justify-between text-[9px] font-mono text-slate-400">
+                <span className="truncate max-w-[140px]">{stage.subtext}</span>
+                <span className="flex items-center gap-0.5 text-emerald-700 font-bold shrink-0">
+                  SLA: &lt;50ms <ArrowRight className="w-2.5 h-2.5" />
+                </span>
+              </div>
             </div>
           </div>
         </div>
