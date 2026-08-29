@@ -2,12 +2,13 @@ package com.salvage.core.lock;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,11 +28,11 @@ public class DistributedLockManager {
             "end";
 
     private final StringRedisTemplate redisTemplate;
-    private final DefaultRedisScript<Long> releaseScript;
+    private final RedisScript<Long> releaseScript;
 
     public DistributedLockManager(StringRedisTemplate redisTemplate) {
         this.redisTemplate = Objects.requireNonNull(redisTemplate, "redisTemplate must not be null");
-        this.releaseScript = new DefaultRedisScript<>(RELEASE_LOCK_SCRIPT, Long.class);
+        this.releaseScript = RedisScript.of(RELEASE_LOCK_SCRIPT, Long.class);
     }
 
     /**
@@ -70,14 +71,16 @@ public class DistributedLockManager {
     /**
      * Atomically releases the distributed lock if the token matches.
      */
+    @SuppressWarnings("null")
     public boolean releaseLock(String lockKey, String lockToken) {
         Objects.requireNonNull(lockKey, "lockKey must not be null");
         Objects.requireNonNull(lockToken, "lockToken must not be null");
 
         try {
+            List<String> keys = Collections.singletonList(lockKey);
             Long result = redisTemplate.execute(
                     releaseScript,
-                    Collections.singletonList(lockKey),
+                    keys,
                     lockToken);
             boolean released = result != null && result > 0;
             log.debug("Released distributed lock {} token {} (success={})", lockKey, lockToken, released);
@@ -95,12 +98,11 @@ public class DistributedLockManager {
         private final DistributedLockManager manager;
         private final String lockKey;
         private final String lockToken;
-        private boolean closed = false;
 
-        private DistributedLock(DistributedLockManager manager, String lockKey, String lockToken) {
-            this.manager = manager;
-            this.lockKey = lockKey;
-            this.lockToken = lockToken;
+        public DistributedLock(DistributedLockManager manager, String lockKey, String lockToken) {
+            this.manager = Objects.requireNonNull(manager, "manager must not be null");
+            this.lockKey = Objects.requireNonNull(lockKey, "lockKey must not be null");
+            this.lockToken = Objects.requireNonNull(lockToken, "lockToken must not be null");
         }
 
         public String getLockKey() {
@@ -113,10 +115,7 @@ public class DistributedLockManager {
 
         @Override
         public void close() {
-            if (!closed) {
-                closed = true;
-                manager.releaseLock(lockKey, lockToken);
-            }
+            manager.releaseLock(lockKey, lockToken);
         }
     }
 }
