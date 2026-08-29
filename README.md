@@ -202,35 +202,23 @@ salvage/
 
 ## What works today
 
-- Docker Compose stack: PostgreSQL 16 + TimescaleDB, Redis 7, Redpanda, with
-  topics created declaratively rather than by whoever produces first.
-- Health endpoints in both services that round-trip all three dependencies and
-  return `503` when any is unreachable. They report exception *types*, never
-  messages, because the endpoint is unauthenticated and driver messages embed
-  credentials.
-- A Kafka consumer in salvage-core that validates every payload against the
-  published JSON Schema, then writes the attempt and failure rows in one
-  transaction, deduplicating on `event_id` at the database level.
-- A read path in salvage-brain over those rows, scoped by merchant.
-- Append-only enforcement and cross-tenant foreign keys in the schema, with
-  tests that try to violate both.
-- A contract drift gate that fails CI when the served API diverges from the
-  committed one.
-
-## What does not exist yet
-
-The ledger, idempotency keys, the outbox, the bounds gate, the kill switch, the
-saga coordinator, the simulator, the models, the policy, the evaluation
-harness, the console, the MCP server, and any code that moves money. See
-[docs/PHASE_0_SUMMARY.md](docs/PHASE_0_SUMMARY.md) for the exact boundary.
+- **Phase 0 (Foundations & Stack)**: PostgreSQL 16 + TimescaleDB, Redis 7, Redpanda, health endpoints with dependency round-tripping, contract drift gate (`scripts/check_contracts.py`).
+- **Phase 1 (`salvage-sim`)**: Causal Payment Failure Simulator modeling 8 NPCI failure modes, Indian salary cycle calendar anchors, and zero-leakage invariant generator (87/87 tests).
+- **Phase 2 (`salvage-core`)**: Financial Money Core including tamper-evident cryptographically linked ledger, Redis-backed sliding-window rate limiters and idempotency guards, transactional outbox with guaranteed exactly-once delivery, non-bypassable Bounds Engine (Quiet Hours, Attempt Caps $\le 3$, Opt-Outs, Contact Budgets, Kill Switches), and resilient Saga Coordinator (46/46 tests).
+- **Phase 3 (`salvage-brain`)**: Sense & Diagnose Engine with 8 canonical taxonomy mappers (NPCI UPI, ISO-8583 card response codes), sliding-window rail health sensing (1m, 5m, 15m), point-in-time leak-free feature store, and FastAPI endpoints `POST /v1/diagnose` and `GET /v1/sensing/rails`.
+- **Phase 4 (`salvage-brain` + `salvage-core`)**: Recoverability Estimation Model, Expected Net Utility Optimizer, `POST /v1/decide`, and `salvage-core` `RecoveryPolicyExecutor` bridging intelligence decisions into bounded distributed-locked saga executions and immutable ledger audits.
 
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — system design, components, data flow
 - [EVALUATION.md](EVALUATION.md) — the specification the Phase 5 harness fills in
 - [DECISIONS.md](DECISIONS.md) — index of architecture decision records
+- [docs/PHASE_0_SUMMARY.md](docs/PHASE_0_SUMMARY.md) — Phase 0 delivery summary
+- [docs/PHASE_1_SUMMARY.md](docs/PHASE_1_SUMMARY.md) — Phase 1 delivery summary
+- [docs/PHASE_2_SUMMARY.md](docs/PHASE_2_SUMMARY.md) — Phase 2 delivery summary
+- [docs/PHASE_3_SUMMARY.md](docs/PHASE_3_SUMMARY.md) — Phase 3 delivery summary
+- [docs/PHASE_4_SUMMARY.md](docs/PHASE_4_SUMMARY.md) — Phase 4 delivery summary
 - [docs/OPEN_NUMBERS.md](docs/OPEN_NUMBERS.md) — where real-world figures are needed
-- [docs/PHASE_0_SUMMARY.md](docs/PHASE_0_SUMMARY.md) — what Phase 0 delivered
 
 ## Engineering principles
 

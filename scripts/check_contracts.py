@@ -19,6 +19,7 @@ Exit code is non-zero on any mismatch.
 
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 from pathlib import Path
@@ -61,7 +62,7 @@ def check_event_schemas() -> None:
         validator_cls = validator_for(document)
         try:
             validator_cls.check_schema(document)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             bad(f"{rel} is not a valid schema: {exc}")
             continue
 
@@ -81,7 +82,7 @@ def check_openapi_documents() -> dict[Path, dict[str, Any]]:
         document = yaml.safe_load(path.read_text(encoding="utf-8"))
         try:
             validate_openapi(document)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             bad(f"{rel} is not a valid OpenAPI document: {exc}")
             continue
         loaded[path] = document
@@ -93,8 +94,9 @@ def check_brain_matches_its_contract(document: dict[str, Any]) -> None:
     print("\nsalvage-brain implementation vs contract")
     try:
         sys.path.insert(0, str(REPO_ROOT / "services" / "salvage-brain" / "src"))
-        from salvage_brain.main import create_app
-    except ImportError as exc:
+        main_mod = importlib.import_module("salvage_brain.main")
+        create_app = main_mod.create_app
+    except (ImportError, AttributeError) as exc:
         bad(f"cannot import salvage-brain to compare its OpenAPI: {exc}")
         return
 

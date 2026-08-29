@@ -7,8 +7,9 @@ info:
     returns a recommended action and its reasoning; salvage-core decides
     whether to execute it.
 
-    Phase 3 exposes health probes, read path over ingested payment attempts,
-    real-time rail health sensing, and the Sense & Diagnose engine.
+    Phase 4 exposes health probes, read path over ingested payment attempts,
+    real-time rail health sensing, failure diagnosis, and the Recoverability &
+    Policy Decision Engine.
 
 servers:
   - url: http://localhost:8000
@@ -109,6 +110,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DiagnosisResponse"
+        "404":
+          description: No such attempt for this merchant
+        "422":
+          description: Malformed request payload
+
+  /v1/decide:
+    post:
+      operationId: decideRecoveryAction
+      summary: Decide optimal recovery action using expected net utility optimization
+      description: |
+        Evaluates candidate recovery actions (immediate retry, smart scheduled retry,
+        rail switch, customer nudge, NO-OP) using causal recoverability models and
+        expected monetary payoff minus costs.
+      tags: [policy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyDecisionRequest"
+      responses:
+        "200":
+          description: Policy decision result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyDecisionResponse"
         "404":
           description: No such attempt for this merchant
         "422":
@@ -236,7 +264,7 @@ components:
         observation_timestamp:
           type: string
           format: date-time
-          description: Optional point-in-time timestamp for historical backtesting and counterfactual evaluation.
+          description: Optional point-in-time timestamp for historical backtesting.
 
     DiagnosisResponse:
       type: object
@@ -289,6 +317,100 @@ components:
             - CUSTOMER_NUDGE
             - NO_ACTION
         diagnosed_at:
+          type: string
+          format: date-time
+
+    PolicyDecisionRequest:
+      type: object
+      required:
+        - merchant_id
+        - payment_attempt_id
+      properties:
+        merchant_id:
+          type: string
+        payment_attempt_id:
+          type: string
+        observation_timestamp:
+          type: string
+          format: date-time
+          description: Optional point-in-time timestamp for backtesting and evaluation.
+
+    ActionValuation:
+      type: object
+      required:
+        - action
+        - recovery_probability
+        - gross_expected_value_paise
+        - estimated_cost_paise
+        - net_expected_value_paise
+      properties:
+        action:
+          type: string
+          enum:
+            - RETRY_IMMEDIATE
+            - RETRY_SCHEDULED
+            - SWITCH_RAIL
+            - CUSTOMER_NUDGE
+            - NO_ACTION
+        recovery_probability:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        gross_expected_value_paise:
+          type: integer
+        estimated_cost_paise:
+          type: integer
+        net_expected_value_paise:
+          type: integer
+
+    PolicyDecisionResponse:
+      type: object
+      required:
+        - payment_attempt_id
+        - chosen_action
+        - recovery_probability
+        - expected_net_value_paise
+        - target_rail_id
+        - scheduled_delay_seconds
+        - nudge_channel
+        - reasoning_tokens
+        - candidate_valuations
+        - decided_at
+      properties:
+        payment_attempt_id:
+          type: string
+        chosen_action:
+          type: string
+          enum:
+            - RETRY_IMMEDIATE
+            - RETRY_SCHEDULED
+            - SWITCH_RAIL
+            - CUSTOMER_NUDGE
+            - NO_ACTION
+        recovery_probability:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        expected_net_value_paise:
+          type: integer
+        target_rail_id:
+          type: [string, "null"]
+        scheduled_delay_seconds:
+          type: [integer, "null"]
+        nudge_channel:
+          type: [string, "null"]
+          enum: [WHATSAPP, SMS, EMAIL, null]
+        reasoning_tokens:
+          type: array
+          items:
+            type: string
+        candidate_valuations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionValuation"
+        decided_at:
           type: string
           format: date-time
 
