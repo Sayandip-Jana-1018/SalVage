@@ -129,11 +129,35 @@ servers then run inside Linux against the same JDK 21 and Python 3.12 the build
 uses. Running the editor against the Windows filesystem is what produces
 "missing package" and "Java 8 vs 21" errors while the build itself is fine.
 
-If git prompts for credentials inside WSL, reuse the Windows credential store:
+#### Git authentication inside WSL
+
+GitHub removed password authentication for git operations in 2021, so the
+password prompt on an HTTPS clone will always fail with
+`Password authentication is not supported for Git operations`.
+
+Reusing the Windows credential manager from WSL only works if Windows interop
+is enabled in your distro. Check first:
+
+```bash
+ls /proc/sys/fs/binfmt_misc/WSLInterop*
+```
+
+If that prints nothing, WSL cannot execute Windows binaries and the bridge is
+not available — use SSH:
+
+```bash
+ssh-keygen -t ed25519 -C "salvage-wsl" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+# paste into GitHub -> Settings -> SSH and GPG keys -> New SSH key
+ssh -T git@github.com          # accept the host key; "successfully authenticated" is expected
+git clone git@github.com:<owner>/<repo>.git salvage
+```
+
+If interop *is* registered, this also works and reuses your Windows login:
 
 ```bash
 git config --global credential.helper \
-  "/mnt/c/Program Files/Git/mingw64/bin/git-credential-manager.exe"
+  "/mnt/c/Program\\ Files/Git/mingw64/bin/git-credential-manager.exe"
 ```
 
 ## Project structure
