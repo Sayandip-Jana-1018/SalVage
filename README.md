@@ -71,16 +71,70 @@ make help          # all targets
 Developed and verified on **WSL2 / Ubuntu** with Docker Desktop. `make` is not
 present on Windows by default, so run these from a WSL2 shell.
 
-Two things are worth knowing if you are on Windows:
+#### Windows setup, once
 
-- **Enable Docker Desktop's WSL integration** (Settings → Resources → WSL
-  Integration) or the containers are unreachable from your shell.
-- **Keep the repository inside the WSL2 filesystem** (`~/salvage`), not under
-  `/mnt/c`. Gradle's file hasher uses I/O the 9p driver serving `/mnt/c` does
-  not support and the build fails with `java.io.IOException: Input/output
-  error`. The `Makefile` works around this by relocating Gradle's project cache
-  when it detects a `/mnt/` path, but builds are also several times slower
-  across the boundary.
+**1. Enable Docker Desktop's WSL integration.** Settings → Resources → WSL
+integration → toggle on your distro → Apply & restart. Without it the Docker
+daemon is unreachable from your shell and `make preflight` reports
+`MISS daemon`.
+
+**2. Put the repository inside the WSL2 filesystem**, not under `/mnt/c`.
+
+This is not a preference. Gradle's file hasher uses I/O that the 9p driver
+serving `/mnt/c` does not support, and the build dies with:
+
+```
+java.io.IOException: Input/output error
+```
+
+The `Makefile` works around it by relocating Gradle's project cache when it
+detects a `/mnt/` path, so a build there will complete — but every file read
+still crosses the Windows/Linux boundary, and a Python virtualenv created from
+one side is unusable from the other.
+
+Clone fresh rather than copying, so no build output, virtualenv, or Windows
+line endings come along:
+
+```bash
+wsl                                    # from PowerShell, or open Ubuntu
+cd ~
+git clone <repo-url> salvage
+cd salvage
+```
+
+**3. Put the toolchain on your PATH permanently.** Add to `~/.bashrc`:
+
+```bash
+export JAVA_HOME="$HOME/.local/share/jdk-21"
+export PATH="$JAVA_HOME/bin:$HOME/.local/bin:$PATH"
+```
+
+If you do not have them yet:
+
+```bash
+# JDK 21 (or skip -- Gradle's foojay resolver will fetch one)
+mkdir -p ~/.local/share/jdk-21
+curl -fsSL "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse" \
+  | tar -xz -C ~/.local/share/jdk-21 --strip-components=1
+
+# uv (fetches its own Python 3.12)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then `source ~/.bashrc && make preflight` — every line should read `ok`.
+
+**4. Point your editor at WSL, not Windows.** In VS Code, install the **WSL**
+extension, then run `code .` from the WSL shell. The Java and Python language
+servers then run inside Linux against the same JDK 21 and Python 3.12 the build
+uses. Running the editor against the Windows filesystem is what produces
+"missing package" and "Java 8 vs 21" errors while the build itself is fine.
+
+If git prompts for credentials inside WSL, reuse the Windows credential store:
+
+```bash
+git config --global credential.helper \
+  "/mnt/c/Program Files/Git/mingw64/bin/git-credential-manager.exe"
+```
 
 ## Project structure
 

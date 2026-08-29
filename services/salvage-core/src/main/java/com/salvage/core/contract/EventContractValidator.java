@@ -74,8 +74,13 @@ public class EventContractValidator {
 
         Set<ValidationMessage> violations = paymentFailedSchema.validate(node);
         if (!violations.isEmpty()) {
+            // An explicit lambda rather than ValidationMessage::getMessage: the
+            // library is not annotated for null analysis, so the method
+            // reference forces an unchecked conversion of the receiver to
+            // @NonNull. Sorting keeps the message deterministic, which matters
+            // because it is what gets logged and asserted on.
             String detail = violations.stream()
-                    .map(ValidationMessage::getMessage)
+                    .map(violation -> violation.getMessage())
                     .sorted()
                     .collect(Collectors.joining("; "));
             throw new EventContractViolationException(

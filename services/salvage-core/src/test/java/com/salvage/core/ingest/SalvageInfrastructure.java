@@ -30,15 +30,31 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Image tags match docker-compose.yml exactly. A test passing against a
  * different PostgreSQL or Redis version than production runs proves less than
  * it appears to.
+ *
+ * <p>The containers are process-lifetime singletons shared by every test class
+ * that extends this. Starting a fresh set per class would multiply a forty
+ * second suite by the number of classes. They are stopped by the shutdown hook
+ * below; Testcontainers' Ryuk sidecar is the backstop if the JVM dies first.
  */
 public abstract class SalvageInfrastructure {
 
-    protected static final PostgreSQLContainer<?> POSTGRES;
-    protected static final GenericContainer<?> REDIS;
-    protected static final RedpandaContainer REDPANDA;
+    protected static final PostgreSQLContainer<?> POSTGRES = postgres();
+    protected static final GenericContainer<?> REDIS = redis();
+    protected static final RedpandaContainer REDPANDA = redpanda();
 
     static {
-        POSTGRES = new PostgreSQLContainer<>(
+        POSTGRES.start();
+        REDIS.start();
+        REDPANDA.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(SalvageInfrastructure::stopAll));
+    }
+
+    // The @SuppressWarnings sits on these factories rather than on a static
+    // block, which is not a declaration and cannot carry an annotation. The
+    // containers outlive every method here on purpose; see the class comment.
+    @SuppressWarnings("resource")
+    private static PostgreSQLContainer<?> postgres() {
+        return new PostgreSQLContainer<>(
                 DockerImageName.parse("timescale/timescaledb:2.29.2-pg16")
                         .asCompatibleSubstituteFor("postgres"))
                 .withDatabaseName("salvage_test")
@@ -48,16 +64,25 @@ public abstract class SalvageInfrastructure {
                 // shared rather than duplicated: see build.gradle.kts, which
                 // copies it onto the test classpath.
                 .withInitScript("db-init/01-extensions.sql");
+    }
 
-        REDIS = new GenericContainer<>(DockerImageName.parse("redis:7.4.11-bookworm"))
+    @SuppressWarnings("resource")
+    private static GenericContainer<?> redis() {
+        return new GenericContainer<>(DockerImageName.parse("redis:7.4.11-bookworm"))
                 .withExposedPorts(6379);
+    }
 
-        REDPANDA = new RedpandaContainer(
-                DockerImageName.parse("redpandadata/redpanda:v25.3.17"));
+    // No @SuppressWarnings here: this is a bare constructor with no builder
+    // chain, so the resource analysis never flags it, and suppressing a
+    // category that was not reported is itself reported (Java 1102).
+    private static RedpandaContainer redpanda() {
+        return new RedpandaContainer(DockerImageName.parse("redpandadata/redpanda:v25.3.17"));
+    }
 
-        POSTGRES.start();
-        REDIS.start();
-        REDPANDA.start();
+    private static void stopAll() {
+        REDPANDA.stop();
+        REDIS.stop();
+        POSTGRES.stop();
     }
 
     @DynamicPropertySource

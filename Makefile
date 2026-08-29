@@ -26,8 +26,17 @@ BRAIN_DIR := services/salvage-brain
 # support; a build from a Windows-hosted path fails with
 # "java.io.IOException: Input/output error". Moving only the project cache onto
 # a Linux-native path fixes it and costs nothing elsewhere.
-GRADLE_CACHE := $(shell case "$$(pwd)" in /mnt/*) echo '--project-cache-dir=/tmp/salvage-gradle-cache';; esac)
-GRADLE       := ./gradlew --no-daemon --console=plain $(GRADLE_CACHE)
+#
+# Written with Make's own conditionals rather than $(shell case ... esac): Make
+# counts parentheses inside $(...), so the `)` closing a shell case pattern
+# terminates the function early and the rest of the line leaks into the command.
+ifneq (,$(findstring /mnt/,$(CURDIR)))
+GRADLE_CACHE := --project-cache-dir=/tmp/salvage-gradle-cache
+else
+GRADLE_CACHE :=
+endif
+
+GRADLE := ./gradlew --no-daemon --console=plain $(GRADLE_CACHE)
 
 help: ## Show available targets
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
