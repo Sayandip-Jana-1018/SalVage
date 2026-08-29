@@ -1,0 +1,449 @@
+# Salvage simulator calibration
+#
+# ILLUSTRATIVE DEFAULTS, PENDING CALIBRATION AGAINST PRODUCTION DATA.
+#
+# Every value here is chosen to be plausible and to make the simulator produce
+# meaningful output on the first run. None of them is a measurement, and none
+# is a claim about any real bank, gateway, or market. Swapping in real figures
+# means editing this file and nothing else: no calibration value is hardcoded
+# anywhere in the source. See docs/adr/0006-numbers-policy.md.
+#
+# Each value carries its unit and one line naming where a real-world figure
+# would come from. Where we have written "gateway monitoring data" the intent
+# is specific: the number is knowable from data a payment aggregator already
+# has, it is simply not public.
+#
+# Issuer identities are synthetic (issuer_alpha, issuer_beta, ...). Naming a
+# real bank and attaching an outage rate to it would be an unsourced claim
+# about a real institution, which is exactly what the numbers policy forbids.
+# The `archetype` field carries the structural distinction that actually
+# matters to the model. See docs/adr/0008-synthetic-issuer-identities.md.
+
+schema_version: 1
+
+simulation:
+  # Local timezone. The salary cycle and the time-of-day traffic curve are
+  # local-calendar phenomena, so they are computed in this zone, not in UTC.
+  timezone: Asia/Kolkata
+  # ISO 4217. The event contract permits any currency; the simulator emits one.
+  currency: INR
+  # Default simulation start (UTC, ISO-8601). Chosen so that a 30-day run
+  # covers one festival window below, exercising that code path by default.
+  default_start: "2025-10-01T00:00:00Z"
+
+# ---------------------------------------------------------------------------
+# Attribution
+#
+# This section pins the definition of "recovered". It is here rather than in
+# the evaluation harness because the simulator generates the counterfactual
+# that the definition subtracts, so the two must agree by construction.
+# ---------------------------------------------------------------------------
+attribution:
+  # Hours. A success on the same order_id within this window after a Salvage
+  # action is attributed to that action. Outside it, the order is treated as
+  # not recovered, however it eventually resolves.
+  # Source: a product decision, not an empirical quantity. It should be set
+  # from the observed distribution of time-to-natural-success, long enough to
+  # capture genuine recoveries and short enough that unrelated later purchases
+  # are not credited to Salvage.
+  window_hours: 24
+
+  # Count. Salvage actions per order beyond which further actions are not
+  # attributed. Bounds the blast radius of a single order in the evaluation.
+  # Source: product/risk decision.
+  max_attributed_actions_per_order: 3
+
+# ---------------------------------------------------------------------------
+# Observation
+#
+# FEATURE-ONLY NUISANCE PARAMETERS.
+#
+# These corrupt what the *emitted event stream* says about the world. They do
+# not touch the world itself, so they must never change a counterfactual
+# label. tests/test_leakage_invariance.py perturbs every value in this section
+# and asserts the labels are bit-identical while the events are not. If a
+# label generator ever reads an observed field instead of latent state, that
+# test fails.
+# ---------------------------------------------------------------------------
+observation:
+  # Seconds. Mean lag between the failure happening and the provider emitting
+  # the event, drawn exponential. Source: gateway webhook delivery telemetry.
+  event_delay_seconds_mean: 2.5
+
+  # Probability [0,1] that the provider reports a generic error code instead
+  # of the specific one, which is the common real-world failure of error
+  # taxonomies. Source: proportion of generic codes in gateway error logs.
+  generic_error_code_rate: 0.08
+
+  # Probability [0,1] that the issuer is not identified on the event and is
+  # reported as unknown. Source: gateway data completeness audit.
+  issuer_unknown_rate: 0.03
+
+  # Probability [0,1] that a card network/type or UPI app is absent from an
+  # otherwise complete event. Source: gateway data completeness audit.
+  instrument_detail_missing_rate: 0.05
+
+# ---------------------------------------------------------------------------
+# Traffic
+# ---------------------------------------------------------------------------
+traffic:
+  # Attempts per merchant per day, averaged over the run before the
+  # multipliers below are applied. Source: merchant volume distribution.
+  base_attempts_per_merchant_per_day: 1800
+
+  # Dimensionless. Spread of merchant sizes, as the geometric standard
+  # deviation of a lognormal multiplier on the line above. Merchant volume is
+  # heavily skewed in reality, and this matters beyond realism: the pooled
+  # rail intelligence of ADR-0007 earns its keep precisely on the merchants
+  # too small to see an outage in their own traffic. A run where every
+  # merchant is the same size would make that feature look better than it is.
+  # Source: merchant volume distribution, same as above.
+  merchant_volume_gsd: 2.5
+
+  # Relative weight per local hour, index 0 = 00:00 to 23 = 23:00. Normalised
+  # to mean 1.0 at load, so changing the shape does not change total volume.
+  # Source: gateway traffic by hour of day.
+  hour_of_day_weights:
+    [
+      0.35, 0.20, 0.12, 0.10, 0.12, 0.20,
+      0.35, 0.55, 0.75, 0.95, 1.10, 1.25,
+      1.35, 1.30, 1.20, 1.15, 1.20, 1.35,
+      1.55, 1.70, 1.75, 1.60, 1.10, 0.65,
+    ]
+
+  # Relative weight per local weekday, index 0 = Monday. Normalised to mean
+  # 1.0 at load. Source: gateway traffic by day of week.
+  day_of_week_weights: [1.00, 0.98, 0.99, 1.02, 1.12, 1.20, 1.10]
+
+  # Festival and sale windows. Dates are illustrative: the major Indian
+  # festival calendar is lunar and shifts by roughly two to three weeks a
+  # year, so a real deployment reads these from a calendar service rather
+  # than a static file. Source: merchant sale calendar.
+  festival_windows:
+    - name: autumn_festival_sale
+      start_month: 10 # calendar month, 1-12
+      start_day: 18 # calendar day of month
+      duration_days: 6 # days
+      peak_multiplier: 5.5 # multiple of baseline traffic at the peak
+    - name: republic_day_sale
+      start_month: 1
+      start_day: 20
+      duration_days: 4
+      peak_multiplier: 3.0
+
+# ---------------------------------------------------------------------------
+# Payment methods
+#
+# traffic_share must sum to 1.0 across methods; the loader rejects the file
+# otherwise rather than silently renormalising.
+# ---------------------------------------------------------------------------
+payment_methods:
+  upi:
+    traffic_share: 0.58 # fraction of non-recurring attempts
+    base_failure_rate: 0.055 # P(failure) on a healthy rail, [0,1]
+    # Rupees. Amounts are drawn lognormal; these are the median and the
+    # multiplicative spread (geometric standard deviation).
+    amount_median_rupees: 480
+    amount_gsd: 3.1
+    # Source for all four: gateway per-method success rates and ticket sizes.
+
+  card:
+    traffic_share: 0.26
+    base_failure_rate: 0.095
+    amount_median_rupees: 1650
+    amount_gsd: 3.6
+
+  netbanking:
+    traffic_share: 0.09
+    base_failure_rate: 0.130
+    amount_median_rupees: 3200
+    amount_gsd: 3.4
+
+  wallet:
+    traffic_share: 0.07
+    base_failure_rate: 0.045
+    amount_median_rupees: 350
+    amount_gsd: 2.4
+
+  emandate:
+    # Recurring debits are not drawn from the traffic process; they are
+    # scheduled by the mandate book. This share is therefore zero and the
+    # loader requires it to be.
+    traffic_share: 0.00
+    base_failure_rate: 0.115
+    amount_median_rupees: 599
+    amount_gsd: 2.2
+
+# ---------------------------------------------------------------------------
+# Issuers
+#
+# Synthetic identities. traffic_share must sum to 1.0.
+#
+# reliability_multiplier scales the rate at which this issuer's rails leave
+# the healthy state: below 1.0 is a more reliable issuer, above 1.0 less so.
+# It multiplies rates, not probabilities, so it composes cleanly with the
+# health process below.
+# ---------------------------------------------------------------------------
+issuers:
+  - id: issuer_alpha
+    archetype: large_private_bank
+    traffic_share: 0.26 # fraction of attempts routed to this issuer
+    reliability_multiplier: 0.70 # scales outage onset rates, dimensionless
+    supported_methods: [upi, card, netbanking, emandate]
+
+  - id: issuer_beta
+    archetype: large_private_bank
+    traffic_share: 0.21
+    reliability_multiplier: 0.80
+    supported_methods: [upi, card, netbanking, emandate]
+
+  - id: issuer_gamma
+    archetype: public_sector_bank
+    traffic_share: 0.19
+    reliability_multiplier: 1.60
+    supported_methods: [upi, card, netbanking, emandate]
+
+  - id: issuer_delta
+    archetype: public_sector_bank
+    traffic_share: 0.13
+    reliability_multiplier: 1.90
+    supported_methods: [upi, netbanking, emandate]
+
+  - id: issuer_epsilon
+    archetype: small_private_bank
+    traffic_share: 0.09
+    reliability_multiplier: 2.40
+    supported_methods: [upi, card, netbanking]
+
+  - id: issuer_zeta
+    archetype: payments_bank
+    traffic_share: 0.07
+    reliability_multiplier: 1.30
+    supported_methods: [upi, wallet]
+
+  - id: issuer_eta
+    archetype: wallet_provider
+    traffic_share: 0.05
+    reliability_multiplier: 1.10
+    supported_methods: [wallet, upi]
+
+# ---------------------------------------------------------------------------
+# Rail health
+#
+# A two-level continuous-time Markov chain. The issuer sits in NORMAL or
+# STRESSED; each of its rails (issuer x method) sits in HEALTHY, DEGRADED or
+# DOWN. The issuer state modulates the rail transition rates, which is what
+# makes an outage on one method raise the odds of trouble on another for the
+# same issuer, rather than the two being independent coin flips.
+#
+# All rates are in events per unit time and are converted internally. A rate
+# of r per day means the mean waiting time is 1/r days.
+# ---------------------------------------------------------------------------
+rail_health:
+  issuer_stress:
+    # Per day. Mean 5 days between the onsets of issuer-wide stress episodes.
+    # Source: gateway incident history per issuer.
+    onset_per_day: 0.20
+    # Per hour. Mean episode length 1/0.55 hours, roughly 1h50m.
+    # Source: gateway incident duration, i.e. issuer MTTR.
+    recovery_per_hour: 0.55
+    # Dimensionless. While the issuer is stressed, rail degradation onset
+    # rates are multiplied by this and rail recovery rates divided by it.
+    # This single number is the strength of the cross-method correlation.
+    # Source: fitted from the joint distribution of per-rail incidents.
+    stress_rate_multiplier: 7.0
+
+  rail:
+    # Per day. Mean 2.5 days between degradations for a reference issuer
+    # (reliability_multiplier 1.0) whose issuer state is NORMAL.
+    # Source: per-rail incident frequency in gateway monitoring.
+    healthy_to_degraded_per_day: 0.40
+    # Per hour. A degraded rail either recovers or falls over. These two
+    # rates together set both the probability of a full outage and its
+    # onset delay. Source: gateway incident escalation history.
+    degraded_to_down_per_hour: 0.18
+    degraded_to_healthy_per_hour: 1.40
+    # Per hour. Recovery from DOWN returns to DEGRADED, not straight to
+    # HEALTHY: capacity comes back partially before it comes back fully.
+    # Mean 30 minutes in the DOWN state. Source: issuer MTTR.
+    down_to_degraded_per_hour: 2.00
+
+  # Multiplies the method's healthy success probability. DOWN is not exactly
+  # zero because a small fraction of traffic gets through even a bad outage,
+  # and a policy that assumes zero would be wrong about that traffic.
+  # Source: observed success rate during known issuer incidents.
+  success_multiplier:
+    healthy: 1.00
+    degraded: 0.62
+    down: 0.03
+
+# ---------------------------------------------------------------------------
+# Customers
+# ---------------------------------------------------------------------------
+customers:
+  # Count. Distinct customers per merchant. Orders are drawn over this
+  # population, so a smaller number means more repeat purchase.
+  # Source: merchant customer base size.
+  per_merchant: 12000
+
+  # Probability [0,1] that a checkout is a guest checkout with no customer id.
+  # These cannot be contacted and cannot carry a contact budget, which the
+  # policy has to handle. Source: merchant checkout analytics.
+  guest_checkout_rate: 0.22
+
+  # Probability [0,1] that a customer has opted out of recovery contact.
+  # Source: merchant communication preference data.
+  opt_out_rate: 0.045
+
+  salary_cycle:
+    # Distribution over local day-of-month on which a customer is paid.
+    # Weights are normalised at load.
+    #
+    # Days are restricted to 1-28, and the loader rejects anything outside
+    # that. "Paid on the last day of the month" is a real and common
+    # arrangement, but it is not a fixed day-of-month: it is the 28th, 30th or
+    # 31st depending on the month, and modelling that faithfully means a
+    # calendar rule rather than a number. Those payers are folded onto the
+    # 28th here. The cost is that their cycle peak sits up to three days early
+    # in long months, which is smaller than the width of the peak itself.
+    #
+    # Source: payroll timing distribution.
+    payday_weights:
+      1: 0.40
+      2: 0.12
+      7: 0.10
+      10: 0.08
+      15: 0.10
+      25: 0.06
+      28: 0.14
+
+    # Probability [0,1] of an insufficient-funds decline at the trough, which
+    # is the day after payday, and at the peak, which is the leanest point of
+    # the cycle. The simulator interpolates between them over the cycle.
+    # Source: insufficient-funds decline rate by day of month.
+    trough_rate: 0.015
+    peak_rate: 0.145
+
+    # Days before the next payday at which the peak occurs.
+    # Source: same as above.
+    days_before_payday_at_peak: 2
+
+    # Dimensionless. Per-customer multiplier on the whole curve, drawn
+    # lognormal with this geometric standard deviation, so that some
+    # customers are chronically tight and others never are.
+    # Source: dispersion of per-customer decline rates.
+    per_customer_gsd: 1.8
+
+    # Hours over which an account's balance state is held constant.
+    #
+    # This is a modelling parameter, not a cosmetic one. Without it, each
+    # attempt would draw independently, and a retry sixty seconds after an
+    # insufficient-funds decline would succeed at the complement of the
+    # decline rate -- roughly six times in seven. That is nonsense: an empty
+    # account is still empty a minute later. Holding the state constant
+    # within a bucket makes an immediate retry correctly futile and a retry
+    # after payday correctly worthwhile, which is the distinction the whole
+    # system exists to make.
+    #
+    # Source: the timescale on which balances actually move, from account
+    # credit/debit frequency.
+    balance_state_hours: 6.0
+
+  # Probability [0,1] that a customer's card is expired or otherwise
+  # permanently unusable for the duration of the run.
+  #
+  # This is the third distinct causal structure in the simulator, and it is
+  # here because it is the only one where switching rail works but waiting
+  # never does -- the opposite of insufficient funds, and different again
+  # from an outage where both work. Four failure types with four different
+  # correct responses is what makes the decision problem non-trivial.
+  #
+  # Applies to card attempts only. Source: share of stored cards that are
+  # expired or delisted at any time, from a gateway's vault statistics.
+  instrument_expired_rate: 0.030
+
+  self_retry:
+    # THIS IS THE BASELINE SALVAGE MUST BEAT.
+    #
+    # A share of customers retry a failed payment unprompted and some of
+    # those succeed. Any recovery Salvage claims has to be measured against
+    # what would have happened anyway, so this is one of the most consequential
+    # numbers in the file. Setting it to zero would make Salvage look far
+    # better than it is.
+    #
+    # Probability [0,1] that a customer retries after their first failure.
+    # Source: merchant funnel analytics, retry rate after a failed checkout.
+    probability_after_first_failure: 0.38
+    # Dimensionless. The probability is multiplied by this after each
+    # additional failure on the same order. Source: same as above.
+    decay_per_additional_failure: 0.45
+    # Minutes. Median delay before the unprompted retry, drawn lognormal.
+    # Source: observed gap between consecutive attempts on one order.
+    delay_minutes_median: 9.0
+    delay_gsd: 3.2
+    # Count. Attempts on one order beyond which the customer always abandons.
+    # Bounds the journey so the simulation terminates. Source: same as above.
+    max_attempts_per_order: 4
+    # Probability [0,1] that an unprompted retry switches to a different
+    # method rather than retrying the same one. Source: checkout analytics.
+    method_switch_rate: 0.30
+
+# ---------------------------------------------------------------------------
+# Mandates
+#
+# Recurring debits. These matter disproportionately because a mandate failure
+# is often permanently unrecoverable (expired, revoked) and retrying it is
+# pure cost, whereas a balance failure on a live mandate is recoverable by
+# waiting for payday. Telling those apart is the whole job.
+# ---------------------------------------------------------------------------
+mandates:
+  # Probability [0,1] that a given customer holds a recurring mandate.
+  # Source: subscription penetration in the merchant's customer base.
+  share_of_customers: 0.14
+
+  # Days. Mandate lifetime from creation, drawn exponential around this mean.
+  # Source: mandate registration data.
+  mean_lifetime_days: 420
+
+  # Per month. Probability [0,1] that a live mandate is revoked by the
+  # customer in a given month. Source: mandate churn data.
+  monthly_revocation_rate: 0.022
+
+  # Days. Interval between scheduled debits.
+  # Source: subscription billing cycle mix.
+  debit_interval_days: 30
+
+  # Fraction [0,1] of a debit interval by which mandates are spread out at
+  # creation, so debits do not all land on the same day. 1.0 means uniformly
+  # spread across the cycle. Source: structural, not empirical.
+  debit_day_spread: 1.0
+
+  # Days after a failed debit at which the merchant's own dunning schedule
+  # retries it, with no involvement from Salvage.
+  #
+  # This is the recurring-payments half of the baseline, and it is here for
+  # the same reason self_retry is: leaving it out would mean every mandate
+  # failure recovered by Salvage counted as incremental, when a plain fixed
+  # schedule would have recovered a good share of them by waiting. Dunning
+  # fires regardless of why the debit failed, including against mandates that
+  # are expired or revoked, which is both what real systems do and the waste
+  # a policy ought to be able to avoid.
+  #
+  # Source: merchant subscription dunning configuration.
+  dunning_retry_offsets_days: [1.0, 3.0]
+
+# ---------------------------------------------------------------------------
+# Counterfactual labels
+# ---------------------------------------------------------------------------
+counterfactual:
+  # Minutes after the failure at which the simulator evaluates whether a
+  # retry would have succeeded. Offset 0 is an immediate retry. These bracket
+  # the actions a policy can take: retry now, back off briefly, wait out an
+  # outage, wait for payday. Source: structural, chosen to span the action
+  # space rather than measured.
+  offsets_minutes: [0, 5, 15, 60, 360, 1440, 4320]
+
+  # Count. Alternative rails evaluated per failure, ranked by the customer's
+  # affinity. Bounds label volume: every additional rail multiplies the label
+  # count by the number of offsets. Source: structural.
+  alternative_rails_per_failure: 2

@@ -1,0 +1,76 @@
+[project]
+name = "salvage-sim"
+version = "0.1.0"
+description = "Deterministic simulator of Indian payment failure streams, with ground-truth counterfactual labels."
+requires-python = ">=3.12"
+readme = "README.md"
+
+dependencies = [
+    # numpy carries the continuous-time Markov chain draws and the arrival
+    # process. Everything else is stdlib on purpose: this package is meant to
+    # be installable next to a model training stack without dragging one in.
+    "numpy>=2.2.0,<3.0",
+    "pydantic>=2.10.0,<3.0",
+    "pyyaml>=6.0.2,<7.0",
+    "tzdata>=2024.1; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+# Only needed to regenerate the distribution charts in docs/. Not required to
+# run the simulator, and deliberately not a hard dependency.
+charts = ["matplotlib>=3.10.0,<4.0"]
+
+[project.scripts]
+salvage-sim = "salvage_sim.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0,<9.0",
+    "hypothesis>=6.120.0,<7.0",
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    # The contract conformance test validates every emitted event against the
+    # committed JSON Schema, the same one salvage-core enforces at ingest.
+    "jsonschema>=4.23.0,<5.0",
+    "types-PyYAML>=6.0.12,<7.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/salvage_sim"]
+
+# ADR-0006 fixes the canonical path of calibration.yaml at the package root,
+# so that is where it lives and where a human edits it. It is force-included
+# into the wheel as a package resource as well, because a simulator that
+# cannot find its own defaults once installed is not installable. Both copies
+# come from the one file; there is no second source of truth.
+[tool.hatch.build.targets.wheel.force-include]
+"calibration.yaml" = "salvage_sim/calibration.yaml"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["salvage_sim"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-m 'not slow'"
+markers = [
+    "slow: performance checks over large runs. Deselect with -m 'not slow'.",
+]
