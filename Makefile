@@ -96,11 +96,13 @@ test: test-java test-python ## Run every test
 test-java: ## salvage-core tests (starts its own containers via Testcontainers)
 	cd $(CORE_DIR) && $(GRADLE) test
 
-test-python: ## salvage-brain tests (integration tests need Docker)
-	cd $(BRAIN_DIR) && uv run --frozen pytest tests -q
+test-python: ## Run all Python test suites (salvage-brain, salvage-sim, salvage-eval)
+	cd $(BRAIN_DIR) && uv run pytest tests -q
+	uv run --project packages/salvage-sim pytest packages/salvage-sim/tests -q
+	uv run --project packages/salvage-eval pytest packages/salvage-eval/tests -q
 
 test-python-unit: ## salvage-brain tests that do not need Docker
-	cd $(BRAIN_DIR) && uv run --frozen pytest tests -q -m 'not integration'
+	cd $(BRAIN_DIR) && uv run pytest tests -q -m 'not integration'
 
 # ---------------------------------------------------------------------------
 # Lint
@@ -112,15 +114,28 @@ lint-java: ## Spotless + compile warnings
 	cd $(CORE_DIR) && $(GRADLE) spotlessCheck
 
 lint-python: ## ruff + mypy (strict)
-	cd $(BRAIN_DIR) && uv run --frozen ruff check src tests
-	cd $(BRAIN_DIR) && uv run --frozen mypy src
+	cd $(BRAIN_DIR) && uv run ruff check src tests
+	cd $(BRAIN_DIR) && uv run mypy src
+	uv run --project packages/salvage-sim ruff check packages/salvage-sim/src packages/salvage-sim/tests
+	uv run --project packages/salvage-sim mypy packages/salvage-sim/src
+	uv run --project packages/salvage-eval ruff check packages/salvage-eval/src packages/salvage-eval/tests
+	uv run --project packages/salvage-eval mypy packages/salvage-eval/src
 
 format: ## Apply formatting fixes
 	cd $(CORE_DIR) && $(GRADLE) spotlessApply
-	cd $(BRAIN_DIR) && uv run --frozen ruff check --fix src tests
+	cd $(BRAIN_DIR) && uv run ruff check --fix src tests
+	uv run --project packages/salvage-sim ruff check --fix packages/salvage-sim/src packages/salvage-sim/tests
+	uv run --project packages/salvage-eval ruff check --fix packages/salvage-eval/src packages/salvage-eval/tests
 
 contracts-check: ## Validate the contracts and prove nothing has drifted from them
-	bash scripts/check-contracts.sh
+	python scripts/check_contracts.py
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
+
+eval: ## Run Phase 5 Off-Policy Evaluation harness and generate EVALUATION.md
+	uv run --project packages/salvage-eval salvage-eval report --output EVALUATION.md
 
 # ---------------------------------------------------------------------------
 # Demo
