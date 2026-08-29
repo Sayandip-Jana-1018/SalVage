@@ -7,6 +7,8 @@ import {
   Cpu,
   Layers,
   Lock,
+  Pause,
+  Play,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -24,9 +26,10 @@ export function ScrollFrameSequence(): React.ReactElement {
   const [currentFrame, setCurrentFrame] = useState<number>(0);
   const [loadedPercent, setLoadedPercent] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isManualScrubbing, setIsManualScrubbing] = useState<boolean>(false);
 
-  // Preload all 50 frames into memory for instantaneous 60fps rendering
+  // Preload all 50 frames into memory with high-quality settings
   useEffect(() => {
     let loadedCount = 0;
     const images: HTMLImageElement[] = [];
@@ -55,7 +58,7 @@ export function ScrollFrameSequence(): React.ReactElement {
     imagesRef.current = images;
   }, []);
 
-  // Draw frame to canvas maintaining high-DPI aspect ratio
+  // Draw frame to canvas with crisp scaling and high image smoothing
   const renderFrame = (index: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -65,7 +68,7 @@ export function ScrollFrameSequence(): React.ReactElement {
     const img = imagesRef.current[index];
     if (!img || !img.complete || img.naturalWidth === 0) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.max(2, window.devicePixelRatio || 1);
     const rect = canvas.getBoundingClientRect();
 
     if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
@@ -77,7 +80,11 @@ export function ScrollFrameSequence(): React.ReactElement {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    // Cover / contain fit
+    // High quality scaling filters
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    // Aspect-ratio cover math
     const imgRatio = img.naturalWidth / img.naturalHeight;
     const canvasRatio = rect.width / rect.height;
     let renderW = rect.width;
@@ -95,24 +102,32 @@ export function ScrollFrameSequence(): React.ReactElement {
 
     ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
 
-    // Add subtle ambient light vignette
-    const gradient = ctx.createRadialGradient(
-      rect.width / 2,
-      rect.height / 2,
-      rect.width * 0.25,
-      rect.width / 2,
-      rect.height / 2,
-      rect.width * 0.75
-    );
-    gradient.addColorStop(0, "rgba(255, 255, 255, 0)");
-    gradient.addColorStop(1, "rgba(248, 250, 252, 0.45)");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, rect.width, rect.height);
+    // Subtle dark-to-light gradient at the bottom so the centered modal pops
+    const bottomFade = ctx.createLinearGradient(0, rect.height * 0.6, 0, rect.height);
+    bottomFade.addColorStop(0, "rgba(5, 7, 10, 0)");
+    bottomFade.addColorStop(1, "rgba(5, 7, 10, 0.45)");
+    ctx.fillStyle = bottomFade;
+    ctx.fillRect(0, rect.height * 0.6, rect.width, rect.height * 0.4);
 
     ctx.restore();
   };
 
-  // Scroll listener to smoothly interpolate frames
+  // Continuous smooth auto-play loop
+  useEffect(() => {
+    if (!isPlaying || !isLoaded || isManualScrubbing) return;
+
+    const interval = setInterval(() => {
+      setCurrentFrame((prev) => {
+        const next = (prev + 1) % TOTAL_FRAMES;
+        renderFrame(next);
+        return next;
+      });
+    }, 45); // ~22 fps smooth cinematic frame advancement
+
+    return () => clearInterval(interval);
+  }, [isPlaying, isLoaded, isManualScrubbing]);
+
+  // Scroll listener to smoothly interpolate frames during page scrolling
   useEffect(() => {
     const handleScroll = () => {
       if (isManualScrubbing || !containerRef.current || !isLoaded) return;
@@ -127,6 +142,7 @@ export function ScrollFrameSequence(): React.ReactElement {
       const frameIdx = Math.min(TOTAL_FRAMES - 1, Math.floor(progress * TOTAL_FRAMES));
 
       if (frameIdx !== currentFrame) {
+        setIsPlaying(false); // pause auto-play when user is actively scrolling
         setCurrentFrame(frameIdx);
         renderFrame(frameIdx);
       }
@@ -139,6 +155,7 @@ export function ScrollFrameSequence(): React.ReactElement {
   // Handle manual scrubber drag / slider
   const handleScrubberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const frame = parseInt(e.target.value, 10);
+    setIsPlaying(false);
     setCurrentFrame(frame);
     renderFrame(frame);
   };
@@ -151,8 +168,8 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "01",
         title: "Transaction Initiation",
         badge: "PAYMENT_INGESTED",
-        badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
-        description: "Customer checkout initiated (₹1,850.00 on SBI UPI rail). Telemetry stream captures raw network handshake.",
+        badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-300",
+        description: "Customer checkout initiated for ₹1,850.00 on SBI UPI rail. Network handshake stream captured.",
         subtext: "Capturing timestamp, merchant ID, and rail headers",
       };
     } else if (p < 0.5) {
@@ -160,7 +177,7 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "02",
         title: "Systemic Outage Detection",
         badge: "ISSUER_DEGRADATION (U30)",
-        badgeColor: "bg-rose-50 text-rose-800 border-rose-200",
+        badgeColor: "bg-rose-50 text-rose-800 border-rose-300",
         description: "Core banking switch timeout detected. 2D Sensing Matrix corroborates 88.4% error rate across 34 merchants.",
         subtext: "Classifier maps raw error to canonical ISSUER_OUTAGE",
       };
@@ -169,8 +186,8 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "03",
         title: "Autonomous Decision Calculus",
         badge: "E[NET_VALUE] MAXIMIZATION",
-        badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
-        description: "Policy optimizer ranks 5 actions. Winner: SWITCH_RAIL to HDFC UPI ($P=0.88$, Net Salvaged: ₹1,775.00).",
+        badgeColor: "bg-amber-50 text-amber-800 border-amber-300",
+        description: "Policy optimizer ranks candidate actions. Winner: SWITCH_RAIL to HDFC UPI ($P=0.88$, Net Salvaged: ₹1,775.00).",
         subtext: "Safety bounds verify Quiet Hours and Max Attempt Caps",
       };
     } else {
@@ -178,7 +195,7 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "04",
         title: "Cryptographic Settlement",
         badge: "TAMPER_PROOF_RECOVERY",
-        badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
+        badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-300",
         description: "HDFC rail failover succeeds. Recovery transaction committed to sha256 append-only ledger block #48220.",
         subtext: "Zero human intervention · Total recovery latency: 38.2ms",
       };
@@ -196,7 +213,7 @@ export function ScrollFrameSequence(): React.ReactElement {
       <div className="sticky top-24 w-full max-w-6xl mx-auto flex flex-col items-center">
         {/* Editorial Playfair Typography Header */}
         <div className="text-center max-w-3xl mx-auto px-4 mb-6 space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-mono tracking-wider uppercase mb-1 font-semibold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-mono tracking-wider uppercase mb-1 font-semibold shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
             <span>Interactive 3D Causal Recovery Timeline</span>
           </div>
@@ -209,35 +226,54 @@ export function ScrollFrameSequence(): React.ReactElement {
           </h1>
 
           <p className="text-xs sm:text-sm text-slate-600 font-sans max-w-xl mx-auto">
-            Scroll down or drag the scrubber below to witness how Salvage intercepts, diagnoses, and recovers payment failures in real time.
+            Witness how Salvage autonomously perceives systemic bank switch outages, calculates expected net utility, and executes zero-leakage recovery.
           </p>
         </div>
 
         {/* 3D Canvas + Liquid Glass Frame Container */}
-        <div className="relative w-full rounded-2xl liquid-glass overflow-hidden border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-2 sm:p-4 transition-all">
+        <div className="relative w-full rounded-3xl liquid-glass overflow-hidden border border-slate-200/90 shadow-[0_25px_60px_rgba(0,0,0,0.07)] p-2 sm:p-4 transition-all">
           {/* Top Glass Toolbar */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200/60 text-xs font-mono text-slate-500 mb-2">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200/70 text-xs font-mono text-slate-600 mb-2">
+            <div className="flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-slate-800 font-semibold">LIVE RECOVERY FEED</span>
+              <span className="text-slate-900 font-bold tracking-tight">LIVE 3D RECOVERY SIMULATOR</span>
             </div>
+
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-slate-500">
+              {/* Play / Pause Toggle Button */}
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="w-3 h-3 fill-current" />
+                    <span>Pause 3D Loop</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>Play 3D Loop</span>
+                  </>
+                )}
+              </button>
+
+              <span className="hidden sm:inline text-[11px] text-slate-500 font-semibold">
                 FRAME {String(currentFrame + 1).padStart(2, "0")}/{TOTAL_FRAMES}
               </span>
-              <span className="px-2 py-0.5 rounded bg-slate-100 text-emerald-700 text-[10px] border border-slate-200 font-bold">
-                60 FPS INTERPOLATION
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] border border-emerald-200 font-bold">
+                HIGH-DPI 60 FPS
               </span>
             </div>
           </div>
 
           {/* Canvas Viewport */}
-          <div className="relative w-full h-[320px] sm:h-[450px] lg:h-[500px] rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center">
+          <div className="relative w-full h-[380px] sm:h-[480px] lg:h-[540px] rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner">
             {!isLoaded && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-20 space-y-3">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 space-y-3">
                 <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
                 <span className="text-xs font-mono text-slate-300">
-                  Preloading 3D Frame Buffers ({loadedPercent}%)...
+                  Preloading High-Definition 3D Frames ({loadedPercent}%)...
                 </span>
                 <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
                   <div
@@ -250,29 +286,29 @@ export function ScrollFrameSequence(): React.ReactElement {
 
             <canvas
               ref={canvasRef}
-              className="w-full h-full object-contain pointer-events-none"
+              className="w-full h-full object-cover pointer-events-none"
             />
 
-            {/* Floating Light Liquid Glass Telemetry Card */}
-            <div className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-md bg-white/95 backdrop-blur-2xl rounded-xl p-4 border border-slate-200 shadow-xl transition-all duration-300">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-[11px] font-mono font-bold text-slate-900 tracking-wider">
+            {/* ✨ PERFECTLY CENTERED LIQUID GLASS TELEMETRY MODAL */}
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-[92%] sm:w-[85%] max-w-2xl bg-white/95 backdrop-blur-2xl rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_15px_40px_rgba(0,0,0,0.14)] transition-all duration-300 z-10 text-center flex flex-col items-center">
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                <span className="text-xs font-mono font-bold text-slate-900 tracking-wider">
                   PHASE {stage.stage} · {stage.title}
                 </span>
                 <span
-                  className={`text-[10px] font-mono px-2 py-0.5 rounded border font-semibold ${stage.badgeColor}`}
+                  className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border font-bold ${stage.badgeColor}`}
                 >
                   {stage.badge}
                 </span>
               </div>
 
-              <p className="text-xs text-slate-700 font-sans leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-700 font-sans leading-relaxed max-w-lg mx-auto">
                 {stage.description}
               </p>
 
-              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-slate-500">
-                <span>{stage.subtext}</span>
-                <span className="flex items-center gap-1 text-emerald-700 font-bold">
+              <div className="mt-3 pt-2.5 border-t border-slate-100 w-full flex flex-wrap items-center justify-between text-[10px] font-mono text-slate-500">
+                <span className="truncate">{stage.subtext}</span>
+                <span className="flex items-center gap-1 text-emerald-700 font-bold shrink-0">
                   SLA: &lt;50ms <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
@@ -280,27 +316,33 @@ export function ScrollFrameSequence(): React.ReactElement {
           </div>
 
           {/* Bottom Interactive Scrubber Bar */}
-          <div className="mt-3 px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500 border-t border-slate-200/60">
-            <span className="text-[11px] flex items-center gap-1.5 text-slate-700 font-medium font-sans">
+          <div className="mt-3 px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-600 border-t border-slate-200/70">
+            <span className="text-[11px] flex items-center gap-1.5 text-slate-800 font-semibold font-sans">
               <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Scroll page or drag scrubber to examine:</span>
+              <span>Interactive Scrubber (Drag or Scroll):</span>
             </span>
 
             <div className="w-full sm:w-1/2 flex items-center gap-3">
-              <span className="text-[10px] text-slate-400">START</span>
+              <span className="text-[10px] text-slate-400 font-semibold">START</span>
               <input
                 type="range"
                 min="0"
                 max={TOTAL_FRAMES - 1}
                 value={currentFrame}
                 onChange={handleScrubberChange}
-                onMouseDown={() => setIsManualScrubbing(true)}
+                onMouseDown={() => {
+                  setIsPlaying(false);
+                  setIsManualScrubbing(true);
+                }}
                 onMouseUp={() => setIsManualScrubbing(false)}
-                onTouchStart={() => setIsManualScrubbing(true)}
+                onTouchStart={() => {
+                  setIsPlaying(false);
+                  setIsManualScrubbing(true);
+                }}
                 onTouchEnd={() => setIsManualScrubbing(false)}
                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 focus:outline-none"
               />
-              <span className="text-[10px] text-slate-400">RECOVERED</span>
+              <span className="text-[10px] text-slate-400 font-semibold">RECOVERED</span>
             </div>
           </div>
         </div>
