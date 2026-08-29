@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://salvage.dev/events/payment_failed.v1.schema.json",
+  "title": "PaymentFailed",
+  "description": "Emitted by the payment gateway when a payment attempt fails. This is the primary input event for Salvage. Every field is immutable once published; the event is a fact about what happened, not a request.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_version",
+    "event_timestamp",
+    "merchant_id",
+    "order_id",
+    "payment_attempt_id",
+    "amount_paise",
+    "currency",
+    "payment_method",
+    "provider",
+    "provider_error_code",
+    "provider_error_description",
+    "issuer"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique event identifier. Used for consumer-side deduplication."
+    },
+    "event_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version. Always 1 for this schema."
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp of when the failure was observed by the provider. UTC."
+    },
+    "merchant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "The tenant identifier. Every downstream query is scoped by this."
+    },
+    "order_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "The merchant's order identifier. Multiple payment_attempts may exist for one order."
+    },
+    "payment_attempt_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "The unique attempt within this order. Immutable once written. Maps 1:1 to a provider-side payment ID."
+    },
+    "amount_paise": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Transaction amount in the smallest currency unit (paise for INR). Never zero; a zero-value payment cannot fail."
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217 currency code. INR for the initial deployment."
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": ["upi", "card", "netbanking", "wallet", "emandate"],
+      "description": "The payment instrument category."
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "The payment gateway or aggregator. e.g. 'razorpay'."
+    },
+    "provider_error_code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "The raw error code returned by the provider. This is the input to the failure taxonomy normaliser in Phase 3."
+    },
+    "provider_error_description": {
+      "type": "string",
+      "maxLength": 1024,
+      "description": "Human-readable error description from the provider. Used for LLM narration in Phase 6, never for decision logic."
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "The issuing bank or instrument provider. Combined with payment_method and provider, this forms the 'rail' — the unit of health monitoring."
+    },
+    "customer_id": {
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "description": "Opaque customer identifier within the merchant's namespace. Null for guest checkouts. Used for contact budgets, opt-out checks, and per-customer locking."
+    },
+    "customer_phone_hash": {
+      "type": ["string", "null"],
+      "description": "SHA-256 of the customer's phone number, hex-encoded. The raw number never enters Salvage. Used for contact deduplication across orders."
+    },
+    "customer_email_hash": {
+      "type": ["string", "null"],
+      "description": "SHA-256 of the customer's email address, hex-encoded."
+    },
+    "is_recurring": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this is a mandate/subscription/auto-debit attempt."
+    },
+    "mandate_id": {
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "description": "Provider-side mandate identifier, if is_recurring is true."
+    },
+    "card_network": {
+      "type": ["string", "null"],
+      "enum": ["visa", "mastercard", "rupay", "amex", "diners", null],
+      "description": "Card network, if payment_method is 'card'."
+    },
+    "card_type": {
+      "type": ["string", "null"],
+      "enum": ["credit", "debit", "prepaid", null],
+      "description": "Card type, if payment_method is 'card'."
+    },
+    "upi_app": {
+      "type": ["string", "null"],
+      "maxLength": 64,
+      "description": "UPI app used (e.g. 'gpay', 'phonepe', 'paytm'), if payment_method is 'upi'. Null if unknown or not UPI."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {},
+      "description": "Merchant-supplied key-value pairs. Passed through opaquely; never used in decision logic."
+    }
+  }
+}

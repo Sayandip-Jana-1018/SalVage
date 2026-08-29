@@ -1,0 +1,14 @@
+{
+  "java.jdt.ls.java.home": "C:\\Users\\Sayan\\.jdks\\temurin-21",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-21",
+      "path": "C:\\Users\\Sayan\\.jdks\\temurin-21",
+      "default": true
+    }
+  ],
+  "python.defaultInterpreterPath": "C:\\Users\\Sayan\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+  "python.analysis.extraPaths": [
+    "services/salvage-brain/src"
+  ]
+}

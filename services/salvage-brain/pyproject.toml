@@ -1,0 +1,68 @@
+[project]
+name = "salvage-brain"
+version = "0.1.0"
+description = "Salvage decision service — ML-driven payment failure diagnosis and recovery policy."
+requires-python = ">=3.12"
+readme = "README.md"
+
+dependencies = [
+    "fastapi>=0.115.0,<1.0",
+    "uvicorn[standard]>=0.34.0,<1.0",
+    "pydantic>=2.10.0,<3.0",
+    "pydantic-settings>=2.7.0,<3.0",
+    "sqlalchemy>=2.0.36,<3.0",
+    "alembic>=1.14.0,<2.0",
+    "psycopg2-binary>=2.9.10,<3.0",
+    "redis>=5.2.0,<6.0",
+    "confluent-kafka>=2.6.0,<3.0",
+    "httpx>=0.28.0,<1.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "lightgbm>=4.5.0,<5.0",
+    "scikit-learn>=1.6.0,<2.0",
+    "ruptures>=1.1.9,<2.0",
+    "numpy>=2.2.0,<3.0",
+    "pandas>=2.2.0,<3.0",
+    "polars>=1.17.0,<2.0",
+]
+dev = [
+    "pytest>=8.3.0,<9.0",
+    "pytest-asyncio>=0.25.0,<1.0",
+    "pytest-cov>=6.0.0,<7.0",
+    "hypothesis>=6.120.0,<7.0",
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    "testcontainers[postgres,kafka,redis]>=4.9.0,<5.0",
+    "httpx>=0.28.0,<1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/salvage_brain"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["salvage_brain"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

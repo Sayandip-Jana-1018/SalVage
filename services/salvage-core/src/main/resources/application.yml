@@ -1,0 +1,85 @@
+# ---- server ----------------------------------------------------------------
+server:
+  port: ${CORE_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: salvage-core
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # ---- datasource ----------------------------------------------------------
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:salvage}
+    username: ${POSTGRES_USER:salvage}
+    password: ${POSTGRES_PASSWORD:salvage_local_dev_only}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 5000
+      leak-detection-threshold: 30000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: salvage
+        jdbc:
+          time_zone: UTC
+
+  # ---- flyway --------------------------------------------------------------
+  flyway:
+    enabled: true
+    schemas:
+      - salvage
+    locations:
+      - classpath:db/migration
+    baseline-on-migrate: false
+
+  # ---- redis ---------------------------------------------------------------
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3000ms
+
+  # ---- kafka ---------------------------------------------------------------
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: salvage-core
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+
+# ---- actuator --------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    readinessState:
+      enabled: true
+    livenessState:
+      enabled: true
+
+# ---- salvage ---------------------------------------------------------------
+salvage:
+  payment-provider: ${SALVAGE_PAYMENT_PROVIDER:simulated}
+  simulated-provider-seed: ${SALVAGE_SIMULATED_PROVIDER_SEED:20260829}

@@ -1,0 +1,11 @@
+# Overrides for the `docker` profile, active when salvage-core runs as a
+# container inside docker-compose. The only differences: host names resolve
+# to container names on the compose network instead of localhost.
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/${POSTGRES_DB:salvage}
+  data:
+    redis:
+      host: redis
+  kafka:
+    bootstrap-servers: redpanda:9092

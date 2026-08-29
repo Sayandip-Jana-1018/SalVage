@@ -1,0 +1,87 @@
+openapi: "3.1.0"
+info:
+  title: Salvage Brain API
+  version: "0.1.0"
+  description: |
+    The decision service for Salvage. This service never moves money. It
+    returns a recommended action and its reasoning; salvage-core decides
+    whether to execute it.
+
+    Phase 0 exposes only health endpoints. Decision endpoints arrive in
+    Phase 4.
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+
+paths:
+  /healthz/liveness:
+    get:
+      operationId: getLiveness
+      summary: Liveness probe
+      description: |
+        Returns 200 if the process is alive. Does not check downstream
+        dependencies — that is readiness.
+      tags: [health]
+      responses:
+        "200":
+          description: Alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /healthz/readiness:
+    get:
+      operationId: getReadiness
+      summary: Readiness probe
+      description: |
+        Returns 200 only if the service can reach PostgreSQL, Redis, and
+        Kafka. A 503 means the service is alive but should not receive
+        traffic.
+      tags: [health]
+      responses:
+        "200":
+          description: Ready — all dependencies healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Not ready — at least one dependency unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        checks:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CheckResult"
+        version:
+          type: string
+          description: Application version (git short SHA or tag).
+
+    CheckResult:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [up, down]
+        latency_ms:
+          type: number
+          format: float
+          description: Round-trip time to the dependency in milliseconds.
+        error:
+          type: string
+          description: Error message if status is down.

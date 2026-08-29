@@ -1,0 +1,229 @@
+# Salvage local development stack.
+#
+# Two profiles:
+#   (default)  infrastructure only -- postgres, redis, redpanda. This is what
+#              `make up` starts. Services run on the host against it, which is
+#              the fast inner loop for development and what `make test` uses.
+#   apps       additionally builds and runs salvage-core and salvage-brain as
+#              containers. This is what `make demo` uses, so that a stranger
+#              with only Docker installed can run the demo without a JDK, a
+#              Python toolchain, or a Node toolchain on their machine.
+#
+# Every image is pinned to an exact patch version. `latest` in a compose file
+# means the stack silently changes underneath you between runs, which makes
+# "identical numbers on regeneration" impossible to honour.
+
+name: salvage
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # --------------------------------------------------------------------------
+  # PostgreSQL 16 + TimescaleDB.
+  #
+  # Image note: timescale/timescaledb publishes two builds per version. The
+  # `-oss` tag is the Apache-2 licensed subset; the default tag additionally
+  # carries Timescale-License features including continuous aggregates and
+  # columnar compression, both of which the rail-health rollups in Phase 3
+  # want. We use the default (TSL) build. The licensing implication is
+  # recorded in docs/adr/0005-timescaledb-licensing.md.
+  # --------------------------------------------------------------------------
+  postgres:
+    <<: *restart
+    image: timescale/timescaledb:2.29.2-pg16
+    container_name: salvage-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-salvage}
+      POSTGRES_USER: ${POSTGRES_USER:-salvage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salvage_local_dev_only}
+      # Deterministic ordering and timestamps regardless of host locale. A
+      # decision that replays differently because the developer's machine is
+      # in a different collation is not replayable.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # `pg_isready` alone returns true before the init scripts have finished,
+      # which races Flyway on a cold start. Checking for our own extension
+      # proves initialisation completed.
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready -U "${POSTGRES_USER:-salvage}" -d "${POSTGRES_DB:-salvage}" -q &&
+          psql -U "${POSTGRES_USER:-salvage}" -d "${POSTGRES_DB:-salvage}" -tAc
+          "select 1 from pg_extension where extname='timescaledb'" | grep -q 1
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # --------------------------------------------------------------------------
+  # Redis 7.
+  #
+  # Redis is a CACHE in this system and never a source of truth. Idempotency
+  # records live in PostgreSQL behind a unique constraint written in the same
+  # transaction as the effect; Redis only saves a round trip on hot duplicates.
+  # Losing this container must degrade latency and nothing else. There is a
+  # test that asserts exactly that. See docs/adr/0004.
+  # --------------------------------------------------------------------------
+  redis:
+    <<: *restart
+    image: redis:7.4.11-bookworm
+    container_name: salvage-redis
+    command: >-
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+  # --------------------------------------------------------------------------
+  # Redpanda (Kafka API compatible).
+  #
+  # Two listeners: `internal` for container-to-container traffic on the compose
+  # network, `external` for processes on the host. A single listener cannot
+  # serve both, because the advertised address that works from inside the
+  # network (redpanda:9092) is not resolvable from the host and vice versa.
+  #
+  # Auto topic creation is explicitly OFF. Topics are created by the
+  # redpanda-init service from ops/redpanda/topics.sh so that partition counts,
+  # retention, and cleanup policy are version controlled rather than whatever a
+  # producer happened to trigger first.
+  # --------------------------------------------------------------------------
+  redpanda:
+    <<: *restart
+    image: redpandadata/redpanda:v25.3.17
+    container_name: salvage-redpanda
+    command:
+      - redpanda
+      - start
+      - --node-id=0
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=redpanda:33145
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-19092}:19092"
+      - "9644:9644"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -qE 'Healthy:.+true'"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  # --------------------------------------------------------------------------
+  # One-shot topic creation. Runs to completion and exits 0; `make up` waits
+  # for it via `service_completed_successfully`, so when `make up` returns the
+  # topics genuinely exist.
+  # --------------------------------------------------------------------------
+  redpanda-init:
+    image: redpandadata/redpanda:v25.3.17
+    container_name: salvage-redpanda-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/topics.sh"]
+    environment:
+      RPK_BROKERS: redpanda:9092
+    volumes:
+      - ./ops/redpanda/topics.sh:/topics.sh:ro
+    restart: "no"
+
+  # --------------------------------------------------------------------------
+  # Application services. Profile `apps` only -- see the header comment.
+  # --------------------------------------------------------------------------
+  salvage-core:
+    profiles: ["apps"]
+    build:
+      context: .
+      dockerfile: services/salvage-core/Dockerfile
+    container_name: salvage-core
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-salvage}
+      POSTGRES_USER: ${POSTGRES_USER:-salvage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salvage_local_dev_only}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SALVAGE_PAYMENT_PROVIDER: ${SALVAGE_PAYMENT_PROVIDER:-simulated}
+      SALVAGE_SIMULATED_PROVIDER_SEED: ${SALVAGE_SIMULATED_PROVIDER_SEED:-20260829}
+      TZ: UTC
+    ports:
+      - "${CORE_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  salvage-brain:
+    profiles: ["apps"]
+    build:
+      context: .
+      dockerfile: services/salvage-brain/Dockerfile
+    container_name: salvage-brain
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-salvage}
+      POSTGRES_USER: ${POSTGRES_USER:-salvage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salvage_local_dev_only}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      TZ: UTC
+    ports:
+      - "${BRAIN_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz/readiness', timeout=3).status==200 else 1)"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
+volumes:
+  postgres-data:
+  redis-data:
+  redpanda-data:

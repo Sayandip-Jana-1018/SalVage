@@ -1,0 +1,24 @@
+# Salvage is developed on WSL2/Linux and runs in Linux containers.
+# Every text file is LF in the working tree and in the index, on every platform.
+# Without this, a Windows checkout produces CRLF shell scripts that fail inside
+# containers with the notoriously unhelpful "bad interpreter: no such file".
+* text=auto eol=lf
+
+# Binary files: never touch.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.zip    binary
+*.gz     binary
+*.jar    binary
+*.parquet binary
+
+# The Gradle wrapper JAR is checked in deliberately (see docs/adr/0007) and is binary.
+gradle/wrapper/gradle-wrapper.jar binary
+
+# Generated code is checked in so that a reader can see it without running the
+# build, but it should not pollute diffs or language statistics.
+**/generated/** linguist-generated=true

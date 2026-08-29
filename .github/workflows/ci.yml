@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: "21"
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Lint
+  # --------------------------------------------------------------------------
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        working-directory: services/salvage-brain
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        working-directory: services/salvage-brain
+        run: ruff check src/ tests/
+      - name: Mypy
+        working-directory: services/salvage-brain
+        run: mypy src/ --ignore-missing-imports
+
+  lint-java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+      - name: Gradle check
+        working-directory: services/salvage-core
+        run: ./gradlew check --no-daemon -x test
+
+  # --------------------------------------------------------------------------
+  # Tests
+  # --------------------------------------------------------------------------
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        working-directory: services/salvage-brain
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: services/salvage-brain
+        run: pytest tests/ -v --tb=short
+
+  test-java:
+    runs-on: ubuntu-latest
+    services:
+      # Testcontainers needs Docker, which is available on GitHub-hosted
+      # ubuntu runners by default.
+      docker:
+        image: docker:dind
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+      - name: Run tests
+        working-directory: services/salvage-core
+        run: ./gradlew test --no-daemon
+
+  # --------------------------------------------------------------------------
+  # Contracts drift check
+  # --------------------------------------------------------------------------
+  contracts-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON schemas
+        run: |
+          python -c "
+          import json, pathlib
+          for p in pathlib.Path('contracts').rglob('*.json'):
+              json.load(p.open())
+              print(f'  ✓ {p}')
+          "
+      - name: Validate OpenAPI specs
+        run: |
+          pip install openapi-spec-validator
+          python -c "
+          from openapi_spec_validator import validate
+          from pathlib import Path
+          import yaml
+          for p in Path('contracts/openapi').glob('*.yaml'):
+              with open(p) as f:
+                  spec = yaml.safe_load(f)
+              validate(spec)
+              print(f'  ✓ {p}')
+          "
+
+  # --------------------------------------------------------------------------
+  # Compose smoke test
+  # --------------------------------------------------------------------------
+  compose-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start infrastructure
+        run: docker compose up -d postgres redis redpanda redpanda-init
+      - name: Wait for health
+        run: |
+          echo "Waiting for PostgreSQL..."
+          for i in $(seq 1 30); do
+            docker compose exec -T postgres pg_isready -U salvage && break
+            sleep 2
+          done
+          echo "Waiting for Redis..."
+          for i in $(seq 1 30); do
+            docker compose exec -T redis redis-cli ping | grep -q PONG && break
+            sleep 2
+          done
+          echo "Waiting for Redpanda..."
+          for i in $(seq 1 30); do
+            docker compose exec -T redpanda rpk cluster health | grep -q "Healthy.*true" && break
+            sleep 2
+          done
+      - name: Verify topics exist
+        run: |
+          docker compose exec -T redpanda rpk topic list | grep -q "payment.failed.v1"
+          docker compose exec -T redpanda rpk topic list | grep -q "salvage.outbox.v1"
+          docker compose exec -T redpanda rpk topic list | grep -q "salvage.decisions.v1"
+          echo "All topics present."
+      - name: Verify extensions
+        run: |
+          docker compose exec -T postgres psql -U salvage -d salvage -tAc \
+            "SELECT extname FROM pg_extension WHERE extname IN ('timescaledb','pgcrypto') ORDER BY extname;" \
+            | tr '\n' ',' | grep -q "pgcrypto,timescaledb"
+          echo "Extensions installed."
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
