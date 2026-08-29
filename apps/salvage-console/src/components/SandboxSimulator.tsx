@@ -63,26 +63,26 @@ export function SandboxSimulator(): React.ReactElement {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 flex flex-col items-center text-center">
       {/* Input Header & Prompt Box */}
-      <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-sm sm:text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              Policy Counterfactual Hypothesis Tester
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Ask policy questions in plain English — evaluated counterfactually against held-out replay data
-            </p>
+      <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
+        <div className="flex flex-col items-center justify-center mb-5 space-y-1">
+          <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            Policy Counterfactual Hypothesis Tester
+          </h2>
+          <p className="text-xs text-slate-500 max-w-lg">
+            Ask policy questions in plain English — evaluated counterfactually against held-out replay data
+          </p>
+          <div className="pt-2">
+            <span className="text-[11px] font-mono px-3 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold shadow-sm">
+              Doubly Robust Statistical Engine
+            </span>
           </div>
-          <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
-            Doubly Robust Engine
-          </span>
         </div>
 
         {/* Quick Presets */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-5">
           {scenarios.map((s) => (
             <button
               key={s.title}
@@ -90,7 +90,7 @@ export function SandboxSimulator(): React.ReactElement {
                 setHypothesis(s.prompt);
                 setSimulationRun(true);
               }}
-              className={`text-[11px] px-3 py-1.5 rounded-xl border font-mono transition-all cursor-pointer ${
+              className={`text-[11px] px-3.5 py-1.5 rounded-xl border font-mono transition-all cursor-pointer ${
                 hypothesis === s.prompt
                   ? "bg-slate-900 border-slate-900 text-white font-semibold shadow-sm"
                   : "bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -101,19 +101,19 @@ export function SandboxSimulator(): React.ReactElement {
           ))}
         </div>
 
-        {/* Text Input */}
-        <div className="flex gap-2">
+        {/* Centered Text Input Form */}
+        <div className="w-full max-w-2xl flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={hypothesis}
             onChange={(e) => setHypothesis(e.target.value)}
             placeholder="Type a policy question (e.g. What if we cap attempts at 2 instead of 3?)..."
-            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm text-center sm:text-left"
           />
           <button
             onClick={handleRunSimulation}
             disabled={isSimulating}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>{isSimulating ? "Evaluating..." : "Evaluate"}</span>
@@ -123,68 +123,68 @@ export function SandboxSimulator(): React.ReactElement {
 
       {/* Results View */}
       {simulationRun && (
-        <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
+        <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
           {currentScenario.refuseToGuess ? (
             /* REFUSAL STATE: Willingness to say "I don't know" */
-            <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-5 font-mono">
-              <div className="flex items-center gap-2.5 text-rose-800 mb-2">
+            <div className="w-full max-w-3xl rounded-2xl border border-rose-200 bg-rose-50/70 p-6 font-mono text-center flex flex-col items-center">
+              <div className="flex items-center justify-center gap-2.5 text-rose-800 mb-2">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />
                 <h3 className="text-sm font-bold tracking-tight">
                   EVALUATION REFUSED: UNIDENTIFIABLE POLICY (ZERO SUPPORT)
                 </h3>
               </div>
-              <p className="text-xs text-slate-700 font-sans leading-relaxed mt-2">
+              <p className="text-xs text-slate-700 font-sans leading-relaxed max-w-xl mx-auto mt-2 font-medium">
                 {currentScenario.explanation}
               </p>
 
-              <div className="mt-4 pt-3 border-t border-rose-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
+              <div className="mt-5 pt-4 border-t border-rose-200 w-full grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-center">
+                <div className="flex flex-col items-center">
                   <span className="text-[10px] text-slate-500 uppercase block font-sans">Kish Effective Sample Size</span>
-                  <span className="text-xs font-bold text-rose-700">ESS = 0.0 (0.0% overlap)</span>
+                  <span className="text-xs font-bold text-rose-700 mt-0.5">ESS = 0.0 (0.0% overlap)</span>
                 </div>
-                <div>
+                <div className="flex flex-col items-center">
                   <span className="text-[10px] text-slate-500 uppercase block font-sans">Support Status</span>
-                  <span className="text-xs font-bold text-rose-700">Strict Support Violation</span>
+                  <span className="text-xs font-bold text-rose-700 mt-0.5">Strict Support Violation</span>
                 </div>
-                <div>
+                <div className="flex flex-col items-center">
                   <span className="text-[10px] text-slate-500 uppercase block font-sans">Recommendation</span>
-                  <span className="text-xs font-bold text-slate-800">Requires Active Epsilon-Exploration</span>
+                  <span className="text-xs font-bold text-slate-800 mt-0.5">Requires Active Epsilon-Exploration</span>
                 </div>
               </div>
             </div>
           ) : (
             /* VALID ESTIMATE STATE */
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="text-sm font-serif font-bold text-slate-900 flex items-center gap-2">
+            <div className="w-full space-y-5 text-center flex flex-col items-center">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pb-3 border-b border-slate-100 w-full">
+                <h3 className="text-base font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Doubly Robust Policy Counterfactual Estimate
                 </h3>
-                <span className="text-xs font-mono text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-semibold">
+                <span className="text-xs font-mono text-emerald-800 bg-emerald-50 px-3 py-0.5 rounded-full border border-emerald-200 font-semibold shadow-sm">
                   Sufficient Support (ESS = {currentScenario.ess?.toFixed(0)})
                 </span>
               </div>
 
               {/* Metrics Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-center">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center">
                   <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">Baseline Recovery</span>
-                  <span className="text-sm font-bold text-slate-800 tabular-nums">
+                  <span className="text-sm sm:text-base font-bold text-slate-800 tabular-nums mt-0.5">
                     {formatPercent(currentScenario.baselineRecoveryRate || 0)}
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100">
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col items-center justify-center">
                   <span className="text-[10px] text-emerald-800 uppercase block font-sans font-medium">Projected Recovery</span>
-                  <span className="text-sm font-bold text-emerald-700 tabular-nums">
+                  <span className="text-sm sm:text-base font-bold text-emerald-700 tabular-nums mt-0.5">
                     {formatPercent(currentScenario.simulatedRecoveryRate || 0)}
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center">
                   <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">Projected Net Lift</span>
                   <span
-                    className={`text-sm font-bold tabular-nums ${
+                    className={`text-sm sm:text-base font-bold tabular-nums mt-0.5 ${
                       (currentScenario.incrementalRevenuePaise || 0) >= 0
                         ? "text-emerald-700"
                         : "text-rose-700"
@@ -195,16 +195,16 @@ export function SandboxSimulator(): React.ReactElement {
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center">
                   <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">95% Bootstrap CI</span>
-                  <span className="text-xs font-bold text-slate-700 tabular-nums block truncate">
+                  <span className="text-xs sm:text-sm font-bold text-slate-700 tabular-nums block truncate mt-0.5">
                     [{formatRupees(currentScenario.ciLowerPaise || 0)}, {formatRupees(currentScenario.ciUpperPaise || 0)}]
                   </span>
                 </div>
               </div>
 
               {/* Summary note */}
-              <p className="text-xs text-slate-600 font-sans leading-relaxed pt-2">
+              <p className="text-xs text-slate-600 font-sans leading-relaxed max-w-xl mx-auto pt-2 font-medium">
                 {currentScenario.summary}
               </p>
             </div>

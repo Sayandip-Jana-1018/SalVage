@@ -102,33 +102,51 @@ export function ScrollFrameSequence(): React.ReactElement {
 
     ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
 
-    // Subtle dark-to-light gradient at the bottom so the centered modal pops
-    const bottomFade = ctx.createLinearGradient(0, rect.height * 0.6, 0, rect.height);
-    bottomFade.addColorStop(0, "rgba(5, 7, 10, 0)");
-    bottomFade.addColorStop(1, "rgba(5, 7, 10, 0.45)");
-    ctx.fillStyle = bottomFade;
-    ctx.fillRect(0, rect.height * 0.6, rect.width, rect.height * 0.4);
+    // Subtle dark radial vignette for centered modal depth
+    const vignette = ctx.createRadialGradient(
+      rect.width / 2,
+      rect.height / 2,
+      rect.width * 0.15,
+      rect.width / 2,
+      rect.height / 2,
+      rect.width * 0.75
+    );
+    vignette.addColorStop(0, "rgba(5, 7, 10, 0.15)");
+    vignette.addColorStop(1, "rgba(5, 7, 10, 0.55)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, rect.width, rect.height);
 
     ctx.restore();
   };
 
-  // Continuous smooth auto-play loop
+  // Continuous smooth requestAnimationFrame auto-play loop
   useEffect(() => {
     if (!isPlaying || !isLoaded || isManualScrubbing) return;
 
-    const interval = setInterval(() => {
-      setCurrentFrame((prev) => {
-        const next = (prev + 1) % TOTAL_FRAMES;
-        renderFrame(next);
-        return next;
-      });
-    }, 45); // ~22 fps smooth cinematic frame advancement
+    let animId: number;
+    let lastTime = performance.now();
+    const frameInterval = 42; // ~24 FPS cinematic loop
 
-    return () => clearInterval(interval);
+    const step = (time: number) => {
+      if (time - lastTime >= frameInterval) {
+        setCurrentFrame((prev) => {
+          const next = (prev + 1) % TOTAL_FRAMES;
+          renderFrame(next);
+          return next;
+        });
+        lastTime = time;
+      }
+      animId = requestAnimationFrame(step);
+    };
+
+    animId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animId);
   }, [isPlaying, isLoaded, isManualScrubbing]);
 
   // Scroll listener to smoothly interpolate frames during page scrolling
   useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+
     const handleScroll = () => {
       if (isManualScrubbing || !containerRef.current || !isLoaded) return;
 
@@ -142,14 +160,23 @@ export function ScrollFrameSequence(): React.ReactElement {
       const frameIdx = Math.min(TOTAL_FRAMES - 1, Math.floor(progress * TOTAL_FRAMES));
 
       if (frameIdx !== currentFrame) {
-        setIsPlaying(false); // pause auto-play when user is actively scrolling
+        setIsPlaying(false);
         setCurrentFrame(frameIdx);
         renderFrame(frameIdx);
       }
+
+      // Resume auto-play 1.5s after scrolling stops
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        setIsPlaying(true);
+      }, 1500);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
   }, [isLoaded, currentFrame, isManualScrubbing]);
 
   // Handle manual scrubber drag / slider
@@ -187,7 +214,7 @@ export function ScrollFrameSequence(): React.ReactElement {
         title: "Autonomous Decision Calculus",
         badge: "E[NET_VALUE] MAXIMIZATION",
         badgeColor: "bg-amber-50 text-amber-800 border-amber-300",
-        description: "Policy optimizer ranks candidate actions. Winner: SWITCH_RAIL to HDFC UPI ($P=0.88$, Net Salvaged: ₹1,775.00).",
+        description: "Policy optimizer ranks candidate actions. Winner: SWITCH_RAIL to HDFC UPI (P(recovery) = 88%, Net Salvaged: ₹1,775.00).",
         subtext: "Safety bounds verify Quiet Hours and Max Attempt Caps",
       };
     } else {
@@ -243,7 +270,7 @@ export function ScrollFrameSequence(): React.ReactElement {
               {/* Play / Pause Toggle Button */}
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               >
                 {isPlaying ? (
                   <>
@@ -262,13 +289,13 @@ export function ScrollFrameSequence(): React.ReactElement {
                 FRAME {String(currentFrame + 1).padStart(2, "0")}/{TOTAL_FRAMES}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] border border-emerald-200 font-bold">
-                HIGH-DPI 60 FPS
+                60 FPS
               </span>
             </div>
           </div>
 
           {/* Canvas Viewport */}
-          <div className="relative w-full h-[380px] sm:h-[480px] lg:h-[540px] rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner">
+          <div className="relative w-full h-[420px] sm:h-[500px] lg:h-[560px] rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner">
             {!isLoaded && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 space-y-3">
                 <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
@@ -289,9 +316,9 @@ export function ScrollFrameSequence(): React.ReactElement {
               className="w-full h-full object-cover pointer-events-none"
             />
 
-            {/* ✨ PERFECTLY CENTERED LIQUID GLASS TELEMETRY MODAL */}
-            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-[92%] sm:w-[85%] max-w-2xl bg-white/95 backdrop-blur-2xl rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_15px_40px_rgba(0,0,0,0.14)] transition-all duration-300 z-10 text-center flex flex-col items-center">
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+            {/* ✨ VERTICALLY & HORIZONTALLY CENTERED LIQUID GLASS TELEMETRY MODAL */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] sm:w-[80%] max-w-xl bg-white/92 backdrop-blur-2xl rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-[0_25px_60px_rgba(0,0,0,0.2)] transition-all duration-500 z-10 text-center flex flex-col items-center">
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
                 <span className="text-xs font-mono font-bold text-slate-900 tracking-wider">
                   PHASE {stage.stage} · {stage.title}
                 </span>
@@ -302,21 +329,21 @@ export function ScrollFrameSequence(): React.ReactElement {
                 </span>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-700 font-sans leading-relaxed max-w-lg mx-auto">
+              <p className="text-xs sm:text-sm text-slate-700 font-sans leading-relaxed max-w-md mx-auto font-medium">
                 {stage.description}
               </p>
 
-              <div className="mt-3 pt-2.5 border-t border-slate-100 w-full flex flex-wrap items-center justify-between text-[10px] font-mono text-slate-500">
+              <div className="mt-4 pt-3 border-t border-slate-200/80 w-full flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-500">
                 <span className="truncate">{stage.subtext}</span>
                 <span className="flex items-center gap-1 text-emerald-700 font-bold shrink-0">
-                  SLA: &lt;50ms <ArrowRight className="w-3 h-3" />
+                  SLA: &lt;50ms <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
             </div>
           </div>
 
           {/* Bottom Interactive Scrubber Bar */}
-          <div className="mt-3 px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-600 border-t border-slate-200/70">
+          <div className="mt-3 px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-600 border-t border-slate-200/70">
             <span className="text-[11px] flex items-center gap-1.5 text-slate-800 font-semibold font-sans">
               <Cpu className="w-3.5 h-3.5 text-emerald-600" />
               <span>Interactive Scrubber (Drag or Scroll):</span>
@@ -334,12 +361,18 @@ export function ScrollFrameSequence(): React.ReactElement {
                   setIsPlaying(false);
                   setIsManualScrubbing(true);
                 }}
-                onMouseUp={() => setIsManualScrubbing(false)}
+                onMouseUp={() => {
+                  setIsManualScrubbing(false);
+                  setIsPlaying(true);
+                }}
                 onTouchStart={() => {
                   setIsPlaying(false);
                   setIsManualScrubbing(true);
                 }}
-                onTouchEnd={() => setIsManualScrubbing(false)}
+                onTouchEnd={() => {
+                  setIsManualScrubbing(false);
+                  setIsPlaying(true);
+                }}
                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 focus:outline-none"
               />
               <span className="text-[10px] text-slate-400 font-semibold">RECOVERED</span>

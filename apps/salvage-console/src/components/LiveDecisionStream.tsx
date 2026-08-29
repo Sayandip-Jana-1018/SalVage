@@ -21,35 +21,36 @@ export function LiveDecisionStream(): React.ReactElement {
   }, []);
 
   return (
-    <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <div>
-          <h2 className="text-sm sm:text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-            <Radio className="w-4 h-4 text-emerald-600 animate-pulse" />
-            Live Ingest & Decision Stream
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Real-time feed of payment failures diagnosed, optimized, and bounded
-          </p>
+    <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 text-center flex flex-col items-center">
+      {/* Centered Title & Subtitle */}
+      <div className="flex flex-col items-center justify-center mb-6 space-y-1">
+        <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
+          <Radio className="w-4 h-4 text-emerald-600 animate-pulse" />
+          Live Ingest & Decision Stream
+        </h2>
+        <p className="text-xs text-slate-500 max-w-lg">
+          Real-time feed of payment failures diagnosed, optimized, and bounded
+        </p>
+        <div className="pt-2">
+          <span className="text-xs font-mono text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1.5 font-semibold shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+            Auto-refreshing (&lt;50ms SLA)
+          </span>
         </div>
-        <span className="text-xs font-mono text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-          Auto-refreshing (&lt;50ms)
-        </span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse font-mono text-xs">
+      <div className="w-full overflow-x-auto">
+        <table className="w-full text-center border-collapse font-mono text-xs">
           <thead>
             <tr className="border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-wider">
-              <th className="pb-3 pr-4 font-semibold">Time (IST)</th>
-              <th className="pb-3 px-3 font-semibold">Attempt ID</th>
-              <th className="pb-3 px-3 font-semibold">Merchant</th>
-              <th className="pb-3 px-3 font-semibold">Amount</th>
-              <th className="pb-3 px-3 font-semibold">Diagnosis</th>
-              <th className="pb-3 px-3 font-semibold">Chosen Action</th>
-              <th className="pb-3 px-3 font-semibold">Bounds</th>
-              <th className="pb-3 pl-3 font-semibold text-right">Action</th>
+              <th className="pb-3 px-3 font-semibold text-center">Time (IST)</th>
+              <th className="pb-3 px-3 font-semibold text-center">Attempt ID</th>
+              <th className="pb-3 px-3 font-semibold text-center">Merchant</th>
+              <th className="pb-3 px-3 font-semibold text-center">Amount</th>
+              <th className="pb-3 px-3 font-semibold text-center">Diagnosis</th>
+              <th className="pb-3 px-3 font-semibold text-center">Chosen Action</th>
+              <th className="pb-3 px-3 font-semibold text-center">Bounds</th>
+              <th className="pb-3 px-3 font-semibold text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -60,25 +61,25 @@ export function LiveDecisionStream(): React.ReactElement {
               >
                 <td
                   suppressHydrationWarning
-                  className="py-3.5 pr-4 text-slate-500 tabular-nums"
+                  className="py-3.5 px-3 text-slate-500 tabular-nums text-center"
                 >
                   {mounted ? formatISTTime(item.created_at) : "14:02:11"}
                 </td>
-                <td className="py-3.5 px-3 font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">
+                <td className="py-3.5 px-3 font-bold text-slate-800 group-hover:text-emerald-700 transition-colors text-center">
                   {item.id}
                 </td>
-                <td className="py-3.5 px-3 text-slate-600">{item.merchant_id}</td>
-                <td className="py-3.5 px-3 text-slate-900 tabular-nums font-bold">
+                <td className="py-3.5 px-3 text-slate-600 text-center">{item.merchant_id}</td>
+                <td className="py-3.5 px-3 text-slate-900 tabular-nums font-bold text-center">
                   {formatRupees(item.amount_paise)}
                 </td>
-                <td className="py-3.5 px-3">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                <td className="py-3.5 px-3 text-center">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                     {item.taxonomy_code}
                   </span>
                 </td>
-                <td className="py-3.5 px-3">
+                <td className="py-3.5 px-3 text-center">
                   <span
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
                       item.chosen_action === "SWITCH_RAIL"
                         ? "bg-indigo-50 text-indigo-800 border-indigo-200"
                         : item.chosen_action === "RETRY_SCHEDULED"
@@ -93,23 +94,23 @@ export function LiveDecisionStream(): React.ReactElement {
                     {item.chosen_action}
                   </span>
                 </td>
-                <td className="py-3.5 px-3">
+                <td className="py-3.5 px-3 text-center">
                   {item.bounds_status === "PERMITTED" ? (
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-700 font-semibold">
+                    <span className="inline-flex items-center justify-center gap-1 text-[11px] text-emerald-700 font-semibold">
                       <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                       Permitted
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[11px] text-rose-700 font-semibold">
+                    <span className="inline-flex items-center justify-center gap-1 text-[11px] text-rose-700 font-semibold">
                       <XCircle className="w-3.5 h-3.5 text-rose-600" />
                       Rejected
                     </span>
                   )}
                 </td>
-                <td className="py-3.5 pl-3 text-right">
+                <td className="py-3.5 px-3 text-center">
                   <Link
                     href={`/autopsy/${item.id}`}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded-md hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-all"
+                    className="inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 px-2.5 py-1 rounded-lg hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-all"
                   >
                     <span>Autopsy</span>
                     <ExternalLink className="w-2.5 h-2.5" />
