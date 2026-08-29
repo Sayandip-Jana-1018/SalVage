@@ -2,7 +2,7 @@
 
 import { ArrowRight, Layers, ShieldCheck, Zap } from "lucide-react";
 import React from "react";
-import { formatPercent, getHealthColorClass } from "@/lib/formatters";
+import { formatPercent } from "@/lib/formatters";
 import { initialRailGrid } from "@/lib/mockData";
 import { RailHealthCell } from "@/types";
 
@@ -17,29 +17,62 @@ export function RailHealthMatrix(): React.ReactElement {
     return initialRailGrid.find((c) => c.bank === bank && c.method === method);
   };
 
+  const getLightHealthStyle = (state: string) => {
+    switch (state) {
+      case "HEALTHY":
+        return {
+          bg: "bg-emerald-50/70",
+          border: "border-emerald-200/80",
+          text: "text-emerald-800",
+          dot: "bg-emerald-500",
+        };
+      case "DEGRADED":
+        return {
+          bg: "bg-amber-50/70",
+          border: "border-amber-200/80",
+          text: "text-amber-800",
+          dot: "bg-amber-500",
+        };
+      case "DOWN":
+        return {
+          bg: "bg-rose-50/70",
+          border: "border-rose-200/80",
+          text: "text-rose-800",
+          dot: "bg-rose-500",
+        };
+      default:
+        return {
+          bg: "bg-slate-50",
+          border: "border-slate-200",
+          text: "text-slate-700",
+          dot: "bg-slate-400",
+        };
+    }
+  };
+
   return (
-    <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-2xl border border-white/10">
+    <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
-          <h2 className="text-sm sm:text-base font-serif font-bold text-white flex items-center gap-2">
-            <Zap className="w-4 h-4 text-emerald-400" />
+          <h2 className="text-sm sm:text-base font-serif font-bold text-slate-900 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-emerald-600" />
             2D Multi-Tenant Rail Sensing Matrix
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Sliding-window failure sensing aggregated across all connected merchant streams
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/20 text-emerald-300 text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+        <div className="flex items-center gap-3 text-xs font-mono text-slate-600">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span>Healthy (&lt;3%)</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-950/40 border border-amber-500/20 text-amber-300 text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             <span>Degraded (3-20%)</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-rose-950/40 border border-rose-500/20 text-rose-300 text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
             <span>Down (&gt;20%)</span>
           </div>
         </div>
@@ -49,36 +82,36 @@ export function RailHealthMatrix(): React.ReactElement {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-white/5 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
-              <th className="pb-3 pr-4 font-normal">Issuer Bank</th>
+            <tr className="border-b border-slate-200 text-[11px] font-mono text-slate-500 uppercase tracking-wider">
+              <th className="pb-3 pr-4 font-semibold">Issuer Bank</th>
               {methods.map((m) => (
-                <th key={m} className="pb-3 px-4 font-normal text-center">
+                <th key={m} className="pb-3 px-4 font-semibold text-center">
                   {m} Rail
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5 font-mono text-xs">
+          <tbody className="divide-y divide-slate-100 font-mono text-xs">
             {banks.map((bank) => (
-              <tr key={bank} className="hover:bg-white/[0.02] transition-colors">
-                <td className="py-4 pr-4 font-sans font-semibold text-slate-200 text-xs sm:text-sm">
+              <tr key={bank} className="hover:bg-slate-50/50 transition-colors">
+                <td className="py-4 pr-4 font-sans font-semibold text-slate-900 text-xs sm:text-sm">
                   {bank}
                 </td>
                 {methods.map((method) => {
                   const cell = getCell(bank, method);
                   if (!cell)
                     return (
-                      <td key={method} className="py-3.5 px-4 text-slate-600 text-center">
+                      <td key={method} className="py-3.5 px-4 text-slate-400 text-center">
                         -
                       </td>
                     );
 
-                  const color = getHealthColorClass(cell.state);
+                  const color = getLightHealthStyle(cell.state);
 
                   return (
                     <td key={method} className="py-2.5 px-2">
                       <div
-                        className={`rounded-xl border p-3 flex flex-col gap-1.5 transition-all duration-300 backdrop-blur-md ${color.bg} ${color.border} hover:scale-[1.02] hover:shadow-lg`}
+                        className={`rounded-xl border p-3 flex flex-col gap-1.5 transition-all duration-300 ${color.bg} ${color.border} hover:shadow-md hover:scale-[1.02]`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
@@ -91,12 +124,12 @@ export function RailHealthMatrix(): React.ReactElement {
                               {cell.state}
                             </span>
                           </div>
-                          <span className="text-[10px] text-slate-400 tabular-nums font-mono">
+                          <span className="text-[10px] text-slate-500 tabular-nums font-mono">
                             {cell.p95_latency_ms}ms p95
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-slate-300">
+                        <div className="flex items-center justify-between text-[11px] text-slate-700">
                           <span className="text-slate-500">5m error:</span>
                           <span className="font-bold tabular-nums">
                             {formatPercent(cell.error_rate_5m)}
@@ -104,8 +137,8 @@ export function RailHealthMatrix(): React.ReactElement {
                         </div>
 
                         {cell.healthy_alternative && (
-                          <div className="mt-1 pt-1 border-t border-white/10 flex items-center gap-1 text-[10px] text-cyan-300 font-mono">
-                            <ArrowRight className="w-2.5 h-2.5 text-cyan-400" />
+                          <div className="mt-1 pt-1 border-t border-slate-200/60 flex items-center gap-1 text-[10px] text-indigo-700 font-mono font-medium">
+                            <ArrowRight className="w-2.5 h-2.5 text-indigo-600" />
                             <span className="truncate">
                               Auto-Failover: {cell.healthy_alternative.split("|")[0]}
                             </span>

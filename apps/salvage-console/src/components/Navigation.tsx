@@ -42,8 +42,8 @@ export function Navigation(): React.ReactElement {
   ];
 
   return (
-    <nav className="w-full flex justify-center py-3 px-4 z-40">
-      <div className="liquid-glass rounded-2xl p-1.5 flex flex-wrap items-center justify-center gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-white/10">
+    <nav className="w-full flex justify-center py-4 px-4 z-40">
+      <div className="bg-white/80 backdrop-blur-2xl rounded-2xl p-1.5 flex flex-wrap items-center justify-center gap-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-slate-200/90">
         {tabs.map((tab) => {
           const isActive =
             pathname === tab.href ||
@@ -56,19 +56,16 @@ export function Navigation(): React.ReactElement {
               href={tab.href}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-300 ${
                 isActive
-                  ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-white border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.2)] font-semibold"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+                  ? "bg-slate-900 text-white shadow-sm font-semibold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent"
               }`}
             >
               <Icon
                 className={`w-4 h-4 transition-colors ${
-                  isActive ? "text-emerald-400" : "text-slate-400"
+                  isActive ? "text-emerald-400" : "text-slate-500"
                 }`}
               />
               <span>{tab.name}</span>
-              {isActive && (
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              )}
             </Link>
           );
         })}

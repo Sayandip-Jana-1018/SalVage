@@ -35,17 +35,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${playfair.variable} ${sans.variable} ${mono.variable}`}
+      className={`${playfair.variable} ${sans.variable} ${mono.variable}`}
     >
-      <body className="min-h-screen bg-[#05070a] text-slate-100 antialiased flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
-        {/* Ambient background glow orbs */}
+      <body className="min-h-screen bg-[#f8fafc] text-slate-900 antialiased flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
+        {/* Ambient subtle light gradient orbs */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/10 rounded-full blur-[140px] animate-pulse-slow" />
           <div className="absolute top-1/3 -left-40 w-[500px] h-[500px] bg-indigo-500/05 rounded-full blur-[160px]" />
-          <div className="absolute top-2/3 -right-40 w-[600px] h-[600px] bg-cyan-500/05 rounded-full blur-[160px]" />
+          <div className="absolute top-2/3 -right-40 w-[600px] h-[600px] bg-sky-500/05 rounded-full blur-[160px]" />
         </div>
 
-        {/* Global Floating Header & Navigation */}
+        {/* Global Floating Header & Centered Navigation */}
         <div className="relative z-50 w-full flex flex-col items-center">
           <Header />
           <Navigation />
@@ -57,13 +57,13 @@ export default function RootLayout({
         </main>
 
         {/* Subtle Luxury Footer */}
-        <footer className="relative z-10 w-full border-t border-white/5 bg-[#05070a]/80 backdrop-blur-md py-6 text-center text-xs text-slate-500 font-mono">
+        <footer className="relative z-10 w-full border-t border-slate-200/80 bg-white/80 backdrop-blur-md py-6 text-center text-xs text-slate-500 font-mono">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2 font-medium text-slate-700">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               SALVAGE RECOVERY ENGINE · REAL-TIME SHA-256 AUDITED
             </span>
-            <span>SUB-50ms SLA · DETERMINISTIC MONEY BOUNDS</span>
+            <span className="text-slate-500 font-medium">SUB-50ms SLA · DETERMINISTIC MONEY BOUNDS</span>
           </div>
         </footer>
       </body>

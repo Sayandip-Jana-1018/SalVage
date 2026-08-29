@@ -95,17 +95,17 @@ export function ScrollFrameSequence(): React.ReactElement {
 
     ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
 
-    // Add subtle ambient liquid glass vignette gradient overlay on the canvas
+    // Add subtle ambient light vignette
     const gradient = ctx.createRadialGradient(
       rect.width / 2,
       rect.height / 2,
-      rect.width * 0.2,
+      rect.width * 0.25,
       rect.width / 2,
       rect.height / 2,
-      rect.width * 0.7
+      rect.width * 0.75
     );
-    gradient.addColorStop(0, "rgba(5, 7, 10, 0)");
-    gradient.addColorStop(1, "rgba(5, 7, 10, 0.65)");
+    gradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+    gradient.addColorStop(1, "rgba(248, 250, 252, 0.45)");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, rect.width, rect.height);
 
@@ -151,7 +151,7 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "01",
         title: "Transaction Initiation",
         badge: "PAYMENT_INGESTED",
-        badgeColor: "bg-emerald-950/80 text-emerald-300 border-emerald-800/60",
+        badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
         description: "Customer checkout initiated (₹1,850.00 on SBI UPI rail). Telemetry stream captures raw network handshake.",
         subtext: "Capturing timestamp, merchant ID, and rail headers",
       };
@@ -160,7 +160,7 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "02",
         title: "Systemic Outage Detection",
         badge: "ISSUER_DEGRADATION (U30)",
-        badgeColor: "bg-rose-950/80 text-rose-300 border-rose-800/60",
+        badgeColor: "bg-rose-50 text-rose-800 border-rose-200",
         description: "Core banking switch timeout detected. 2D Sensing Matrix corroborates 88.4% error rate across 34 merchants.",
         subtext: "Classifier maps raw error to canonical ISSUER_OUTAGE",
       };
@@ -169,7 +169,7 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "03",
         title: "Autonomous Decision Calculus",
         badge: "E[NET_VALUE] MAXIMIZATION",
-        badgeColor: "bg-amber-950/80 text-amber-300 border-amber-800/60",
+        badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
         description: "Policy optimizer ranks 5 actions. Winner: SWITCH_RAIL to HDFC UPI ($P=0.88$, Net Salvaged: ₹1,775.00).",
         subtext: "Safety bounds verify Quiet Hours and Max Attempt Caps",
       };
@@ -178,7 +178,7 @@ export function ScrollFrameSequence(): React.ReactElement {
         stage: "04",
         title: "Cryptographic Settlement",
         badge: "TAMPER_PROOF_RECOVERY",
-        badgeColor: "bg-cyan-950/80 text-cyan-300 border-cyan-800/60",
+        badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
         description: "HDFC rail failover succeeds. Recovery transaction committed to sha256 append-only ledger block #48220.",
         subtext: "Zero human intervention · Total recovery latency: 38.2ms",
       };
@@ -193,48 +193,48 @@ export function ScrollFrameSequence(): React.ReactElement {
       className="relative w-full min-h-[220vh] mb-12 flex flex-col items-center"
     >
       {/* Sticky Hero Viewport */}
-      <div className="sticky top-20 w-full max-w-6xl mx-auto flex flex-col items-center">
+      <div className="sticky top-24 w-full max-w-6xl mx-auto flex flex-col items-center">
         {/* Editorial Playfair Typography Header */}
         <div className="text-center max-w-3xl mx-auto px-4 mb-6 space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full liquid-glass border border-emerald-500/20 text-xs text-emerald-300 font-mono tracking-wider uppercase mb-1">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-mono tracking-wider uppercase mb-1 font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
             <span>Interactive 3D Causal Recovery Timeline</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif tracking-tight text-white leading-tight font-normal">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif tracking-tight text-slate-900 leading-tight font-normal">
             The Anatomy of an <br className="hidden sm:inline" />
-            <span className="italic font-normal bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-400 bg-clip-text text-transparent">
+            <span className="italic font-normal bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
               Autonomous Recovery
             </span>
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-400 font-sans max-w-xl mx-auto">
+          <p className="text-xs sm:text-sm text-slate-600 font-sans max-w-xl mx-auto">
             Scroll down or drag the scrubber below to witness how Salvage intercepts, diagnoses, and recovers payment failures in real time.
           </p>
         </div>
 
         {/* 3D Canvas + Liquid Glass Frame Container */}
-        <div className="relative w-full rounded-2xl liquid-glass-glow overflow-hidden border border-white/10 shadow-2xl p-2 sm:p-4 transition-all">
+        <div className="relative w-full rounded-2xl liquid-glass overflow-hidden border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-2 sm:p-4 transition-all">
           {/* Top Glass Toolbar */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 text-xs font-mono text-slate-400 mb-2">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200/60 text-xs font-mono text-slate-500 mb-2">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span className="text-slate-200 font-semibold">LIVE RECOVERY FEED</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span className="text-slate-800 font-semibold">LIVE RECOVERY FEED</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-[11px] text-slate-500">
                 FRAME {String(currentFrame + 1).padStart(2, "0")}/{TOTAL_FRAMES}
               </span>
-              <span className="px-2 py-0.5 rounded bg-white/5 text-emerald-300 text-[10px] border border-white/10 font-bold">
+              <span className="px-2 py-0.5 rounded bg-slate-100 text-emerald-700 text-[10px] border border-slate-200 font-bold">
                 60 FPS INTERPOLATION
               </span>
             </div>
           </div>
 
           {/* Canvas Viewport */}
-          <div className="relative w-full h-[320px] sm:h-[450px] lg:h-[500px] rounded-xl overflow-hidden bg-[#070a0e] flex items-center justify-center">
+          <div className="relative w-full h-[320px] sm:h-[450px] lg:h-[500px] rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center">
             {!isLoaded && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#070a0e]/90 z-20 space-y-3">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-20 space-y-3">
                 <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
                 <span className="text-xs font-mono text-slate-300">
                   Preloading 3D Frame Buffers ({loadedPercent}%)...
@@ -253,10 +253,10 @@ export function ScrollFrameSequence(): React.ReactElement {
               className="w-full h-full object-contain pointer-events-none"
             />
 
-            {/* Floating Liquid Glass Telemetry Card */}
-            <div className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-md liquid-glass-emerald rounded-xl p-4 border border-emerald-500/30 shadow-2xl transition-all duration-300">
+            {/* Floating Light Liquid Glass Telemetry Card */}
+            <div className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-md bg-white/95 backdrop-blur-2xl rounded-xl p-4 border border-slate-200 shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-[11px] font-mono font-bold text-emerald-400 tracking-wider">
+                <span className="text-[11px] font-mono font-bold text-slate-900 tracking-wider">
                   PHASE {stage.stage} · {stage.title}
                 </span>
                 <span
@@ -266,13 +266,13 @@ export function ScrollFrameSequence(): React.ReactElement {
                 </span>
               </div>
 
-              <p className="text-xs text-slate-200 font-sans leading-relaxed">
+              <p className="text-xs text-slate-700 font-sans leading-relaxed">
                 {stage.description}
               </p>
 
-              <div className="mt-2.5 pt-2 border-t border-emerald-500/20 flex items-center justify-between text-[10px] font-mono text-emerald-300/80">
+              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-slate-500">
                 <span>{stage.subtext}</span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <span className="flex items-center gap-1 text-emerald-700 font-bold">
                   SLA: &lt;50ms <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
@@ -280,14 +280,14 @@ export function ScrollFrameSequence(): React.ReactElement {
           </div>
 
           {/* Bottom Interactive Scrubber Bar */}
-          <div className="mt-3 px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-400 border-t border-white/5">
-            <span className="text-[11px] flex items-center gap-1.5 text-slate-300">
-              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="mt-3 px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500 border-t border-slate-200/60">
+            <span className="text-[11px] flex items-center gap-1.5 text-slate-700 font-medium font-sans">
+              <Cpu className="w-3.5 h-3.5 text-emerald-600" />
               <span>Scroll page or drag scrubber to examine:</span>
             </span>
 
             <div className="w-full sm:w-1/2 flex items-center gap-3">
-              <span className="text-[10px] text-slate-500">START</span>
+              <span className="text-[10px] text-slate-400">START</span>
               <input
                 type="range"
                 min="0"
@@ -298,9 +298,9 @@ export function ScrollFrameSequence(): React.ReactElement {
                 onMouseUp={() => setIsManualScrubbing(false)}
                 onTouchStart={() => setIsManualScrubbing(true)}
                 onTouchEnd={() => setIsManualScrubbing(false)}
-                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400 focus:outline-none"
+                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 focus:outline-none"
               />
-              <span className="text-[10px] text-slate-500">RECOVERED</span>
+              <span className="text-[10px] text-slate-400">RECOVERED</span>
             </div>
           </div>
         </div>

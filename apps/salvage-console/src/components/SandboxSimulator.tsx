@@ -1,10 +1,10 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, Play, Sparkles } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { formatPercent, formatRupees } from "@/lib/formatters";
 
-export function SandboxSimulator() {
+export function SandboxSimulator(): React.ReactElement {
   const [hypothesis, setHypothesis] = useState<string>(
     "What if we switch to scheduled retry post-payday for insufficient funds?"
   );
@@ -63,26 +63,26 @@ export function SandboxSimulator() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       {/* Input Header & Prompt Box */}
-      <div className="rounded-lg border border-slate-800 bg-[#0d1117] p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
+      <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-sm sm:text-base font-serif font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
               Policy Counterfactual Hypothesis Tester
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Ask policy questions in plain English — evaluated counterfactually against held-out replay data
             </p>
           </div>
-          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+          <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
             Doubly Robust Engine
           </span>
         </div>
 
         {/* Quick Presets */}
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-4">
           {scenarios.map((s) => (
             <button
               key={s.title}
@@ -90,10 +90,10 @@ export function SandboxSimulator() {
                 setHypothesis(s.prompt);
                 setSimulationRun(true);
               }}
-              className={`text-[11px] px-2.5 py-1 rounded-md border font-mono transition-colors ${
+              className={`text-[11px] px-3 py-1.5 rounded-xl border font-mono transition-all cursor-pointer ${
                 hypothesis === s.prompt
-                  ? "bg-emerald-950/80 border-emerald-700 text-emerald-300 font-semibold"
-                  : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  ? "bg-slate-900 border-slate-900 text-white font-semibold shadow-sm"
+                  : "bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               }`}
             >
               {s.title}
@@ -108,12 +108,12 @@ export function SandboxSimulator() {
             value={hypothesis}
             onChange={(e) => setHypothesis(e.target.value)}
             placeholder="Type a policy question (e.g. What if we cap attempts at 2 instead of 3?)..."
-            className="flex-1 rounded-md border border-slate-800 bg-slate-900/80 px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
           />
           <button
             onClick={handleRunSimulation}
             disabled={isSimulating}
-            className="px-4 py-2.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>{isSimulating ? "Evaluating..." : "Evaluate"}</span>
@@ -123,118 +123,90 @@ export function SandboxSimulator() {
 
       {/* Results View */}
       {simulationRun && (
-        <div className="rounded-lg border border-slate-800 bg-[#0d1117] p-5 shadow-sm">
+        <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
           {currentScenario.refuseToGuess ? (
             /* REFUSAL STATE: Willingness to say "I don't know" */
-            <div className="rounded-md border border-rose-900/60 bg-rose-950/20 p-5 font-mono">
-              <div className="flex items-center gap-2.5 text-rose-400 mb-2">
-                <AlertTriangle className="w-5 h-5" />
+            <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-5 font-mono">
+              <div className="flex items-center gap-2.5 text-rose-800 mb-2">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
                 <h3 className="text-sm font-bold tracking-tight">
                   EVALUATION REFUSED: UNIDENTIFIABLE POLICY (ZERO SUPPORT)
                 </h3>
               </div>
-              <p className="text-xs text-slate-300 font-sans leading-relaxed mt-2">
+              <p className="text-xs text-slate-700 font-sans leading-relaxed mt-2">
                 {currentScenario.explanation}
               </p>
 
-              <div className="mt-4 pt-3 border-t border-rose-900/40 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-[10px] text-slate-400 uppercase">Effective Sample Size (ESS)</div>
-                  <div className="text-rose-400 font-bold mt-0.5">0.0 / 5,000 (0.0%)</div>
+              <div className="mt-4 pt-3 border-t border-rose-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase block font-sans">Kish Effective Sample Size</span>
+                  <span className="text-xs font-bold text-rose-700">ESS = 0.0 (0.0% overlap)</span>
                 </div>
-                <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-[10px] text-slate-400 uppercase">Propensity Overlap</div>
-                  <div className="text-rose-400 font-bold mt-0.5">Deterministic Strata</div>
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase block font-sans">Support Status</span>
+                  <span className="text-xs font-bold text-rose-700">Strict Support Violation</span>
                 </div>
-                <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-[10px] text-slate-400 uppercase">Scientific Guardrail</div>
-                  <div className="text-emerald-400 font-bold mt-0.5">Refused to Guess</div>
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase block font-sans">Recommendation</span>
+                  <span className="text-xs font-bold text-slate-800">Requires Active Epsilon-Exploration</span>
                 </div>
               </div>
             </div>
           ) : (
             /* VALID ESTIMATE STATE */
-            <div className="space-y-4 font-mono">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2 text-slate-200">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs font-semibold font-sans">
-                    Counterfactual Evaluation Results (Held-out N=5,000)
-                  </span>
-                </div>
-                <span className="text-xs text-slate-400">
-                  Kish ESS: <strong className="text-emerald-400">{currentScenario.ess?.toFixed(0)}</strong> / 5,000
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="text-sm font-serif font-bold text-slate-900 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Doubly Robust Policy Counterfactual Estimate
+                </h3>
+                <span className="text-xs font-mono text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-semibold">
+                  Sufficient Support (ESS = {currentScenario.ess?.toFixed(0)})
                 </span>
               </div>
 
-              {/* Metric Cards Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Recovery Rate */}
-                <div className="p-3.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">
-                    Simulated Recovery Rate
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">Baseline Recovery</span>
+                  <span className="text-sm font-bold text-slate-800 tabular-nums">
+                    {formatPercent(currentScenario.baselineRecoveryRate || 0)}
                   </span>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-xl font-bold text-slate-100">
-                      {formatPercent(currentScenario.simulatedRecoveryRate || 0)}
-                    </span>
-                    <span
-                      className={`text-xs font-bold ${
-                        (currentScenario.simulatedRecoveryRate || 0) >= (currentScenario.baselineRecoveryRate || 0)
-                          ? "text-emerald-400"
-                          : "text-rose-400"
-                      }`}
-                    >
-                      {(
-                        ((currentScenario.simulatedRecoveryRate || 0) -
-                          (currentScenario.baselineRecoveryRate || 0)) *
-                        100
-                      ).toFixed(1)}
-                      % vs Base
-                    </span>
-                  </div>
                 </div>
 
-                {/* Incremental Payoff */}
-                <div className="p-3.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">
-                    Incremental Revenue (Net)
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <span className="text-[10px] text-emerald-800 uppercase block font-sans font-medium">Projected Recovery</span>
+                  <span className="text-sm font-bold text-emerald-700 tabular-nums">
+                    {formatPercent(currentScenario.simulatedRecoveryRate || 0)}
                   </span>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span
-                      className={`text-xl font-bold ${
-                        (currentScenario.incrementalRevenuePaise || 0) >= 0
-                          ? "text-emerald-400"
-                          : "text-rose-400"
-                      }`}
-                    >
-                      {(currentScenario.incrementalRevenuePaise || 0) >= 0 ? "+" : ""}
-                      {formatRupees(currentScenario.incrementalRevenuePaise || 0)}
-                    </span>
-                  </div>
                 </div>
 
-                {/* Doubly Robust 95% CI */}
-                <div className="p-3.5 rounded bg-slate-900/60 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">
-                    Doubly Robust [95% CI]
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">Projected Net Lift</span>
+                  <span
+                    className={`text-sm font-bold tabular-nums ${
+                      (currentScenario.incrementalRevenuePaise || 0) >= 0
+                        ? "text-emerald-700"
+                        : "text-rose-700"
+                    }`}
+                  >
+                    {(currentScenario.incrementalRevenuePaise || 0) >= 0 ? "+" : ""}
+                    {formatRupees(currentScenario.incrementalRevenuePaise || 0)}
                   </span>
-                  <div className="mt-1">
-                    <span className="text-sm font-bold text-indigo-300">
-                      {formatRupees(currentScenario.drEstimatePaise || 0)}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">
-                      [{formatRupees(currentScenario.ciLowerPaise || 0)}, {formatRupees(currentScenario.ciUpperPaise || 0)}]
-                    </span>
-                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">95% Bootstrap CI</span>
+                  <span className="text-xs font-bold text-slate-700 tabular-nums block truncate">
+                    [{formatRupees(currentScenario.ciLowerPaise || 0)}, {formatRupees(currentScenario.ciUpperPaise || 0)}]
+                  </span>
                 </div>
               </div>
 
-              {/* Synthesis Note */}
-              <div className="p-3 rounded bg-slate-900/40 border border-slate-800/80 text-xs font-sans text-slate-300 leading-relaxed">
-                <span className="font-semibold text-slate-200">Analysis: </span>
+              {/* Summary note */}
+              <p className="text-xs text-slate-600 font-sans leading-relaxed pt-2">
                 {currentScenario.summary}
-              </div>
+              </p>
             </div>
           )}
         </div>

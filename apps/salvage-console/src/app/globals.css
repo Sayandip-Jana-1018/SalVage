@@ -8,13 +8,13 @@
   }
 
   body {
-    background-color: #05070a;
+    background-color: #f8fafc;
     background-image: 
-      radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
-      radial-gradient(circle at 15% 70%, rgba(14, 165, 233, 0.05) 0%, transparent 40%);
+      radial-gradient(circle at 50% -20%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 10% 60%, rgba(14, 165, 233, 0.04) 0%, transparent 40%);
     background-attachment: fixed;
-    color: #f1f5f9;
+    color: #0f172a;
     font-family: var(--font-sans);
     overflow-x: hidden;
   }
@@ -33,29 +33,29 @@
   font-family: var(--font-mono);
 }
 
-/* Liquid Glass System */
+/* Luxury Light-Mode Liquid Glass System */
 .liquid-glass {
-  background: rgba(13, 17, 23, 0.65);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
 }
 
 .liquid-glass-glow {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(10, 14, 20, 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.8) 100%);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 1);
 }
 
 .liquid-glass-emerald {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(6, 78, 59, 0.05) 100%), rgba(8, 12, 16, 0.75);
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.9) 0%, rgba(209, 250, 229, 0.75) 100%);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(52, 211, 153, 0.2);
-  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.2), inset 0 1px 1px rgba(52, 211, 153, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .liquid-glass-interactive {
@@ -63,8 +63,8 @@
 }
 
 .liquid-glass-interactive:hover {
-  border-color: rgba(52, 211, 153, 0.4);
-  box-shadow: 0 12px 36px 0 rgba(16, 185, 129, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 14px 36px -10px rgba(16, 185, 129, 0.18), inset 0 1px 2px rgba(255, 255, 255, 1);
   transform: translateY(-2px);
 }
 
@@ -75,13 +75,8 @@
 }
 
 @keyframes pulse-slow {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.05); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
 }
 
 .animate-float {
@@ -92,26 +87,20 @@
   animation: pulse-slow 8s ease-in-out infinite;
 }
 
-.animate-shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 4s infinite;
-}
-
-/* Custom Scrollbars */
+/* Custom Light Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #05070a;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
 }
 
 .tabular-nums {
