@@ -1,10 +1,17 @@
 "use client";
 
-import { Activity, CreditCard, FlaskConical, Stethoscope } from "lucide-react";
+import {
+  Activity,
+  CreditCard,
+  FlaskConical,
+  Sparkles,
+  Stethoscope,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import React from "react";
 
-export function Navigation() {
+export function Navigation(): React.ReactElement {
   const pathname = usePathname();
 
   const tabs = [
@@ -35,24 +42,33 @@ export function Navigation() {
   ];
 
   return (
-    <nav className="border-b border-slate-800/60 bg-[#090c12]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 py-2">
+    <nav className="w-full flex justify-center py-3 px-4 z-40">
+      <div className="liquid-glass rounded-2xl p-1.5 flex flex-wrap items-center justify-center gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-white/10">
         {tabs.map((tab) => {
-          const isActive = pathname === tab.href || (tab.href === "/war-room" && pathname === "/");
+          const isActive =
+            pathname === tab.href ||
+            (tab.href === "/war-room" && pathname === "/");
           const Icon = tab.icon;
 
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-medium transition-all ${
+              className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-300 ${
                 isActive
-                  ? "bg-slate-800/90 text-slate-100 border border-slate-700/60 shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent"
+                  ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-white border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.2)] font-semibold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-emerald-400" : "text-slate-400"}`} />
+              <Icon
+                className={`w-4 h-4 transition-colors ${
+                  isActive ? "text-emerald-400" : "text-slate-400"
+                }`}
+              />
               <span>{tab.name}</span>
+              {isActive && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              )}
             </Link>
           );
         })}
