@@ -35,9 +35,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="run seed. The same seed and calibration reproduce the run byte for byte.",
     )
     generate.add_argument("--days", type=float, default=30.0, help="simulated days (default 30)")
-    generate.add_argument(
-        "--merchants", type=int, default=12, help="merchant count (default 12)"
-    )
+    generate.add_argument("--merchants", type=int, default=12, help="merchant count (default 12)")
     generate.add_argument(
         "--start",
         type=datetime.fromisoformat,
@@ -61,9 +59,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def _generate(args: argparse.Namespace) -> int:
     calibration = load_calibration(args.calibration)
     simulation = Simulation(
-        RunConfig(
-            seed=args.seed, days=args.days, merchants=args.merchants, start=args.start
-        ),
+        RunConfig(seed=args.seed, days=args.days, merchants=args.merchants, start=args.start),
         calibration=calibration,
     )
     summary = simulation.write(args.out)
@@ -87,9 +83,7 @@ def _describe(args: argparse.Namespace) -> int:
                 "issuers": [issuer.id for issuer in calibration.issuers],
                 "rails": [f"{i}|{m}" for i, m in calibration.rails()],
                 "attribution_window_hours": calibration.attribution.window_hours,
-                "counterfactual_offsets_minutes": list(
-                    calibration.counterfactual.offsets_minutes
-                ),
+                "counterfactual_offsets_minutes": list(calibration.counterfactual.offsets_minutes),
                 "valid": True,
             },
             indent=2,

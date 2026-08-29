@@ -39,9 +39,7 @@ def fixed_customer(payday: int) -> Customer:
     )
 
 
-def test_the_rate_is_lowest_just_after_payday(
-    calibration: Calibration, clock: SimClock
-) -> None:
+def test_the_rate_is_lowest_just_after_payday(calibration: Calibration, clock: SimClock) -> None:
     people = population(calibration, clock)
     customer = fixed_customer(payday=1)
 

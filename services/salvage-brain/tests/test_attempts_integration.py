@@ -36,13 +36,24 @@ _BASELINE_SQL = (
     / "migration"
     / "V1__baseline.sql"
 )
+_V2_SQL = (
+    _REPO_ROOT
+    / "services"
+    / "salvage-core"
+    / "src"
+    / "main"
+    / "resources"
+    / "db"
+    / "migration"
+    / "V2__money_core.sql"
+)
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(scope="module")
 def postgres_url() -> Iterator[str]:
-    from testcontainers.postgres import PostgresContainer
+    from testcontainers.postgres import PostgresContainer  # type: ignore[import-untyped]
 
     with PostgresContainer(
         "timescale/timescaledb:2.29.2-pg16",
@@ -58,6 +69,7 @@ def postgres_url() -> Iterator[str]:
         with engine.begin() as conn:
             conn.execute(text("SET search_path TO salvage, public"))
             conn.execute(text(_BASELINE_SQL.read_text(encoding="utf-8")))
+            conn.execute(text(_V2_SQL.read_text(encoding="utf-8")))
         engine.dispose()
         yield url
 
@@ -65,14 +77,12 @@ def postgres_url() -> Iterator[str]:
 @pytest.fixture
 def client(postgres_url: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Point the application's engine at the container before importing routes."""
-    import salvage_brain.attempts as attempts_module
     import salvage_brain.database as database_module
 
     engine = sqlalchemy.create_engine(
         postgres_url, connect_args={"options": "-c search_path=salvage,public"}
     )
     monkeypatch.setattr(database_module, "engine", engine)
-    monkeypatch.setattr(attempts_module, "engine", engine)
 
     from salvage_brain.main import create_app
 
@@ -87,8 +97,9 @@ def _seed(url: str, merchant_id: str, attempt_id: str, event_id: uuid.UUID) -> N
     )
     with engine.begin() as conn:
         conn.execute(
-            text("INSERT INTO merchants (merchant_id, name) VALUES (:m, :n) "
-                 "ON CONFLICT DO NOTHING"),
+            text(
+                "INSERT INTO merchants (merchant_id, name) VALUES (:m, :n) ON CONFLICT DO NOTHING"
+            ),
             {"m": merchant_id, "n": "Test Merchant"},
         )
         attempt_uuid = conn.execute(

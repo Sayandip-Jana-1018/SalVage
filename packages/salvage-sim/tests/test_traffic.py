@@ -127,9 +127,7 @@ def test_method_mix_matches_the_configured_shares(
         )
 
 
-def test_every_order_is_on_a_rail_its_issuer_supports(
-    orders: list[Order], world: World
-) -> None:
+def test_every_order_is_on_a_rail_its_issuer_supports(orders: list[Order], world: World) -> None:
     """A rail nothing carries would have no health trajectory to look up."""
     for order in orders:
         assert world.supports(order.rail.issuer_id, order.rail.method), order

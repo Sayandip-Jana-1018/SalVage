@@ -48,10 +48,7 @@ def unhealthy_series(health: RailHealth, calibration: Calibration) -> Series:
     grid = np.arange(int(HORIZON_DAYS * SECONDS_PER_DAY / SAMPLE_SECONDS)) * SAMPLE_SECONDS
     return {
         (issuer_id, method): np.fromiter(
-            (
-                health.rail_state(issuer_id, method, float(t)) is not RailState.HEALTHY
-                for t in grid
-            ),
+            (health.rail_state(issuer_id, method, float(t)) is not RailState.HEALTHY for t in grid),
             dtype=np.int8,
             count=len(grid),
         )
@@ -96,11 +93,7 @@ def decouple(calibration: Calibration) -> Calibration:
         update={"stress_rate_multiplier": 1.0}
     )
     return calibration.model_copy(
-        update={
-            "rail_health": calibration.rail_health.model_copy(
-                update={"issuer_stress": stress}
-            )
-        }
+        update={"rail_health": calibration.rail_health.model_copy(update={"issuer_stress": stress})}
     )
 
 
@@ -157,9 +150,7 @@ def test_stress_makes_outages_both_more_frequent_and_longer(
     """
     coupled = down_episode_minutes(calibration, build(calibration))
     decoupled_calibration = decouple(calibration)
-    decoupled = down_episode_minutes(
-        decoupled_calibration, build(decoupled_calibration)
-    )
+    decoupled = down_episode_minutes(decoupled_calibration, build(decoupled_calibration))
 
     assert len(coupled) > len(decoupled), (
         f"{len(coupled)} outages with stress modulation versus {len(decoupled)} "

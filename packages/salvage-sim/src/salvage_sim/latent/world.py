@@ -75,9 +75,7 @@ class World:
         # trajectory and silently read the final state instead of a simulated
         # one, biasing the last three days of every dataset.
         longest_offset_seconds = max(calibration.counterfactual.offsets_minutes) * 60.0
-        self.health = RailHealth(
-            calibration, rng, self.horizon_seconds + longest_offset_seconds
-        )
+        self.health = RailHealth(calibration, rng, self.horizon_seconds + longest_offset_seconds)
 
         self.customers = CustomerPopulation(calibration, clock, rng)
         self.mandates = MandateBook(calibration, clock, rng, self.horizon_seconds)

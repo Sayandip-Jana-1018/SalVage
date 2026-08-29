@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from salvage_brain.database import engine
+import salvage_brain.database as database
 
 router = APIRouter(prefix="/v1/attempts", tags=["attempts"])
 
@@ -31,7 +31,7 @@ class FailureSummary(BaseModel):
     event_timestamp: dt.datetime
     taxonomy_code: str | None = Field(
         default=None,
-        description="Null until the Phase 3 taxonomy classifies this failure.",
+        description="Standardized taxonomy classification.",
     )
 
 
@@ -78,11 +78,15 @@ _FAILURES_SQL = text(
     responses={404: {"description": "No such attempt for this merchant"}},
 )
 def get_attempt(merchant_id: str, payment_attempt_id: str) -> AttemptView:
-    with engine.connect() as conn:
-        row = conn.execute(
-            _ATTEMPT_SQL,
-            {"merchant_id": merchant_id, "payment_attempt_id": payment_attempt_id},
-        ).mappings().first()
+    with database.engine.connect() as conn:
+        row = (
+            conn.execute(
+                _ATTEMPT_SQL,
+                {"merchant_id": merchant_id, "payment_attempt_id": payment_attempt_id},
+            )
+            .mappings()
+            .first()
+        )
 
         if row is None:
             raise HTTPException(
@@ -90,10 +94,14 @@ def get_attempt(merchant_id: str, payment_attempt_id: str) -> AttemptView:
                 detail="No such attempt for this merchant",
             )
 
-        failures = conn.execute(
-            _FAILURES_SQL,
-            {"merchant_id": merchant_id, "payment_attempt_id": row["id"]},
-        ).mappings().all()
+        failures = (
+            conn.execute(
+                _FAILURES_SQL,
+                {"merchant_id": merchant_id, "payment_attempt_id": row["id"]},
+            )
+            .mappings()
+            .all()
+        )
 
     return AttemptView(
         merchant_id=row["merchant_id"],

@@ -187,9 +187,7 @@ class CustomerPopulation:
         local = self._clock.local(t)
         return float(calendar.monthrange(local.year, local.month)[1])
 
-    def would_be_declined_for_funds(
-        self, customer: Customer, t: float, attempt_key: str
-    ) -> bool:
+    def would_be_declined_for_funds(self, customer: Customer, t: float, attempt_key: str) -> bool:
         """The latent draw: does this account cover this debit at this moment?
 
         Keyed by ``attempt_key`` rather than drawn sequentially, so the same

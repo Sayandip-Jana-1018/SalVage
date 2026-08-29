@@ -7,8 +7,8 @@ info:
     returns a recommended action and its reasoning; salvage-core decides
     whether to execute it.
 
-    Phase 0 exposes health probes and the read path over ingested payment
-    attempts. Decision endpoints arrive in Phase 4.
+    Phase 3 exposes health probes, read path over ingested payment attempts,
+    real-time rail health sensing, and the Sense & Diagnose engine.
 
 servers:
   - url: http://localhost:8000
@@ -87,6 +87,49 @@ paths:
         "422":
           description: Malformed path parameters
 
+  /v1/diagnose:
+    post:
+      operationId: diagnoseAttempt
+      summary: Diagnose a payment failure and infer root cause
+      description: |
+        Runs the Sense & Diagnose engine across failure events, systemic rail
+        health, and customer history. Returns normalized taxonomy code, calibrated
+        confidence, explainability tokens, and recommended recovery tag.
+      tags: [diagnosis]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiagnosisRequest"
+      responses:
+        "200":
+          description: Diagnosis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosisResponse"
+        "404":
+          description: No such attempt for this merchant
+        "422":
+          description: Malformed request payload
+
+  /v1/sensing/rails:
+    get:
+      operationId: getRailHealthMatrix
+      summary: Read real-time health matrix for all active payment rails
+      description: |
+        Returns sliding-window health snapshots, degradation status, success
+        rates, and failure velocities across monitored payment rails.
+      tags: [sensing]
+      responses:
+        "200":
+          description: Active rail health matrix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RailHealthMatrix"
+
 components:
   schemas:
     HealthResponse:
@@ -136,7 +179,7 @@ components:
           format: date-time
         taxonomy_code:
           type: [string, "null"]
-          description: Null until the Phase 3 taxonomy classifies this failure.
+          description: Standardized taxonomy classification.
 
     AttemptView:
       type: object
@@ -179,3 +222,113 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FailureSummary"
+
+    DiagnosisRequest:
+      type: object
+      required:
+        - merchant_id
+        - payment_attempt_id
+      properties:
+        merchant_id:
+          type: string
+        payment_attempt_id:
+          type: string
+        observation_timestamp:
+          type: string
+          format: date-time
+          description: Optional point-in-time timestamp for historical backtesting and counterfactual evaluation.
+
+    DiagnosisResponse:
+      type: object
+      required:
+        - payment_attempt_id
+        - taxonomy_code
+        - confidence
+        - root_cause
+        - rail_id
+        - rail_state
+        - explainability_tokens
+        - suggested_action
+        - diagnosed_at
+      properties:
+        payment_attempt_id:
+          type: string
+        taxonomy_code:
+          type: string
+          enum:
+            - INSUFFICIENT_FUNDS
+            - ISSUER_OUTAGE
+            - NETWORK_TIMEOUT
+            - MANDATE_INVALID
+            - CARD_EXPIRED
+            - RISK_DECLINE
+            - CUSTOMER_ABANDONED
+            - UNKNOWN
+        confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        root_cause:
+          type: string
+        rail_id:
+          type: string
+        rail_state:
+          type: string
+          enum: [HEALTHY, DEGRADED, DOWN]
+        explainability_tokens:
+          type: array
+          items:
+            type: string
+        suggested_action:
+          type: string
+          enum:
+            - RETRY_IMMEDIATE
+            - RETRY_SMART_SCHEDULE
+            - SWITCH_RAIL
+            - CUSTOMER_NUDGE
+            - NO_ACTION
+        diagnosed_at:
+          type: string
+          format: date-time
+
+    RailHealthView:
+      type: object
+      required:
+        - rail_id
+        - state
+        - success_rate_5m
+        - failure_velocity_5m
+        - last_evaluated_at
+      properties:
+        rail_id:
+          type: string
+        state:
+          type: string
+          enum: [HEALTHY, DEGRADED, DOWN]
+        success_rate_5m:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        failure_velocity_5m:
+          type: number
+          format: float
+          description: Failures per minute over the past 5 minutes.
+        last_evaluated_at:
+          type: string
+          format: date-time
+
+    RailHealthMatrix:
+      type: object
+      required:
+        - timestamp
+        - rails
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        rails:
+          type: array
+          items:
+            $ref: "#/components/schemas/RailHealthView"

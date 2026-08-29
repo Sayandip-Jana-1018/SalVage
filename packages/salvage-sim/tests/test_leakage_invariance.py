@@ -118,9 +118,7 @@ def test_perturbing_observation_leaves_labels_bit_identical(
 
     differing = [
         index
-        for index, (before, after) in enumerate(
-            zip(baseline_labels, perturbed_labels, strict=True)
-        )
+        for index, (before, after) in enumerate(zip(baseline_labels, perturbed_labels, strict=True))
         if before != after
     ]
     assert not differing, (

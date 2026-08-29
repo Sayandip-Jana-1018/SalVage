@@ -234,9 +234,7 @@ class EventEmitter:
         method = attempt.rail.method
         if method == "card":
             details["card_network"] = _CARD_NETWORKS[
-                self._rng.choice_index(
-                    (1.0,) * len(_CARD_NETWORKS), "observe.card_network", key
-                )
+                self._rng.choice_index((1.0,) * len(_CARD_NETWORKS), "observe.card_network", key)
             ]
             details["card_type"] = _CARD_TYPES[
                 self._rng.choice_index((1.0,) * len(_CARD_TYPES), "observe.card_type", key)

@@ -29,9 +29,7 @@ def digest(path: pathlib.Path) -> str:
 
 def run_into(directory: pathlib.Path, config: RunConfig) -> dict[str, str]:
     Simulation(config).write(directory)
-    return {
-        name: digest(directory / name) for name in ("events.jsonl", "labels.jsonl")
-    }
+    return {name: digest(directory / name) for name in ("events.jsonl", "labels.jsonl")}
 
 
 def test_the_same_seed_produces_identical_files(tmp_path: pathlib.Path) -> None:

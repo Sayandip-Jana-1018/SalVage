@@ -99,9 +99,7 @@ class SimClock:
         not be material even where it applies.
         """
         local = self.local(t)
-        target = local.replace(
-            day=payday, hour=0, minute=0, second=0, microsecond=0, fold=0
-        )
+        target = local.replace(day=payday, hour=0, minute=0, second=0, microsecond=0, fold=0)
         if target <= local:
             # Roll into the following month. Building the date by hand rather
             # than adding 31 days, which would skip February entirely.

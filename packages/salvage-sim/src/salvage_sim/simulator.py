@@ -179,8 +179,7 @@ class Simulation:
                     # replay" would rest on an implementation detail.
                     events_file.write(json.dumps(event, sort_keys=True) + "\n")
                     labels_file.write(
-                        json.dumps(dataclasses.asdict(label), sort_keys=True, default=str)
-                        + "\n"
+                        json.dumps(dataclasses.asdict(label), sort_keys=True, default=str) + "\n"
                     )
                     self._count(summary, label, failure)
 
@@ -225,9 +224,7 @@ class Simulation:
             "calibration_path": str(self.calibration.source_path),
             "calibration_sha256": self.calibration.source_digest,
             "attribution_window_hours": self.calibration.attribution.window_hours,
-            "counterfactual_offsets_minutes": list(
-                self.calibration.counterfactual.offsets_minutes
-            ),
+            "counterfactual_offsets_minutes": list(self.calibration.counterfactual.offsets_minutes),
             "summary": summary.as_dict(),
         }
         (output_dir / "manifest.json").write_text(

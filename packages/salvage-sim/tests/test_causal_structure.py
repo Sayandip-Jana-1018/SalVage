@@ -82,9 +82,7 @@ def test_every_failure_cause_is_represented(by_cause: dict[str, list[FailureLabe
         "instrument_expired",
     }
     missing = sorted(
-        cause
-        for cause in expected
-        if len(by_cause.get(cause, [])) < MINIMUM_PER_CAUSE
+        cause for cause in expected if len(by_cause.get(cause, [])) < MINIMUM_PER_CAUSE
     )
     assert not missing, (
         f"fewer than {MINIMUM_PER_CAUSE} failures for {missing}. "

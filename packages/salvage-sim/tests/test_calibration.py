@@ -67,9 +67,7 @@ def test_unknown_keys_are_rejected(tmp_path: pathlib.Path, raw: dict[str, Any]) 
     for a file whose contents it partly did not use.
     """
     with pytest.raises(ValidationError, match=r"[Ee]xtra"):
-        load_variant(
-            tmp_path, raw, lambda v: v.update({"unexpected_section": {"a": 1}})
-        )
+        load_variant(tmp_path, raw, lambda v: v.update({"unexpected_section": {"a": 1}}))
 
 
 def test_method_shares_must_sum_to_one(tmp_path: pathlib.Path, raw: dict[str, Any]) -> None:
@@ -105,16 +103,12 @@ def test_emandate_may_not_take_checkout_traffic(
         load_variant(tmp_path, raw, mutate)
 
 
-def test_a_method_with_traffic_needs_an_issuer(
-    tmp_path: pathlib.Path, raw: dict[str, Any]
-) -> None:
+def test_a_method_with_traffic_needs_an_issuer(tmp_path: pathlib.Path, raw: dict[str, Any]) -> None:
     """Otherwise the generator picks a method nothing can carry."""
 
     def mutate(variant: dict[str, Any]) -> None:
         for issuer in variant["issuers"]:
-            issuer["supported_methods"] = [
-                m for m in issuer["supported_methods"] if m != "card"
-            ]
+            issuer["supported_methods"] = [m for m in issuer["supported_methods"] if m != "card"]
 
     with pytest.raises(ValidationError, match="no issuer supports it"):
         load_variant(tmp_path, raw, mutate)

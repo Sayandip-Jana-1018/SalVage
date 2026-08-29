@@ -209,9 +209,7 @@ class JourneySimulator:
         be able to avoid, and it cannot be measured if the simulator quietly
         declines to make those attempts.
         """
-        attempts = [
-            self._attempt(order, 1, order.created_at, order.rail, AttemptTrigger.CHECKOUT)
-        ]
+        attempts = [self._attempt(order, 1, order.created_at, order.rail, AttemptTrigger.CHECKOUT)]
         if attempts[0].outcome.succeeded:
             return tuple(attempts)
 
@@ -219,9 +217,7 @@ class JourneySimulator:
             at = order.created_at + offset_days * SECONDS_PER_DAY
             if at > self._world.horizon_seconds:
                 break
-            attempt = self._attempt(
-                order, index, at, order.rail, AttemptTrigger.MERCHANT_DUNNING
-            )
+            attempt = self._attempt(order, index, at, order.rail, AttemptTrigger.MERCHANT_DUNNING)
             attempts.append(attempt)
             if attempt.outcome.succeeded:
                 break

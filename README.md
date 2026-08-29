@@ -3,11 +3,12 @@
 An autonomous system that diagnoses failed payments and recovers the money,
 with every decision bounded, explainable, and replayable.
 
-> **Status: Phase 2 of 9 complete.**
+> **Status: Phase 3 of 9 complete.**
 > - **Phase 0 (Foundation)**: CI/CD, Testcontainers, Multi-Tenant Database, Observability & Contract Drift Gate.
 > - **Phase 1 (Data Engine)**: `salvage-sim` Causal payment stream simulator with counterfactual labels, Markov rail state models, salary cycle dynamics, and zero leakage invariants.
 > - **Phase 2 (The Money Core)**: `salvage-core` Cryptographic append-only ledger with continuous verification, multi-tier idempotency store (Redis fast-path + PostgreSQL fallback), per-customer distributed locking, transactional outbox with `SKIP LOCKED`, hard bounds engine (quiet hours, attempt caps, opt-outs, contact budgets, kill switches), and persistent recovery sagas.
-> - **Phase 3 (Next)**: `salvage-brain` ML-driven payment failure diagnosis, feature pipelines, and confidence scoring.
+> - **Phase 3 (Sense & Diagnose)**: `salvage-brain` Universal failure taxonomy (NPCI/ISO-8583/gateways), real-time sliding-window rail health sensing, point-in-time leak-free feature store, and contextual root cause diagnostic engine with explainability tokens.
+> - **Phase 4 (Next)**: Recoverability & Policy Engine (`salvage-brain` + `salvage-core`).
 
 ## The problem
 

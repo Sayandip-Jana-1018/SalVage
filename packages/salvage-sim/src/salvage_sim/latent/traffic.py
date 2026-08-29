@@ -81,11 +81,7 @@ class RateCurve:
 
     def multiplier(self, t: float) -> float:
         local = self._clock.local(t)
-        return (
-            self._hour[local.hour]
-            * self._weekday[local.weekday()]
-            * self.festival_multiplier(t)
-        )
+        return self._hour[local.hour] * self._weekday[local.weekday()] * self.festival_multiplier(t)
 
     def festival_multiplier(self, t: float) -> float:
         """Triangular ramp: up to the peak at the window's midpoint, then down.
@@ -204,9 +200,7 @@ class TrafficGenerator:
             ]
             issuer_id = self._issuer_for(method, order_id)
         else:
-            customer_index = int(
-                rng.uniform("latent.traffic.customer", order_id) * customer_count
-            )
+            customer_index = int(rng.uniform("latent.traffic.customer", order_id) * customer_count)
             customer = self._world.customers.customer(merchant.merchant_id, customer_index)
             # A customer usually reaches for the same instrument, but not
             # always; a fixed preference would make the per-customer method

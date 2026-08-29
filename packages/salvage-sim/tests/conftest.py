@@ -50,9 +50,7 @@ def calibration() -> Calibration:
 
 @pytest.fixture(scope="session")
 def clock(calibration: Calibration) -> SimClock:
-    return SimClock.create(
-        calibration.simulation.default_start, calibration.simulation.timezone
-    )
+    return SimClock.create(calibration.simulation.default_start, calibration.simulation.timezone)
 
 
 @pytest.fixture(scope="session")
