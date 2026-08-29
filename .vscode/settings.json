@@ -1,5 +1,8 @@
 {
   "java.jdt.ls.java.home": "C:\\Users\\Sayan\\.jdks\\temurin-21",
+  "java.import.gradle.java.home": "C:\\Users\\Sayan\\.jdks\\temurin-21",
+  "java.import.gradle.version": "8.12",
+  "java.import.gradle.wrapper.enabled": true,
   "java.configuration.runtimes": [
     {
       "name": "JavaSE-21",
