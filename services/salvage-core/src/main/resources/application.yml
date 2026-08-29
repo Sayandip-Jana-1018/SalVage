@@ -12,7 +12,7 @@ spring:
 
   # ---- datasource ----------------------------------------------------------
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:salvage}
+    url: jdbc:postgresql://${POSTGRES_HOST:127.0.0.1}:${POSTGRES_PORT:5433}/${POSTGRES_DB:salvage}
     username: ${POSTGRES_USER:salvage}
     password: ${POSTGRES_PASSWORD:salvage_local_dev_only}
     hikari:
@@ -43,13 +43,13 @@ spring:
   # ---- redis ---------------------------------------------------------------
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       timeout: 3000ms
 
   # ---- kafka ---------------------------------------------------------------
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:19092}
     consumer:
       group-id: salvage-core
       auto-offset-reset: earliest

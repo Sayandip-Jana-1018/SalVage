@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     """Salvage Brain configuration."""
 
     # ---- postgres ----------------------------------------------------------
-    postgres_host: str = "localhost"
-    postgres_port: int = 5432
+    postgres_host: str = "127.0.0.1"
+    postgres_port: int = 5433
     postgres_db: str = "salvage"
     postgres_user: str = "salvage"
     postgres_password: str = "salvage_local_dev_only"

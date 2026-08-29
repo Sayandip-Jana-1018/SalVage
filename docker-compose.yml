@@ -44,7 +44,7 @@ services:
       TZ: UTC
       PGTZ: UTC
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro

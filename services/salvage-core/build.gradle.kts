@@ -60,6 +60,7 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    jvmArgs("-Djava.net.preferIPv4Stack=true")
     // Testcontainers reuse requires this; without it, every test class spins
     // up and tears down a full container set, which makes the chaos suite
     // take hours instead of minutes.
