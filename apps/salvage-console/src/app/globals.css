@@ -106,3 +106,19 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* Speech Bubble Entrance Animation */
+@keyframes bubble-in {
+  0% { opacity: 0; transform: translateX(20px) scale(0.92); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes bubble-breathe {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-bubble-in {
+  animation: bubble-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+             bubble-breathe 4s ease-in-out 0.5s infinite;
+}

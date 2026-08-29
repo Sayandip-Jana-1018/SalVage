@@ -316,28 +316,40 @@ export function ScrollFrameSequence(): React.ReactElement {
               className="w-full h-full object-cover pointer-events-none"
             />
 
-            {/* ✨ VERTICALLY & HORIZONTALLY CENTERED LIQUID GLASS TELEMETRY MODAL */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] sm:w-[78%] max-w-lg bg-white/92 backdrop-blur-2xl rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.18)] transition-all duration-500 z-10 text-center flex flex-col items-center">
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                <span className="text-[11px] font-mono font-bold text-slate-900 tracking-wider">
-                  PHASE {stage.stage} · {stage.title}
-                </span>
-                <span
-                  className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-bold ${stage.badgeColor}`}
-                >
-                  {stage.badge}
-                </span>
-              </div>
+            {/* ✨ SPEECH BUBBLE — Top-Right Corner, as if the video is narrating */}
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 w-[280px] sm:w-[320px] z-10 animate-bubble-in">
+              {/* Bubble Body */}
+              <div className="relative bg-white/95 backdrop-blur-2xl rounded-2xl rounded-br-sm p-3.5 sm:p-4 border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.15)]">
+                {/* Speech tail — bottom-right triangle pointing into the video */}
+                <div className="absolute -bottom-2 right-4 w-4 h-4 bg-white/95 border-r border-b border-slate-200/90 rotate-45 shadow-sm" />
 
-              <p className="text-xs text-slate-700 font-sans leading-relaxed max-w-md mx-auto font-medium">
-                {stage.description}
-              </p>
+                {/* Phase badge row */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                  <span className="text-[10px] font-mono font-bold text-slate-900 tracking-wide">
+                    PHASE {stage.stage}
+                  </span>
+                  <span className={`text-[8px] font-mono px-1.5 py-px rounded-full border font-bold ${stage.badgeColor}`}>
+                    {stage.badge}
+                  </span>
+                </div>
 
-              <div className="mt-2.5 pt-2 border-t border-slate-200/80 w-full flex flex-wrap items-center justify-between text-[10px] font-mono text-slate-500">
-                <span className="truncate">{stage.subtext}</span>
-                <span className="flex items-center gap-1 text-emerald-700 font-bold shrink-0">
-                  SLA: &lt;50ms <ArrowRight className="w-3 h-3" />
-                </span>
+                {/* Title */}
+                <h4 className="text-xs font-serif font-bold text-slate-900 leading-snug mb-1">
+                  {stage.title}
+                </h4>
+
+                {/* Description */}
+                <p className="text-[11px] text-slate-600 font-sans leading-relaxed">
+                  {stage.description}
+                </p>
+
+                {/* Footer metadata */}
+                <div className="mt-2 pt-1.5 border-t border-slate-200/70 flex items-center justify-between text-[9px] font-mono text-slate-400">
+                  <span className="truncate max-w-[160px]">{stage.subtext}</span>
+                  <span className="flex items-center gap-0.5 text-emerald-700 font-bold shrink-0">
+                    SLA: &lt;50ms <ArrowRight className="w-2.5 h-2.5" />
+                  </span>
+                </div>
               </div>
             </div>
           </div>
