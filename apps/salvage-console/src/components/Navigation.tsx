@@ -1,8 +1,8 @@
 "use client";
 
-import { Activity, FlaskConical, Stethoscope } from "lucide-react";
-import Link from "next/link.js";
-import { usePathname } from "next/navigation.js";
+import { Activity, CreditCard, FlaskConical, Stethoscope } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -13,6 +13,12 @@ export function Navigation() {
       href: "/war-room",
       icon: Activity,
       description: "Live health matrix & failure feed",
+    },
+    {
+      name: "Live Checkout & Pay",
+      href: "/checkout",
+      icon: CreditCard,
+      description: "Interactive In-App Payment & Recovery Demo",
     },
     {
       name: "The Autopsy",
