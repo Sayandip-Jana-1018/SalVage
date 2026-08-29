@@ -12,6 +12,8 @@ Additionally, Razorpay test mode provides deterministic test instruments (test c
 
 ## Decision
 
+**Status of implementation:** none of the following exists yet. This ADR records the decision so that Phase 2 does not accidentally couple the money core to a specific provider SDK. The port and both adapters are Phase 4 deliverables. `make razorpay-e2e` currently exits non-zero saying exactly that.
+
 - `PaymentProvider` is a Java interface (port) with methods for creating payment links, processing payments, issuing refunds, and verifying webhook signatures.
 - `SimulatedProvider` is the default. It is deterministic (seeded), in-process, requires no credentials, and models the full payment lifecycle including realistic failure modes from the simulator's calibration. This is what `make demo` and CI use.
 - `RazorpayTestProvider` issues real HTTP calls against Razorpay's test mode API. Activated by setting `SALVAGE_PAYMENT_PROVIDER=razorpay` plus providing `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in `.env`.
@@ -28,6 +30,8 @@ Additionally, Razorpay test mode provides deterministic test instruments (test c
 
 ## Why Both Providers Exist
 
-Test mode gives deterministic test instruments rather than a realistic issuer decline distribution. A payment `4111 1111 1111 1111` always succeeds; a payment `4000 0000 0000 0002` always declines. This is useful for verifying API integration (correct HTTP calls, correct auth, correct webhook handling) but cannot exercise the thing Salvage is actually about: distinguishing between fifteen different kinds of failure and choosing different responses for each.
+Test mode gives deterministic test instruments rather than a realistic issuer decline distribution: a given test instrument produces a given outcome every time, by design. That is useful for verifying API integration — correct HTTP calls, correct authentication, correct webhook signature handling — but it cannot exercise the thing Salvage is actually about: distinguishing between many different kinds of failure and choosing a different response for each.
+
+**Unverified at the time of writing.** The specific test instruments Razorpay publishes, and which decline reason codes test mode can be made to emit, must be read off Razorpay's current documentation during Phase 4 rather than asserted from memory. If test mode turns out to expose a richer decline taxonomy than assumed here, this ADR is wrong and gets superseded. No specific card numbers or error codes are quoted here on purpose — see ADR-0006, kind 3.
 
 The simulated provider fills that gap with a rich, configurable failure model driven by `packages/salvage-sim/calibration.yaml`. The two providers answer different questions and both are needed.

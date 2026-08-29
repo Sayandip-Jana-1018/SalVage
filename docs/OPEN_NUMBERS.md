@@ -23,6 +23,20 @@ gaps to be filled with sourced data. See [ADR-0006](adr/0006-numbers-policy.md).
 | Festival traffic multiplier | Peak-to-normal traffic ratio during Diwali/sale events | Gateway data, e-commerce public disclosures |
 | Mandate expiry rate | Monthly mandate churn rate | RBI mandate data, gateway internal data |
 
+## Measured Performance (ours, not the world's)
+
+These are numbers about *this* system that have not been measured yet. They are
+listed here so that no document quotes an estimate in the meantime. Unlike the
+sections above, these get filled in by running code, not by finding a source.
+
+| Where it would go | What kind of number | How it gets measured |
+|---|---|---|
+| ADR-0001 — consequences | Latency cost of the Java→Python decision hop (p50/p99) | Phase 4, under the sub-100ms decision budget |
+| ARCHITECTURE.md — decision path | End-to-end decision latency, p99 | Phase 4 |
+| ADR-0002 — consequences | Cost of per-message JSON Schema validation | Phase 8 load test |
+| ARCHITECTURE.md — throughput | Sustained events/sec and the bottleneck component | Phase 8 load test |
+| ADR-0007 — measurable claim | Detection latency, pooled vs. per-merchant, with CIs | Phase 3, reported in EVALUATION.md |
+
 ## Evaluation Claims
 
 | Claim | What it would say | Likely source |

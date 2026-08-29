@@ -99,10 +99,47 @@ Model Context Protocol server exposing Salvage to AI assistants.
 
 ## Why Both Providers Exist
 
-See [ADR-0003](docs/adr/0003-payment-provider-abstraction.md). The simulated
-provider models realistic failure distributions for evaluation. The Razorpay
-test mode adapter proves API integration is real. They answer different
-questions and both are needed.
+Neither adapter exists yet; both are Phase 4. The decision is recorded now so
+that Phase 2 does not couple the money core to a provider SDK. See
+[ADR-0003](docs/adr/0003-payment-provider-abstraction.md).
+
+Razorpay test mode gives **deterministic test instruments**: a given test
+instrument produces a given outcome every time, by design. That is exactly what
+you want for verifying an integration — that the HTTP calls are right, the
+authentication is right, the webhook signature verification is right — and it
+is exactly what you cannot use to evaluate a system whose entire purpose is
+telling different kinds of failure apart. A decline distribution that is fixed
+by construction cannot exercise a diagnosis engine.
+
+So the two adapters answer two different questions:
+
+| Question | Answered by |
+|---|---|
+| Does the integration actually work against a real gateway? | `RazorpayTestProvider` |
+| Does the diagnosis and policy machinery work? | `SimulatedProvider` |
+
+Evaluation numbers therefore come from the simulated provider, always, and
+`EVALUATION.md` says so on its first line.
+
+**This characterisation of Razorpay test mode is not yet verified.** It must be
+checked against Razorpay's current documentation during Phase 4. If test mode
+exposes a richer decline taxonomy than assumed, ADR-0003 is wrong and gets
+superseded rather than quietly edited.
+
+## Exactly-Once, Stated Precisely
+
+"Exactly-once money movement" is not achievable across a network boundary to a
+third party, and naming it that hides the failure mode that actually causes
+double charges. What is achievable, and what this system commits to:
+
+> Salvage never **originates** a duplicate charge, and never retries an attempt
+> whose outcome is **unknown**.
+
+The dangerous case is not the duplicate webhook — that is easy to catch. It is
+a timeout on a charge call, where the system does not know whether money moved.
+An attempt in that state enters an explicit `UNKNOWN` terminal-pending state
+that **only the reconciler may resolve** — never a retry handler, never a
+timeout handler. See [ADR-0004](docs/adr/0004-idempotency-source-of-truth.md).
 
 ## Where We Deliberately Did Not Use an LLM
 
@@ -128,11 +165,39 @@ questions and both are needed.
 
 ## Data Flow
 
-1. Payment fails → gateway publishes `payment.failed.v1` to Kafka
-2. salvage-core consumes, writes `payment_attempt` + `failure_event`
-3. salvage-core calls salvage-brain with features
-4. salvage-brain returns ranked actions with scores + propensities
-5. salvage-core passes top action through the bounds gate
-6. If it passes: execute via PaymentProvider, write to ledger
-7. If it doesn't: record `NO_ACTION` with `GATE_BLOCKED:<reason>`
-8. Outcome observed → fed back into feature store
+Steps 1–2 exist today. Steps 3–8 are Phases 3 and 4.
+
+1. Payment fails → gateway publishes `salvage.payment-failed.v1` to Kafka
+2. salvage-core consumes, validates against the published JSON Schema, and
+   writes `payment_attempt` + `failure_event` in one transaction
+3. salvage-core calls salvage-brain with features — **outside** the database
+   transaction (see below)
+4. salvage-brain returns ranked actions with scores and propensities
+5. salvage-core commits the decision record **before** executing anything
+6. The top action passes through the bounds gate; if it passes, execution is
+   dispatched via the outbox, never inline
+7. If the gate blocks it: record `NO_ACTION` with `GATE_BLOCKED:<reason>`,
+   distinct from a policy-chosen `NO_ACTION`
+8. Outcome observed → fed back into the feature store
+
+### Why the brain call sits outside the transaction
+
+Calling an external service inside a database transaction is a dual write in
+disguise: if the commit fails, a decision was made and not recorded; if the
+call times out, the state is unknown. Three properties remove the problem:
+
+- **The brain is a pure function** of `(features, model_version, policy_version)`.
+  The same inputs produce the same ranked list, so a retry reproduces rather
+  than re-decides.
+- **The request is idempotent**, keyed by `attempt_id`.
+- **The decision is committed before any execution**, and execution happens
+  only through the transactional outbox.
+
+### Why `NO_ACTION` is split
+
+A no-action that the policy *chose* and a no-action the bounds gate *forced*
+are completely different events. Logging them identically biases every
+off-policy estimate downstream, because the evaluator would treat a constrained
+observation as a free choice. Every decision therefore records the feasible
+action set alongside the chosen action, and the reason when nothing was done.
+This is a Phase 4 design commitment, not a Phase 5 discovery.

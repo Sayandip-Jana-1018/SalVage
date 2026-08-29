@@ -7,8 +7,8 @@ info:
     returns a recommended action and its reasoning; salvage-core decides
     whether to execute it.
 
-    Phase 0 exposes only health endpoints. Decision endpoints arrive in
-    Phase 4.
+    Phase 0 exposes health probes and the read path over ingested payment
+    attempts. Decision endpoints arrive in Phase 4.
 
 servers:
   - url: http://localhost:8000
@@ -20,8 +20,8 @@ paths:
       operationId: getLiveness
       summary: Liveness probe
       description: |
-        Returns 200 if the process is alive. Does not check downstream
-        dependencies — that is readiness.
+        Returns 200 if the process is alive. Deliberately does not check
+        downstream dependencies - that is readiness.
       tags: [health]
       responses:
         "200":
@@ -36,23 +36,56 @@ paths:
       operationId: getReadiness
       summary: Readiness probe
       description: |
-        Returns 200 only if the service can reach PostgreSQL, Redis, and
-        Kafka. A 503 means the service is alive but should not receive
+        Returns 200 only if the service round-trips PostgreSQL, Redis, and
+        Kafka. A 503 means the process is alive but should not receive
         traffic.
       tags: [health]
       responses:
         "200":
-          description: Ready — all dependencies healthy
+          description: Ready - all dependencies reachable
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
         "503":
-          description: Not ready — at least one dependency unhealthy
+          description: Not ready - at least one dependency unreachable
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+
+  /v1/attempts/{merchant_id}/{payment_attempt_id}:
+    get:
+      operationId: getAttempt
+      summary: Read one payment attempt and the failures observed on it
+      description: |
+        The read path that the Phase 3 feature store is built on. Scoped by
+        merchant: an attempt is not reachable through another merchant's id,
+        which returns 404 rather than 403 so that the endpoint does not
+        confirm the existence of another tenant's data.
+      tags: [attempts]
+      parameters:
+        - name: merchant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: payment_attempt_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The attempt, with its failure events in time order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptView"
+        "404":
+          description: No such attempt for this merchant
+        "422":
+          description: Malformed path parameters
 
 components:
   schemas:
@@ -67,9 +100,6 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/CheckResult"
-        version:
-          type: string
-          description: Application version (git short SHA or tag).
 
     CheckResult:
       type: object
@@ -82,6 +112,70 @@ components:
           type: number
           format: float
           description: Round-trip time to the dependency in milliseconds.
-        error:
+        reason:
           type: string
-          description: Error message if status is down.
+          description: |
+            Exception type when status is down. Deliberately not the exception
+            message: this endpoint is unauthenticated and driver messages embed
+            connection URLs, which embed credentials.
+
+    FailureSummary:
+      type: object
+      required: [event_id, provider_error_code, rail_id, event_timestamp]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        provider_error_code:
+          type: string
+        rail_id:
+          type: string
+          description: issuer|payment_method|provider - the unit of health monitoring.
+        event_timestamp:
+          type: string
+          format: date-time
+        taxonomy_code:
+          type: [string, "null"]
+          description: Null until the Phase 3 taxonomy classifies this failure.
+
+    AttemptView:
+      type: object
+      required:
+        - merchant_id
+        - order_id
+        - payment_attempt_id
+        - amount_paise
+        - currency
+        - payment_method
+        - provider
+        - issuer
+        - is_recurring
+        - created_at
+        - failures
+      properties:
+        merchant_id:
+          type: string
+        order_id:
+          type: string
+        payment_attempt_id:
+          type: string
+        amount_paise:
+          type: integer
+          description: Amount in the smallest currency unit (paise for INR).
+        currency:
+          type: string
+        payment_method:
+          type: string
+        provider:
+          type: string
+        issuer:
+          type: string
+        is_recurring:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        failures:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailureSummary"

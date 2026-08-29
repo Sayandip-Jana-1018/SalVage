@@ -17,13 +17,13 @@ Salvage has two fundamentally different runtime concerns:
 - `salvage-core` is Java 21 / Spring Boot 3.5.x. It owns the money path, the ledger, idempotency, the bounds gate, and the saga coordinator.
 - `salvage-brain` is Python 3.12 / FastAPI. It owns rail health monitoring, root cause attribution, feature computation, model inference, and policy selection.
 - The boundary is a typed HTTP contract (OpenAPI 3.1 in `contracts/openapi/`). Brain is called as a pure function: given features and model/policy versions, return a ranked action list with scores and propensities. It never mutates state that affects money.
-- Shared event schemas live in `contracts/events/` as JSON Schema and are code-generated into both languages. See ADR-0002.
+- Shared event schemas live in `contracts/events/` as JSON Schema, and conformance to them is enforced mechanically in both languages — by runtime validation and a structural drift test on the Java side, and by a served-API drift gate on the Python side. See ADR-0002.
 
 ## Consequences
 
 - Two build toolchains, two dependency trees, two container images. CI complexity is real but bounded.
-- The HTTP boundary adds ~5-15ms latency per decision call. Acceptable: the decision call happens once per failure event, not per request, and the result is cached in the decision record.
-- A language boundary at the money/ML seam is also a trust boundary: salvage-brain can never accidentally import a JPA repository and write to the ledger.
+- The HTTP boundary costs a network round trip and a serialisation pass per decision. This is spent once per failure event, not per request, and the returned decision is persisted rather than recomputed. **No latency figure is quoted here because none has been measured.** The p99 decision budget is set and measured in Phase 4, against the sub-100ms requirement; if the boundary turns out to consume an unacceptable share of it, the mitigation is co-locating the services and reusing connections, not merging the languages. See `docs/OPEN_NUMBERS.md`.
+- A language boundary at the money/ML seam is also a trust boundary: salvage-brain can never accidentally import a JPA repository and write to the ledger. This is the property that makes "no LLM makes a money decision" checkable by inspection rather than by discipline.
 
 ## Alternatives Considered
 
