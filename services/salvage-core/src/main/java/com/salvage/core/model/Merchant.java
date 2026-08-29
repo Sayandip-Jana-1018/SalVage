@@ -9,20 +9,30 @@ import jakarta.persistence.Table;
 
 /**
  * Multi-tenant root entity. Every query in the system is scoped by
- * {@code merchantId}, enforced at the repository layer.
+ * {@code merchantId}; see the repository interfaces, which expose no unscoped
+ * read.
+ *
+ * <p>Unlike {@code PaymentAttempt} and {@code FailureEvent}, this row is
+ * mutable -- a merchant can be deactivated. It is reference data, not a
+ * recorded fact.
  */
 @Entity
 @Table(name = "merchants", schema = "salvage")
 public class Merchant {
 
     @Id
-    @Column(name = "merchant_id", nullable = false)
+    @Column(name = "merchant_id", updatable = false, nullable = false)
     private String merchantId;
 
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    /**
+     * Populated by the column default. The database clock is the single source
+     * of time for stored facts; an application-set timestamp makes row
+     * ordering depend on which host wrote the row.
+     */
+    @Column(name = "created_at", updatable = false, insertable = false)
     private Instant createdAt;
 
     @Column(name = "active", nullable = false)
@@ -35,7 +45,6 @@ public class Merchant {
     public Merchant(String merchantId, String name) {
         this.merchantId = merchantId;
         this.name = name;
-        this.createdAt = Instant.now();
         this.active = true;
     }
 

@@ -2,20 +2,23 @@ package com.salvage.core.repository;
 
 import java.util.Optional;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.repository.Repository;
 
 import com.salvage.core.model.Merchant;
 
-@Repository
-public interface MerchantRepository extends JpaRepository<Merchant, String> {
+/**
+ * Access to the multi-tenant root.
+ *
+ * <p>This is the one repository where the tenant identifier <em>is</em> the
+ * primary key, so a lookup by id is inherently scoped. It still avoids
+ * {@code JpaRepository} so that {@code findAll()} and {@code deleteAll()} are
+ * not available to callers by accident.
+ */
+public interface MerchantRepository extends Repository<Merchant, String> {
 
-    /**
-     * Every lookup is scoped by merchant_id. This is the pattern: callers
-     * pass the merchant they believe they are operating on, and the
-     * repository enforces that the returned entity actually belongs to it.
-     * Returning Optional rather than throwing ensures the caller handles
-     * the absent case explicitly.
-     */
+    Merchant save(Merchant merchant);
+
     Optional<Merchant> findByMerchantId(String merchantId);
+
+    boolean existsByMerchantId(String merchantId);
 }
