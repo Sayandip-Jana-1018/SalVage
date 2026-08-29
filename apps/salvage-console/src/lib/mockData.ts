@@ -141,7 +141,7 @@ export const activeIncidents: IncidentInfo[] = [
     bank: "State Bank of India",
     severity: "DOWN",
     root_cause: "NPCI UPI Switch Core Banking Switch (CBS) Timeout - U30",
-    started_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
+    started_at: "2026-08-30T03:15:00.000Z",
     affected_merchants: 48,
     money_at_risk_paise: 34285000,
     auto_rerouted_count: 312,
@@ -161,7 +161,7 @@ export const initialDecisionStream: DecisionStreamItem[] = [
     target_rail: "HDFC|UPI|RAZORPAY",
     bounds_status: "PERMITTED",
     expected_net_paise: 157250,
-    created_at: new Date(Date.now() - 10000).toISOString(),
+    created_at: "2026-08-30T03:26:00.000Z",
   },
   {
     id: "att_live_9481",
@@ -173,7 +173,7 @@ export const initialDecisionStream: DecisionStreamItem[] = [
     chosen_action: "RETRY_IMMEDIATE",
     bounds_status: "PERMITTED",
     expected_net_paise: 77850,
-    created_at: new Date(Date.now() - 25000).toISOString(),
+    created_at: "2026-08-30T03:25:35.000Z",
   },
   {
     id: "att_live_9480",
@@ -185,7 +185,7 @@ export const initialDecisionStream: DecisionStreamItem[] = [
     chosen_action: "RETRY_SCHEDULED",
     bounds_status: "PERMITTED",
     expected_net_paise: 327600,
-    created_at: new Date(Date.now() - 40000).toISOString(),
+    created_at: "2026-08-30T03:25:20.000Z",
   },
   {
     id: "att_live_9479",
@@ -197,7 +197,7 @@ export const initialDecisionStream: DecisionStreamItem[] = [
     chosen_action: "CUSTOMER_NUDGE",
     bounds_status: "PERMITTED",
     expected_net_paise: 98600,
-    created_at: new Date(Date.now() - 65000).toISOString(),
+    created_at: "2026-08-30T03:24:55.000Z",
   },
   {
     id: "att_live_9478",
@@ -209,7 +209,7 @@ export const initialDecisionStream: DecisionStreamItem[] = [
     chosen_action: "NO_ACTION",
     bounds_status: "REJECTED",
     expected_net_paise: 0,
-    created_at: new Date(Date.now() - 90000).toISOString(),
+    created_at: "2026-08-30T03:24:30.000Z",
   },
 ];
 
@@ -218,7 +218,7 @@ export const sampleAutopsyDetail: AutopsyDetail = {
   merchant_id: "m_swiggy_ind",
   customer_id: "cust_90124",
   amount_paise: 185000,
-  created_at: new Date(Date.now() - 120000).toISOString(),
+  created_at: "2026-08-30T03:24:00.000Z",
   raw_error_code: "U30",
   raw_error_message: "NPCI: Transaction timed out at remitter bank switch",
   payment_method: "UPI",

@@ -9,11 +9,17 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { formatISTTime, formatRupees } from "@/lib/formatters";
 import { initialDecisionStream } from "@/lib/mockData";
 
 export function LiveDecisionStream(): React.ReactElement {
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-2xl border border-white/10">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -52,8 +58,11 @@ export function LiveDecisionStream(): React.ReactElement {
                 key={item.id}
                 className="hover:bg-white/[0.02] transition-colors group"
               >
-                <td className="py-3.5 pr-4 text-slate-400 tabular-nums">
-                  {formatISTTime(item.created_at)}
+                <td
+                  suppressHydrationWarning
+                  className="py-3.5 pr-4 text-slate-400 tabular-nums"
+                >
+                  {mounted ? formatISTTime(item.created_at) : "14:02:11"}
                 </td>
                 <td className="py-3.5 px-3 font-bold text-slate-200 group-hover:text-emerald-300 transition-colors">
                   {item.id}

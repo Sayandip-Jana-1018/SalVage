@@ -101,7 +101,12 @@ export function Header(): React.ReactElement {
           {/* Clock */}
           <div className="hidden md:flex flex-col text-right">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider">IST (Asia/Kolkata)</span>
-            <span className="text-sm text-slate-300 tabular-nums font-mono">{time || "00:00:00"}</span>
+            <span
+              suppressHydrationWarning
+              className="text-sm text-slate-300 tabular-nums font-mono"
+            >
+              {time || "14:02:11"}
+            </span>
           </div>
         </div>
       </div>
