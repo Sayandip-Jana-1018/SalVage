@@ -1,6 +1,8 @@
 # ---- server ----------------------------------------------------------------
 server:
-  port: ${CORE_PORT:8080}
+  # The port the process listens on. Distinct from CORE_HOST_PORT in
+  # docker-compose.yml, which is the port published on the host.
+  port: ${SERVER_PORT:8080}
   shutdown: graceful
 
 spring:
@@ -20,6 +22,10 @@ spring:
       minimum-idle: 5
       connection-timeout: 5000
       leak-detection-threshold: 30000
+      # Transactions are demarcated explicitly. Autocommit on a pooled
+      # connection is how a "single transaction" silently becomes several,
+      # which is precisely the bug the outbox pattern exists to prevent.
+      auto-commit: false
 
   jpa:
     open-in-view: false
@@ -53,33 +59,52 @@ spring:
     consumer:
       group-id: salvage-core
       auto-offset-reset: earliest
+      # Offsets are committed by the listener after the handler returns, so a
+      # crash mid-handler redelivers rather than silently skipping.
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual_immediate
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # The idempotent producer is not optional in this system. Without it a
+      # producer-side retry after a network blip can write the same record
+      # twice, and "never originate a duplicate" would be false at the very
+      # first hop. Requires acks=all and max in-flight <= 5.
       acks: all
-      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000
 
 # ---- actuator --------------------------------------------------------------
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,prometheus
   endpoint:
     health:
-      show-details: always
-      probes:
-        enabled: true
+      # Never expose dependency detail on an unauthenticated endpoint. Driver
+      # exception messages embed connection URLs, which embed credentials.
+      # The detailed view lives at /health/readiness, which returns exception
+      # types only, and in the logs.
+      show-details: never
+      show-components: never
   health:
     readinessState:
       enabled: true
     livenessState:
       enabled: true
 
-# ---- salvage ---------------------------------------------------------------
-salvage:
-  payment-provider: ${SALVAGE_PAYMENT_PROVIDER:simulated}
-  simulated-provider-seed: ${SALVAGE_SIMULATED_PROVIDER_SEED:20260829}
+# No `salvage.*` block yet. The payment-provider selector arrives with the
+# PaymentProvider port in Phase 4 (docs/adr/0003); declaring a config key that
+# nothing reads would imply a capability that does not exist.
+
+# ---- logging ---------------------------------------------------------------
+logging:
+  level:
+    root: INFO
+    com.salvage: INFO
