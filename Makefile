@@ -1,114 +1,126 @@
-# Salvage Makefile
+# Salvage
 #
 # Primary targets: up, down, test, lint, demo
-# Auxiliary: logs, ps, clean, bootstrap
 #
-# Prerequisites:
-#   - Docker and Docker Compose
-#   - Java 21 (JDK) on PATH
-#   - Python 3.12+ on PATH
-#   - Node.js 20+ on PATH (Phase 7 only)
+# Prerequisites
+#   make up / make demo   Docker and Docker Compose. Nothing else.
+#   make test / lint      additionally a JDK 21 and uv (which fetches its own
+#                         Python 3.12). Run `make preflight` to check.
 #
-# On Windows, either install make (e.g. via scoop: `scoop install make`)
-# or use the equivalent commands shown in each target's comment.
+# Environment: developed and verified on WSL2 / Linux. `make` is not present
+# on Windows by default; run these from a WSL2 shell. See README.md.
 
-.PHONY: up down test lint demo logs ps clean bootstrap \
-        test-java test-python lint-java lint-python \
-        razorpay-e2e
+SHELL := /usr/bin/env bash
+.SHELLFLAGS := -eu -o pipefail -c
 
-COMPOSE := docker compose
-CORE_DIR := services/salvage-core
+.DEFAULT_GOAL := help
+.PHONY: help preflight up down clean ps logs wait \
+        test test-java test-python lint lint-java lint-python \
+        format demo razorpay-e2e contracts-check
+
+COMPOSE   := docker compose
+CORE_DIR  := services/salvage-core
 BRAIN_DIR := services/salvage-brain
+
+# Gradle's file hasher uses IO that the WSL2 9p driver serving /mnt/c does not
+# support; a build from a Windows-hosted path fails with
+# "java.io.IOException: Input/output error". Moving only the project cache onto
+# a Linux-native path fixes it and costs nothing elsewhere.
+GRADLE_CACHE := $(shell case "$$(pwd)" in /mnt/*) echo '--project-cache-dir=/tmp/salvage-gradle-cache';; esac)
+GRADLE       := ./gradlew --no-daemon --console=plain $(GRADLE_CACHE)
+
+help: ## Show available targets
+	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
+	  | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n",$$1,$$2}'
+
+# ---------------------------------------------------------------------------
+# Preflight
+# ---------------------------------------------------------------------------
+
+preflight: ## Check that the toolchain this repo needs is present
+	@missing=0; \
+	check() { \
+	  if command -v "$$1" >/dev/null 2>&1; then printf '  \033[32mok\033[0m   %-8s %s\n' "$$1" "$$($$2 2>&1 | head -1)"; \
+	  else printf '  \033[31mMISS\033[0m %-8s %s\n' "$$1" "$$3"; missing=1; fi; }; \
+	check docker  'docker --version'  'https://docs.docker.com/get-docker/'; \
+	check java    'java -version'     'JDK 21 - https://adoptium.net (or let Gradle provision it)'; \
+	check uv      'uv --version'      'curl -LsSf https://astral.sh/uv/install.sh | sh'; \
+	if ! docker info >/dev/null 2>&1; then \
+	  printf '  \033[31mMISS\033[0m %-8s %s\n' 'daemon' 'Docker is installed but not reachable (start Docker Desktop; enable WSL integration)'; missing=1; \
+	fi; \
+	exit $$missing
 
 # ---------------------------------------------------------------------------
 # Infrastructure
 # ---------------------------------------------------------------------------
 
-## Start infrastructure (PostgreSQL, Redis, Redpanda)
-up:
-	$(COMPOSE) up -d postgres redis redpanda redpanda-init
-	@echo "Waiting for services to be healthy..."
-	$(COMPOSE) run --rm redpanda-init || true
+up: ## Start infrastructure (PostgreSQL, Redis, Redpanda) and create topics
+	$(COMPOSE) up -d --wait postgres redis redpanda
+	$(COMPOSE) up --exit-code-from redpanda-init redpanda-init
 	@echo ""
 	@echo "Infrastructure ready."
-	@echo "  PostgreSQL: localhost:5432"
-	@echo "  Redis:      localhost:6379"
-	@echo "  Redpanda:   localhost:19092"
+	@echo "  PostgreSQL  localhost:$${POSTGRES_PORT:-5433}"
+	@echo "  Redis       localhost:$${REDIS_PORT:-6379}"
+	@echo "  Redpanda    localhost:$${KAFKA_EXTERNAL_PORT:-19092}"
 
-## Stop all services and remove containers
-down:
-	$(COMPOSE) down
+down: ## Stop containers, keep data
+	$(COMPOSE) --profile apps down
 
-## Stop and remove volumes (full reset)
-clean:
-	$(COMPOSE) down -v --remove-orphans
-	cd $(CORE_DIR) && ./gradlew clean 2>/dev/null || true
+clean: ## Stop containers and delete all data
+	$(COMPOSE) --profile apps down -v --remove-orphans
+	cd $(CORE_DIR) && $(GRADLE) clean
+	rm -rf $(BRAIN_DIR)/.venv
 	@echo "Cleaned."
 
-## Show container status
-ps:
-	$(COMPOSE) ps
+ps: ## Show container status
+	$(COMPOSE) --profile apps ps
 
-## Tail container logs
-logs:
-	$(COMPOSE) logs -f
-
-# ---------------------------------------------------------------------------
-# Bootstrap
-# ---------------------------------------------------------------------------
-
-## Install toolchain dependencies (Gradle wrapper, Python venv)
-bootstrap:
-	@echo "==> Bootstrapping Gradle wrapper..."
-	@if [ ! -f $(CORE_DIR)/gradle/wrapper/gradle-wrapper.jar ]; then \
-		bash scripts/bootstrap-gradle.sh; \
-	fi
-	@echo "==> Setting up Python venv for salvage-brain..."
-	@cd $(BRAIN_DIR) && python3 -m venv .venv && \
-		.venv/bin/pip install -q -e ".[dev]" 2>&1 | tail -3
-	@echo "==> Bootstrap complete."
+logs: ## Tail container logs
+	$(COMPOSE) --profile apps logs -f
 
 # ---------------------------------------------------------------------------
 # Test
 # ---------------------------------------------------------------------------
 
-## Run all tests
-test: test-java test-python
+test: test-java test-python ## Run every test
 
-## Run salvage-core tests (requires Docker for Testcontainers)
-test-java:
-	cd $(CORE_DIR) && ./gradlew test --no-daemon
+test-java: ## salvage-core tests (starts its own containers via Testcontainers)
+	cd $(CORE_DIR) && $(GRADLE) test
 
-## Run salvage-brain tests
-test-python:
-	cd $(BRAIN_DIR) && python -m pytest tests/ -v
+test-python: ## salvage-brain tests (integration tests need Docker)
+	cd $(BRAIN_DIR) && uv run --frozen pytest tests -q
+
+test-python-unit: ## salvage-brain tests that do not need Docker
+	cd $(BRAIN_DIR) && uv run --frozen pytest tests -q -m 'not integration'
 
 # ---------------------------------------------------------------------------
 # Lint
 # ---------------------------------------------------------------------------
 
-## Run all linters
-lint: lint-java lint-python
+lint: lint-java lint-python contracts-check ## Run every linter
 
-## Lint Java (Spotless)
-lint-java:
-	cd $(CORE_DIR) && ./gradlew spotlessCheck --no-daemon 2>/dev/null || \
-		echo "Spotless not yet configured (Phase 2)"
+lint-java: ## Spotless + compile warnings
+	cd $(CORE_DIR) && $(GRADLE) spotlessCheck
 
-## Lint Python (ruff + mypy)
-lint-python:
-	cd $(BRAIN_DIR) && python -m ruff check src/ tests/
-	cd $(BRAIN_DIR) && python -m mypy src/ --ignore-missing-imports || true
+lint-python: ## ruff + mypy (strict)
+	cd $(BRAIN_DIR) && uv run --frozen ruff check src tests
+	cd $(BRAIN_DIR) && uv run --frozen mypy src
+
+format: ## Apply formatting fixes
+	cd $(CORE_DIR) && $(GRADLE) spotlessApply
+	cd $(BRAIN_DIR) && uv run --frozen ruff check --fix src tests
+
+contracts-check: ## Validate the contracts and prove nothing has drifted from them
+	bash scripts/check-contracts.sh
 
 # ---------------------------------------------------------------------------
 # Demo
 # ---------------------------------------------------------------------------
 
-## Run the end-to-end demo with simulated provider
-demo:
-	@echo "Demo target will be wired in Phase 4."
-	@echo "For now, verify with: make up && make test"
+demo: ## End-to-end round trip: Kafka -> core -> PostgreSQL -> brain -> HTTP
+	bash scripts/demo.sh
 
-## Run end-to-end against Razorpay test mode (requires credentials in .env)
-razorpay-e2e:
-	@echo "Razorpay E2E target will be wired in Phase 4."
+razorpay-e2e: ## Not built yet - the Razorpay adapter lands in Phase 4
+	@echo "Not built yet. The PaymentProvider port and the Razorpay test-mode"
+	@echo "adapter are Phase 4 deliverables (docs/adr/0003)."
+	@exit 1
