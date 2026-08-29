@@ -1,0 +1,46 @@
+# Build context is the repository root for both service images, so without
+# this file every image build ships the git history, both build trees, and any
+# local virtualenv -- slow, and a way to leak a stray .env into a layer.
+
+.git/
+.github/
+
+# build outputs
+**/build/
+**/bin/
+**/.gradle/
+**/out/
+**/dist/
+**/*.egg-info/
+
+# python local state
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.hypothesis/
+**/htmlcov/
+**/.coverage
+
+# node
+**/node_modules/
+**/.next/
+
+# secrets and local config -- never in a layer
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+
+# editor
+.vscode/
+.idea/
+
+# docs and ops that no image needs
+docs/
+ops/grafana/
+*.md
+!services/salvage-brain/README.md
