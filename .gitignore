@@ -10,8 +10,9 @@
 # ---- java / gradle -------------------------------------------------------
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
+bin/
 out/
+!gradle/wrapper/gradle-wrapper.jar
 *.class
 
 # ---- python --------------------------------------------------------------

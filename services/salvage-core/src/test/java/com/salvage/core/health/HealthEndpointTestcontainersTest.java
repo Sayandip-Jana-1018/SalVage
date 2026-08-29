@@ -3,13 +3,17 @@ package com.salvage.core.health;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
+import java.util.Objects;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -27,7 +31,11 @@ import org.testcontainers.utility.DockerImageName;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EnabledIf("isDockerAvailable")
+@SuppressWarnings({"resource", "deprecation"})
 class HealthEndpointTestcontainersTest {
+
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
+            new ParameterizedTypeReference<>() {};
 
     static PostgreSQLContainer<?> postgres;
     static GenericContainer<?> redis;
@@ -64,6 +72,19 @@ class HealthEndpointTestcontainersTest {
         }
     }
 
+    @AfterAll
+    static void stopContainers() {
+        if (kafka != null) {
+            kafka.stop();
+        }
+        if (redis != null) {
+            redis.stop();
+        }
+        if (postgres != null) {
+            postgres.stop();
+        }
+    }
+
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
         if (postgres != null && postgres.isRunning()) {
@@ -86,16 +107,17 @@ class HealthEndpointTestcontainersTest {
     @Test
     @SuppressWarnings("unchecked")
     void readiness_returns_healthy_with_testcontainers() {
-        ResponseEntity<Map> response = restTemplate.getForEntity("/health/readiness", Map.class);
+        ResponseEntity<Map<String, Object>> response =
+                restTemplate.exchange("/health/readiness", HttpMethod.GET, null, MAP_TYPE);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        Map<String, Object> body = response.getBody();
-        assertThat(body).isNotNull();
+        Map<String, Object> body = Objects.requireNonNull(response.getBody());
         assertThat(body.get("status")).isEqualTo("healthy");
 
         Map<String, Map<String, Object>> checks =
                 (Map<String, Map<String, Object>>) body.get("checks");
+        assertThat(checks).isNotNull();
         assertThat(checks).containsKeys("postgres", "redis", "kafka");
         assertThat(checks.get("postgres").get("status")).isEqualTo("up");
         assertThat(checks.get("redis").get("status")).isEqualTo("up");

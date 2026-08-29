@@ -9,10 +9,5 @@
       "path": "C:\\Users\\Sayan\\.jdks\\temurin-21",
       "default": true
     }
-  ],
-  "python.defaultInterpreterPath": "C:\\Users\\Sayan\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
-  "python.analysis.extraPaths": [
-    "services/salvage-brain/src"
-  ],
-  "java.compile.nullAnalysis.mode": "automatic"
+  ]
 }

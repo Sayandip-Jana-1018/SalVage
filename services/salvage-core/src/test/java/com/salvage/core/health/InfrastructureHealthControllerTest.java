@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
+import java.util.Objects;
 import javax.sql.DataSource;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -38,8 +39,8 @@ class InfrastructureHealthControllerTest {
     void liveness_returns_healthy_200() {
         ResponseEntity<Map<String, Object>> response = controller.liveness();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("status")).isEqualTo("healthy");
+        Map<String, Object> body = Objects.requireNonNull(response.getBody());
+        assertThat(body.get("status")).isEqualTo("healthy");
     }
 
     @Test
@@ -52,12 +53,13 @@ class InfrastructureHealthControllerTest {
 
         ResponseEntity<Map<String, Object>> response = controller.readiness();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("status")).isEqualTo("unhealthy");
+        Map<String, Object> body = Objects.requireNonNull(response.getBody());
+        assertThat(body.get("status")).isEqualTo("unhealthy");
 
         @SuppressWarnings("unchecked")
         Map<String, Map<String, Object>> checks =
-                (Map<String, Map<String, Object>>) response.getBody().get("checks");
+                (Map<String, Map<String, Object>>) body.get("checks");
+        assertThat(checks).isNotNull();
         assertThat(checks.get("postgres").get("status")).isEqualTo("down");
     }
 
@@ -76,12 +78,13 @@ class InfrastructureHealthControllerTest {
 
         ResponseEntity<Map<String, Object>> response = controller.readiness();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("status")).isEqualTo("unhealthy");
+        Map<String, Object> body = Objects.requireNonNull(response.getBody());
+        assertThat(body.get("status")).isEqualTo("unhealthy");
 
         @SuppressWarnings("unchecked")
         Map<String, Map<String, Object>> checks =
-                (Map<String, Map<String, Object>>) response.getBody().get("checks");
+                (Map<String, Map<String, Object>>) body.get("checks");
+        assertThat(checks).isNotNull();
         assertThat(checks.get("redis").get("status")).isEqualTo("down");
     }
 }
