@@ -102,12 +102,29 @@ git clone <repo-url> salvage
 cd salvage
 ```
 
-**3. Put the toolchain on your PATH permanently.** Add to `~/.bashrc`:
+**3. Put the toolchain on your PATH permanently.** Add to `~/.profile` —
+**not** `~/.bashrc`:
 
 ```bash
 export JAVA_HOME="$HOME/.local/share/jdk-21"
 export PATH="$JAVA_HOME/bin:$HOME/.local/bin:$PATH"
 ```
+
+Ubuntu's default `~/.bashrc` opens with
+
+```bash
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+```
+
+so it returns immediately for a non-interactive shell. Exports placed there
+work in your terminal but are invisible to `bash -l`, to scripts, and to
+anything a tool spawns — which shows up as `make preflight` reporting `java`
+missing even though `java -version` works when you type it. `~/.profile` is
+read by every login shell. Keep `~/.bashrc` for interactive-only things like
+aliases and the prompt.
 
 If you do not have them yet:
 
