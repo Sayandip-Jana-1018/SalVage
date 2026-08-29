@@ -111,8 +111,8 @@ export function ScrollFrameSequence(): React.ReactElement {
       rect.height / 2,
       rect.width * 0.75
     );
-    vignette.addColorStop(0, "rgba(5, 7, 10, 0.15)");
-    vignette.addColorStop(1, "rgba(5, 7, 10, 0.55)");
+    vignette.addColorStop(0, "rgba(5, 7, 10, 0.12)");
+    vignette.addColorStop(1, "rgba(5, 7, 10, 0.5)");
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, rect.width, rect.height);
 
@@ -234,68 +234,68 @@ export function ScrollFrameSequence(): React.ReactElement {
   return (
     <div
       ref={containerRef}
-      className="relative w-full min-h-[220vh] mb-12 flex flex-col items-center"
+      className="relative w-full min-h-[220vh] mb-8 flex flex-col items-center"
     >
-      {/* Sticky Hero Viewport */}
-      <div className="sticky top-24 w-full max-w-6xl mx-auto flex flex-col items-center">
-        {/* Editorial Playfair Typography Header */}
-        <div className="text-center max-w-3xl mx-auto px-4 mb-6 space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-mono tracking-wider uppercase mb-1 font-semibold shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+      {/* Sticky Hero Viewport - Pulled Up & Perfectly Centered in 100vh */}
+      <div className="sticky top-16 sm:top-20 w-full max-w-5xl mx-auto flex flex-col items-center">
+        {/* Compact High-Impact Typography Header */}
+        <div className="text-center max-w-2xl mx-auto px-4 mb-3 space-y-1">
+          <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-mono tracking-wider uppercase font-semibold shadow-sm">
+            <Sparkles className="w-3 h-3 text-emerald-600 animate-pulse" />
             <span>Interactive 3D Causal Recovery Timeline</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif tracking-tight text-slate-900 leading-tight font-normal">
-            The Anatomy of an <br className="hidden sm:inline" />
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif tracking-tight text-slate-900 leading-tight font-normal">
+            The Anatomy of an{" "}
             <span className="italic font-normal bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
               Autonomous Recovery
             </span>
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-600 font-sans max-w-xl mx-auto">
-            Witness how Salvage autonomously perceives systemic bank switch outages, calculates expected net utility, and executes zero-leakage recovery.
+          <p className="text-xs text-slate-500 font-sans max-w-lg mx-auto">
+            Witness how Salvage autonomously perceives systemic outages, optimizes net value, and recovers funds.
           </p>
         </div>
 
         {/* 3D Canvas + Liquid Glass Frame Container */}
-        <div className="relative w-full rounded-3xl liquid-glass overflow-hidden border border-slate-200/90 shadow-[0_25px_60px_rgba(0,0,0,0.07)] p-2 sm:p-4 transition-all">
+        <div className="relative w-full rounded-2xl liquid-glass overflow-hidden border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-2 sm:p-3 transition-all">
           {/* Top Glass Toolbar */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200/70 text-xs font-mono text-slate-600 mb-2">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-200/70 text-xs font-mono text-slate-600 mb-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-slate-900 font-bold tracking-tight">LIVE 3D RECOVERY SIMULATOR</span>
+              <span className="text-slate-900 font-bold tracking-tight text-[11px]">LIVE 3D RECOVERY FEED</span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {/* Play / Pause Toggle Button */}
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                className="px-2.5 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-semibold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
               >
                 {isPlaying ? (
                   <>
-                    <Pause className="w-3 h-3 fill-current" />
-                    <span>Pause 3D Loop</span>
+                    <Pause className="w-2.5 h-2.5 fill-current" />
+                    <span>Pause</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Play 3D Loop</span>
+                    <Play className="w-2.5 h-2.5 fill-current" />
+                    <span>Play</span>
                   </>
                 )}
               </button>
 
-              <span className="hidden sm:inline text-[11px] text-slate-500 font-semibold">
+              <span className="hidden sm:inline text-[10px] text-slate-500 font-semibold">
                 FRAME {String(currentFrame + 1).padStart(2, "0")}/{TOTAL_FRAMES}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] border border-emerald-200 font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[9px] border border-emerald-200 font-bold">
                 60 FPS
               </span>
             </div>
           </div>
 
           {/* Canvas Viewport */}
-          <div className="relative w-full h-[420px] sm:h-[500px] lg:h-[560px] rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner">
+          <div className="relative w-full h-[320px] sm:h-[390px] lg:h-[430px] rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner">
             {!isLoaded && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 space-y-3">
                 <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
@@ -317,40 +317,40 @@ export function ScrollFrameSequence(): React.ReactElement {
             />
 
             {/* ✨ VERTICALLY & HORIZONTALLY CENTERED LIQUID GLASS TELEMETRY MODAL */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] sm:w-[80%] max-w-xl bg-white/92 backdrop-blur-2xl rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-[0_25px_60px_rgba(0,0,0,0.2)] transition-all duration-500 z-10 text-center flex flex-col items-center">
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
-                <span className="text-xs font-mono font-bold text-slate-900 tracking-wider">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] sm:w-[78%] max-w-lg bg-white/92 backdrop-blur-2xl rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_20px_50px_rgba(0,0,0,0.18)] transition-all duration-500 z-10 text-center flex flex-col items-center">
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                <span className="text-[11px] font-mono font-bold text-slate-900 tracking-wider">
                   PHASE {stage.stage} · {stage.title}
                 </span>
                 <span
-                  className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border font-bold ${stage.badgeColor}`}
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-bold ${stage.badgeColor}`}
                 >
                   {stage.badge}
                 </span>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-700 font-sans leading-relaxed max-w-md mx-auto font-medium">
+              <p className="text-xs text-slate-700 font-sans leading-relaxed max-w-md mx-auto font-medium">
                 {stage.description}
               </p>
 
-              <div className="mt-4 pt-3 border-t border-slate-200/80 w-full flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-500">
+              <div className="mt-2.5 pt-2 border-t border-slate-200/80 w-full flex flex-wrap items-center justify-between text-[10px] font-mono text-slate-500">
                 <span className="truncate">{stage.subtext}</span>
                 <span className="flex items-center gap-1 text-emerald-700 font-bold shrink-0">
-                  SLA: &lt;50ms <ArrowRight className="w-3.5 h-3.5" />
+                  SLA: &lt;50ms <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
             </div>
           </div>
 
           {/* Bottom Interactive Scrubber Bar */}
-          <div className="mt-3 px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-600 border-t border-slate-200/70">
-            <span className="text-[11px] flex items-center gap-1.5 text-slate-800 font-semibold font-sans">
-              <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Interactive Scrubber (Drag or Scroll):</span>
+          <div className="mt-2 px-3 py-1.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-mono text-slate-600 border-t border-slate-200/70">
+            <span className="text-[10px] flex items-center gap-1.5 text-slate-800 font-semibold font-sans">
+              <Cpu className="w-3 h-3 text-emerald-600" />
+              <span>Scrubber:</span>
             </span>
 
-            <div className="w-full sm:w-1/2 flex items-center gap-3">
-              <span className="text-[10px] text-slate-400 font-semibold">START</span>
+            <div className="w-full sm:w-1/2 flex items-center gap-2.5">
+              <span className="text-[9px] text-slate-400 font-semibold">START</span>
               <input
                 type="range"
                 min="0"
@@ -375,7 +375,7 @@ export function ScrollFrameSequence(): React.ReactElement {
                 }}
                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 focus:outline-none"
               />
-              <span className="text-[10px] text-slate-400 font-semibold">RECOVERED</span>
+              <span className="text-[9px] text-slate-400 font-semibold">RECOVERED</span>
             </div>
           </div>
         </div>
