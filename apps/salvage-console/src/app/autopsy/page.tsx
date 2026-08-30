@@ -1,87 +1,90 @@
 "use client";
 
-import { ArrowRight, Search, Stethoscope } from "lucide-react";
-import Link from "next/link";
+import { ArrowRight, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { formatISTTime, formatRupees } from "@/lib/formatters";
-import { initialDecisionStream } from "@/lib/mockData";
+import { useMerchant } from "@/lib/merchant";
 
-export default function AutopsyIndexPage(): React.ReactElement {
-  const [searchQuery, setSearchQuery] = useState("");
+/**
+ * Look up one payment attempt.
+ *
+ * A lookup, not a browse. The previous version listed attempts from a
+ * checked-in fixture; there is no endpoint that lists attempts, because
+ * neither service exposes one -- every read is by
+ * (merchant_id, payment_attempt_id), which is what keeps tenant scoping
+ * enforceable at the repository layer. Rather than invent a listing, this
+ * asks for the id.
+ */
+export default function AutopsySearchPage(): React.ReactElement {
+  const router = useRouter();
+  const { merchantId, setMerchantId } = useMerchant();
+  const [attemptId, setAttemptId] = useState("");
 
-  const filtered = initialDecisionStream.filter(
-    (item) =>
-      item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.merchant_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.taxonomy_code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmed = attemptId.trim();
+    if (!trimmed) return;
+    router.push(
+      `/autopsy/${encodeURIComponent(trimmed)}?merchant=${encodeURIComponent(merchantId)}`,
+    );
+  };
 
   return (
-    <div className="w-full space-y-6 flex flex-col items-center text-center">
-      {/* Header */}
-      <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
-        <div className="flex flex-col items-center justify-center mb-4 space-y-1">
-          <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
-            <Stethoscope className="w-4 h-4 text-emerald-600" />
-            The Autopsy View — Causal Failure Dissections
-          </h2>
-          <p className="text-xs text-slate-500 max-w-lg">
-            Select a payment failure attempt to dissect diagnosis, utility calculus, bounds checks, and cryptographic hash-chain proof
-          </p>
-        </div>
+    <div className="w-full flex flex-col items-center space-y-8">
+      <div className="w-full rounded-2xl liquid-glass p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
+        <h1 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">
+          Decision Autopsy
+        </h1>
+        <p className="text-xs text-slate-500 max-w-xl mt-1.5">
+          Reconstruct one payment attempt end to end: what was ingested, how it was classified,
+          what the policy engine valued, and what the ledger recorded.
+        </p>
 
-        {/* Search */}
-        <div className="relative w-full max-w-2xl mx-auto">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by Payment Attempt ID, Merchant ID, or Failure Taxonomy..."
-            className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm text-center"
-          />
-        </div>
-      </div>
+        <form onSubmit={submit} className="w-full max-w-2xl mt-6 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <label className="flex-1 text-left">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
+                Merchant id
+              </span>
+              <input
+                value={merchantId}
+                onChange={(event) => setMerchantId(event.target.value)}
+                className="w-full mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
+              />
+            </label>
 
-      {/* Attempts List */}
-      <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
-        <h3 className="text-xs font-mono uppercase text-slate-500 mb-5 tracking-wider font-semibold">
-          Recent Payment Failure Episodes ({filtered.length})
-        </h3>
-
-        <div className="w-full divide-y divide-slate-100 font-mono text-xs">
-          {filtered.map((item) => (
-            <Link
-              key={item.id}
-              href={`/autopsy/${item.id}`}
-              className="py-4 px-3 flex flex-wrap items-center justify-between hover:bg-slate-50 rounded-xl transition-all group gap-3"
-            >
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex flex-col text-left">
-                  <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                    {item.id}
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    {formatISTTime(item.created_at)} · {item.merchant_id}
-                  </span>
-                </div>
-
-                <span className="px-2.5 py-0.5 rounded-lg text-[10px] bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                  {item.taxonomy_code}
-                </span>
-
-                <span className="text-slate-900 font-bold">{formatRupees(item.amount_paise)}</span>
+            <label className="flex-[2] text-left">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
+                Payment attempt id
+              </span>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  autoFocus
+                  value={attemptId}
+                  onChange={(event) => setAttemptId(event.target.value)}
+                  placeholder="pay_..."
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
+                />
               </div>
+            </label>
+          </div>
 
-              <div className="flex items-center gap-3">
-                <span className="px-2.5 py-0.5 rounded-lg text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold">
-                  {item.chosen_action}
-                </span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-              </div>
-            </Link>
-          ))}
-        </div>
+          <button
+            type="submit"
+            disabled={!attemptId.trim()}
+            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-mono font-semibold inline-flex items-center gap-2 transition-all shadow-sm"
+          >
+            Open autopsy
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </form>
+
+        <p className="text-[11px] text-slate-400 mt-5 max-w-xl font-mono">
+          Attempt ids come from the ingest stream. Run{" "}
+          <code className="px-1 py-0.5 rounded bg-slate-100">make demo</code> to publish one, or
+          take an id from the ledger stream on the war room.
+        </p>
       </div>
     </div>
   );

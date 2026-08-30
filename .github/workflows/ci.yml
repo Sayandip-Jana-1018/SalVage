@@ -13,8 +13,14 @@ concurrency:
 
 env:
   JAVA_VERSION: "21"
-  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
   UV_VERSION: "0.12.7"
+
+# Until this file was updated, CI covered four jobs from Phase 0: contracts,
+# salvage-brain, salvage-core and the demo. packages/salvage-sim,
+# packages/salvage-eval, services/salvage-mcp and apps/salvage-console -- four
+# of the eight phases, and more than half the source in the repository -- had
+# no CI at all. A regression in any of them reached main unnoticed.
 
 jobs:
   # --------------------------------------------------------------------------
@@ -34,33 +40,71 @@ jobs:
         run: bash scripts/check-contracts.sh
 
   # --------------------------------------------------------------------------
-  # Python
+  # Python. One job per package: a failure names the package rather than
+  # "python", and the three run in parallel.
   # --------------------------------------------------------------------------
   python:
-    name: salvage-brain (lint, types, tests)
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: salvage-brain
+            dir: services/salvage-brain
+            extras: "--all-extras"
+            pytest: "pytest tests -q"
+          - name: salvage-sim
+            dir: packages/salvage-sim
+            extras: ""
+            # -m 'not slow' here; the 100k-event acceptance check is its own
+            # job below so that a slow run does not gate every other suite.
+            pytest: "pytest tests -q -m 'not slow'"
+          - name: salvage-eval
+            dir: packages/salvage-eval
+            extras: ""
+            pytest: "pytest tests -q"
     defaults:
       run:
-        working-directory: services/salvage-brain
+        working-directory: ${{ matrix.dir }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
-          cache-dependency-glob: services/salvage-brain/uv.lock
+          cache-dependency-glob: ${{ matrix.dir }}/uv.lock
       - name: Install (locked)
         # --frozen fails if uv.lock is stale rather than silently resolving
         # something other than what was tested locally.
-        run: uv sync --frozen --all-extras --group dev
+        run: uv sync --frozen ${{ matrix.extras }} --group dev
       - name: Ruff
         run: uv run --frozen ruff check src tests
       - name: Mypy (strict)
         run: uv run --frozen mypy src
       - name: Tests
-        # Docker is present on GitHub-hosted ubuntu runners, so the
-        # Testcontainers-backed integration tests run here too.
-        run: uv run --frozen pytest tests -q
+        run: uv run --frozen ${{ matrix.pytest }}
+
+  # --------------------------------------------------------------------------
+  # The simulator's acceptance criterion: 100,000 events in workable time.
+  # Separate because it is minutes rather than seconds.
+  # --------------------------------------------------------------------------
+  simulator-performance:
+    name: salvage-sim (100k event acceptance)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/salvage-sim
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: packages/salvage-sim/uv.lock
+      - run: uv sync --frozen --group dev
+      - name: Generate 100k events
+        run: uv run --frozen pytest tests -q -m slow -s
 
   # --------------------------------------------------------------------------
   # Java
@@ -82,9 +126,7 @@ jobs:
         run: ./gradlew --no-daemon spotlessCheck
       - name: Tests
         # Testcontainers starts PostgreSQL, Redis and Redpanda against the
-        # runner's Docker daemon. No `services:` block is needed and adding a
-        # docker:dind service (as an earlier version of this workflow did)
-        # accomplishes nothing.
+        # runner's Docker daemon. No `services:` block is needed.
         run: ./gradlew --no-daemon test
       - name: Publish test report
         if: always()
@@ -93,6 +135,62 @@ jobs:
           name: salvage-core-test-report
           path: services/salvage-core/build/reports/tests/test
           if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # TypeScript. `npm ci` rather than `npm install`, for the same reason the
+  # Python jobs pass --frozen.
+  # --------------------------------------------------------------------------
+  node:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: salvage-mcp
+            dir: services/salvage-mcp
+            typecheck: npm run typecheck
+          - name: salvage-console
+            dir: apps/salvage-console
+            typecheck: npx --no-install tsc --noEmit
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ matrix.dir }}/package-lock.json
+      - name: Install (locked)
+        run: npm ci
+      - name: Typecheck
+        run: ${{ matrix.typecheck }}
+      - name: Tests
+        run: npm test
+
+  # --------------------------------------------------------------------------
+  # The console must build for production, not merely typecheck. `next build`
+  # type-checks every route handler and page against the wire types, which is
+  # the check that would have caught the console's types drifting from the
+  # services they describe.
+  # --------------------------------------------------------------------------
+  console-build:
+    name: salvage-console (production build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/salvage-console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/salvage-console/package-lock.json
+      - run: npm ci
+      - run: npm run build
 
   # --------------------------------------------------------------------------
   # The acceptance test: the demo a stranger is told to run must actually run.

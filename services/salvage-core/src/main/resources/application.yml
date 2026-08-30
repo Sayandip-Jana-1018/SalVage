@@ -99,9 +99,25 @@ management:
     livenessState:
       enabled: true
 
-# No `salvage.*` block yet. The payment-provider selector arrives with the
-# PaymentProvider port in Phase 4 (docs/adr/0003); declaring a config key that
-# nothing reads would imply a capability that does not exist.
+# ---- salvage ---------------------------------------------------------------
+salvage:
+  demo-ingest:
+    # Lets the operator console publish a real payment_failed.v1 event through
+    # the ordinary Kafka path, so its checkout page drives the actual pipeline
+    # rather than animating one.
+    #
+    # This is a write endpoint: events published through it are attributed to a
+    # merchant and cause decisions to be recorded against that merchant. It is
+    # off unless switched on, and it should stay off anywhere shared.
+    enabled: ${SALVAGE_DEMO_INGEST_ENABLED:false}
+
+  razorpay:
+    # Read by ProviderCredentialsGuard, which refuses to start on a key
+    # beginning `rzp_live_`. No PaymentProvider adapter exists yet, so setting
+    # this causes no call to Razorpay; the guard is in place ahead of the
+    # adapter deliberately, because it is the control that stops the adapter
+    # from ever being pointed at live money by accident.
+    key-id: ${RAZORPAY_KEY_ID:}
 
 # ---- logging ---------------------------------------------------------------
 logging:

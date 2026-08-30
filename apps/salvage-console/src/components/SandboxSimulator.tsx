@@ -1,216 +1,152 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Play, Sparkles } from "lucide-react";
-import React, { useState } from "react";
-import { formatPercent, formatRupees } from "@/lib/formatters";
+import { AlertTriangle, FlaskConical } from "lucide-react";
+import React from "react";
+import { StateNotice } from "@/components/StateNotice";
+import { formatPercent } from "@/lib/formatters";
+import { useApi } from "@/lib/useApi";
 
+interface EstimatorResult {
+  estimator_name: string;
+  estimated_value: number;
+  ci_lower: number;
+  ci_upper: number;
+  standard_error: number;
+  effective_sample_size: number;
+  is_identifiable: boolean;
+  diagnostics_warning: string | null;
+}
+
+interface PolicySummary {
+  policy_name: string;
+  ground_truth_value: number;
+  ground_truth_recovery_rate: number;
+  ips: EstimatorResult;
+  snips: EstimatorResult;
+  direct_method: EstimatorResult;
+  doubly_robust: EstimatorResult;
+}
+
+interface EvaluationResults {
+  generated_at: string;
+  episodes: number;
+  bootstraps: number;
+  seed: number;
+  framing: string;
+  policies: PolicySummary[];
+}
+
+const rupees = (paise: number) =>
+  `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+
+/**
+ * The measured off-policy evaluation, as produced by `make eval`.
+ *
+ * This page previously offered a free-text "policy hypothesis tester" backed by
+ * three hardcoded scenarios. Typing a question ran a 600ms `setTimeout` and
+ * then displayed one of them: a 59.2% recovery rate, a ₹2.28L Doubly Robust
+ * estimate with a confidence interval, and an effective sample size of 1940 --
+ * under a badge reading "Doubly Robust Statistical Engine". No estimator ran.
+ *
+ * The honest version of that feature needs the eval harness reachable from the
+ * console, which means exposing `packages/salvage-eval` behind an endpoint that
+ * can run a policy specification. Until that exists, this shows the real
+ * results the harness produced on its last run, including the ones that are
+ * unflattering.
+ */
 export function SandboxSimulator(): React.ReactElement {
-  const [hypothesis, setHypothesis] = useState<string>(
-    "What if we switch to scheduled retry post-payday for insufficient funds?"
-  );
-  const [isSimulating, setIsSimulating] = useState<boolean>(false);
-  const [simulationRun, setSimulationRun] = useState<boolean>(true);
-
-  // Pre-configured simulation scenarios
-  const scenarios = [
-    {
-      title: "Salary-Cycle Aligned Retries",
-      prompt: "What if we switch to scheduled retry post-payday for insufficient funds?",
-      refuseToGuess: false,
-      baselineRecoveryRate: 0.53,
-      simulatedRecoveryRate: 0.592,
-      incrementalRevenuePaise: 24500000,
-      drEstimatePaise: 22750000,
-      ciLowerPaise: 21200000,
-      ciUpperPaise: 24300000,
-      ess: 1940.0,
-      totalEpisodes: 5000,
-      summary: "Significant positive lift. Anchoring retry delays to Indian salary credit cycles (28th-3rd) captures post-salary account liquidity.",
-    },
-    {
-      title: "Aggressive Immediate Retries (No Delays)",
-      prompt: "What if we immediately retry every failure up to 3 times without waiting?",
-      refuseToGuess: false,
-      baselineRecoveryRate: 0.53,
-      simulatedRecoveryRate: 0.442,
-      incrementalRevenuePaise: -34550000,
-      drEstimatePaise: 16850000,
-      ciLowerPaise: 15600000,
-      ciUpperPaise: 18100000,
-      ess: 1620.0,
-      totalEpisodes: 5000,
-      summary: "Degraded performance. Immediate retry against degraded issuers compounds throttling, while retrying insufficient funds immediately wastes gateway fees.",
-    },
-    {
-      title: "Zero-Support Hypothesis (Night Nudges)",
-      prompt: "What if we send WhatsApp checkout nudges to all customers at 2 AM?",
-      refuseToGuess: true,
-      diagnosticWarning: "CRITICAL: Insufficient Logging Support (Zero Overlap in Deterministic Strata)",
-      explanation: "Safety bounds strictly enforced Quiet Hours (22:00-08:00 IST) in all historical logs. Offline estimators (IPS, SNIPS, Doubly Robust) cannot identify outcomes outside historical support without active exploration data. The sandbox refuses to fabricate an ungrounded estimate.",
-      ess: 0.0,
-      totalEpisodes: 5000,
-    },
-  ];
-
-  const currentScenario = scenarios.find((s) => s.prompt === hypothesis) || scenarios[0];
-
-  const handleRunSimulation = () => {
-    setIsSimulating(true);
-    setTimeout(() => {
-      setIsSimulating(false);
-      setSimulationRun(true);
-    }, 600);
-  };
+  const { phase, data, error } = useApi<EvaluationResults>("/api/evaluation");
 
   return (
     <div className="w-full space-y-6 flex flex-col items-center text-center">
-      {/* Input Header & Prompt Box */}
       <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
-        <div className="flex flex-col items-center justify-center mb-5 space-y-1">
+        <div className="flex flex-col items-center justify-center mb-3 space-y-1">
           <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            Policy Counterfactual Hypothesis Tester
+            <FlaskConical className="w-4 h-4 text-emerald-600" />
+            Off-Policy Evaluation
           </h2>
-          <p className="text-xs text-slate-500 max-w-lg">
-            Ask policy questions in plain English — evaluated counterfactually against held-out replay data
+          <p className="text-xs text-slate-500 max-w-2xl">
+            Four estimators compared against known ground truth on held-out synthetic episodes.
           </p>
-          <div className="pt-2">
-            <span className="text-[11px] font-mono px-3 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold shadow-sm">
-              Doubly Robust Statistical Engine
-            </span>
-          </div>
         </div>
 
-        {/* Quick Presets */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-5">
-          {scenarios.map((s) => (
-            <button
-              key={s.title}
-              onClick={() => {
-                setHypothesis(s.prompt);
-                setSimulationRun(true);
-              }}
-              className={`text-[11px] px-3.5 py-1.5 rounded-xl border font-mono transition-all cursor-pointer ${
-                hypothesis === s.prompt
-                  ? "bg-slate-900 border-slate-900 text-white font-semibold shadow-sm"
-                  : "bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
-
-        {/* Centered Text Input Form */}
-        <div className="w-full max-w-2xl flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            value={hypothesis}
-            onChange={(e) => setHypothesis(e.target.value)}
-            placeholder="Type a policy question (e.g. What if we cap attempts at 2 instead of 3?)..."
-            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm text-center sm:text-left"
+        {phase !== "ready" || !data ? (
+          <StateNotice
+            // `ready` with no payload should not happen, but the type permits
+            // it; treating it as "missing" is the honest reading of an empty
+            // successful response.
+            phase={phase === "ready" ? "missing" : phase}
+            error={error}
+            emptyTitle="No evaluation results yet"
+            emptyBody="Run `make eval` to run the harness. It writes EVALUATION.md and docs/evaluation-results.json, and this page reads the latter."
           />
-          <button
-            onClick={handleRunSimulation}
-            disabled={isSimulating}
-            className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>{isSimulating ? "Evaluating..." : "Evaluate"}</span>
-          </button>
-        </div>
+        ) : (
+          <>
+            <div className="w-full max-w-3xl rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-left mb-5">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-[11px] text-amber-900 leading-relaxed">{data.framing}</p>
+              </div>
+            </div>
+
+            <p className="text-[10px] font-mono text-slate-400 mb-4">
+              {data.episodes.toLocaleString("en-IN")} episodes · seed {data.seed} ·{" "}
+              {data.bootstraps} bootstraps · generated{" "}
+              {new Date(data.generated_at).toLocaleString()}
+            </p>
+
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-center border-collapse font-mono text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
+                    <th className="pb-3 px-3 font-semibold">Policy</th>
+                    <th className="pb-3 px-3 font-semibold">True recovery</th>
+                    <th className="pb-3 px-3 font-semibold">Ground truth</th>
+                    <th className="pb-3 px-3 font-semibold">Doubly robust [95% CI]</th>
+                    <th className="pb-3 px-3 font-semibold">Kish ESS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.policies.map((policy) => (
+                    <tr key={policy.policy_name} className="hover:bg-slate-50/60">
+                      <td className="py-3 px-3 font-bold text-slate-800 text-left">
+                        {policy.policy_name}
+                        {!policy.doubly_robust.is_identifiable && (
+                          <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold">
+                            NOT IDENTIFIABLE
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 tabular-nums text-slate-700">
+                        {formatPercent(policy.ground_truth_recovery_rate)}
+                      </td>
+                      <td className="py-3 px-3 tabular-nums text-slate-700">
+                        {rupees(policy.ground_truth_value)}
+                      </td>
+                      <td className="py-3 px-3 tabular-nums text-slate-600">
+                        {rupees(policy.doubly_robust.estimated_value)}{" "}
+                        <span className="text-slate-400">
+                          [{rupees(policy.doubly_robust.ci_lower)},{" "}
+                          {rupees(policy.doubly_robust.ci_upper)}]
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 tabular-nums text-slate-600">
+                        {policy.doubly_robust.effective_sample_size.toFixed(0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-[11px] text-slate-500 max-w-2xl mt-5 font-sans">
+              The comparison that matters is between each estimator and the ground-truth column:
+              it measures whether the evaluation methodology recovers a known answer. It is not a
+              claim about production performance, because the episodes are simulated.
+            </p>
+          </>
+        )}
       </div>
-
-      {/* Results View */}
-      {simulationRun && (
-        <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
-          {currentScenario.refuseToGuess ? (
-            /* REFUSAL STATE: Willingness to say "I don't know" */
-            <div className="w-full max-w-3xl rounded-2xl border border-rose-200 bg-rose-50/70 p-6 font-mono text-center flex flex-col items-center">
-              <div className="flex items-center justify-center gap-2.5 text-rose-800 mb-2">
-                <AlertTriangle className="w-5 h-5 text-rose-600" />
-                <h3 className="text-sm font-bold tracking-tight">
-                  EVALUATION REFUSED: UNIDENTIFIABLE POLICY (ZERO SUPPORT)
-                </h3>
-              </div>
-              <p className="text-xs text-slate-700 font-sans leading-relaxed max-w-xl mx-auto mt-2 font-medium">
-                {currentScenario.explanation}
-              </p>
-
-              <div className="mt-5 pt-4 border-t border-rose-200 w-full grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-center">
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] text-slate-500 uppercase block font-sans">Kish Effective Sample Size</span>
-                  <span className="text-xs font-bold text-rose-700 mt-0.5">ESS = 0.0 (0.0% overlap)</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] text-slate-500 uppercase block font-sans">Support Status</span>
-                  <span className="text-xs font-bold text-rose-700 mt-0.5">Strict Support Violation</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] text-slate-500 uppercase block font-sans">Recommendation</span>
-                  <span className="text-xs font-bold text-slate-800 mt-0.5">Requires Active Epsilon-Exploration</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* VALID ESTIMATE STATE */
-            <div className="w-full space-y-5 text-center flex flex-col items-center">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pb-3 border-b border-slate-100 w-full">
-                <h3 className="text-base font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Doubly Robust Policy Counterfactual Estimate
-                </h3>
-                <span className="text-xs font-mono text-emerald-800 bg-emerald-50 px-3 py-0.5 rounded-full border border-emerald-200 font-semibold shadow-sm">
-                  Sufficient Support (ESS = {currentScenario.ess?.toFixed(0)})
-                </span>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-center">
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center">
-                  <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">Baseline Recovery</span>
-                  <span className="text-sm sm:text-base font-bold text-slate-800 tabular-nums mt-0.5">
-                    {formatPercent(currentScenario.baselineRecoveryRate || 0)}
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col items-center justify-center">
-                  <span className="text-[10px] text-emerald-800 uppercase block font-sans font-medium">Projected Recovery</span>
-                  <span className="text-sm sm:text-base font-bold text-emerald-700 tabular-nums mt-0.5">
-                    {formatPercent(currentScenario.simulatedRecoveryRate || 0)}
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center">
-                  <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">Projected Net Lift</span>
-                  <span
-                    className={`text-sm sm:text-base font-bold tabular-nums mt-0.5 ${
-                      (currentScenario.incrementalRevenuePaise || 0) >= 0
-                        ? "text-emerald-700"
-                        : "text-rose-700"
-                    }`}
-                  >
-                    {(currentScenario.incrementalRevenuePaise || 0) >= 0 ? "+" : ""}
-                    {formatRupees(currentScenario.incrementalRevenuePaise || 0)}
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center">
-                  <span className="text-[10px] text-slate-500 uppercase block font-sans font-medium">95% Bootstrap CI</span>
-                  <span className="text-xs sm:text-sm font-bold text-slate-700 tabular-nums block truncate mt-0.5">
-                    [{formatRupees(currentScenario.ciLowerPaise || 0)}, {formatRupees(currentScenario.ciUpperPaise || 0)}]
-                  </span>
-                </div>
-              </div>
-
-              {/* Summary note */}
-              <p className="text-xs text-slate-600 font-sans leading-relaxed max-w-xl mx-auto pt-2 font-medium">
-                {currentScenario.summary}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

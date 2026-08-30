@@ -64,6 +64,3 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 
-[[tool.mypy.overrides]]
-module = ["scipy", "scipy.stats"]
-ignore_missing_imports = true

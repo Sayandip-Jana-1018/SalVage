@@ -12,12 +12,15 @@ Additionally, Razorpay test mode provides deterministic test instruments (test c
 
 ## Decision
 
-**Status of implementation:** none of the following exists yet. This ADR records the decision so that Phase 2 does not accidentally couple the money core to a specific provider SDK. The port and both adapters are Phase 4 deliverables. `make razorpay-e2e` currently exits non-zero saying exactly that.
+**Status of implementation:** the live-credential guard exists. Nothing else in this section does.
+
+`ProviderCredentialsGuard` in salvage-core refuses to start when `RAZORPAY_KEY_ID` begins with `rzp_live_`, and `ProviderCredentialsGuardTest` covers it. That control was described in this ADR and in `.env.example` for several phases before it was written, while `docs/PHASE_0_SUMMARY.md` correctly recorded that it did not exist -- the repository contradicted itself, and the user-facing file was the one that was wrong. It is built now.
+
+The port and both adapters remain unbuilt. This ADR records the decision so that Phase 2 does not accidentally couple the money core to a specific provider SDK. The port and both adapters are Phase 4 deliverables. `make razorpay-e2e` currently exits non-zero saying exactly that.
 
 - `PaymentProvider` is a Java interface (port) with methods for creating payment links, processing payments, issuing refunds, and verifying webhook signatures.
 - `SimulatedProvider` is the default. It is deterministic (seeded), in-process, requires no credentials, and models the full payment lifecycle including realistic failure modes from the simulator's calibration. This is what `make demo` and CI use.
 - `RazorpayTestProvider` issues real HTTP calls against Razorpay's test mode API. Activated by setting `SALVAGE_PAYMENT_PROVIDER=razorpay` plus providing `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in `.env`.
-- A startup guard in salvage-core rejects any Razorpay key prefixed `rzp_live_`. Test mode only.
 - Contract tests run against recorded real responses so the adapter is provably faithful without needing live credentials in CI.
 - `RazorpayTestProvider` exercises real Razorpay objects: Orders, Payment Links, Payments, Refunds, and genuine webhook signature verification (HMAC-SHA256).
 

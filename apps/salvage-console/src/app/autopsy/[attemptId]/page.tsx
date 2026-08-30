@@ -1,160 +1,205 @@
 "use client";
 
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Shield,
-  Stethoscope,
-  Users,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, FileSearch } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import React from "react";
 import { ActionRankingTable } from "@/components/ActionRankingTable";
 import { HashChainVerifier } from "@/components/HashChainVerifier";
-import { formatISTTime, formatPercent, formatRupees } from "@/lib/formatters";
-import { sampleAutopsyDetail } from "@/lib/mockData";
+import { StateNotice } from "@/components/StateNotice";
+import { formatISTTime, formatPercent, formatRupeesDetailed } from "@/lib/formatters";
+import { DEFAULT_MERCHANT_ID } from "@/lib/merchant";
+import { useApi } from "@/lib/useApi";
+import type { AutopsyView } from "@/types";
 
+/**
+ * Everything the system knows about one attempt.
+ *
+ * Each panel below renders only if the corresponding service returned
+ * something. Where there is no diagnosis or no decision, the page says so
+ * rather than filling the gap. The previous version read a single checked-in
+ * fixture and always displayed a complete, confident autopsy -- including a
+ * cross-tenant corroboration count, a bounds verdict with named guards, and a
+ * ledger proof with a merkle root that no part of the system computes.
+ */
 export default function AutopsyDetailPage(): React.ReactElement {
-  const params = useParams();
-  const attemptId = (params?.attemptId as string) || "att_live_9482";
-  const autopsy = sampleAutopsyDetail;
+  const params = useParams<{ attemptId: string }>();
+  const search = useSearchParams();
+  const attemptId = decodeURIComponent(params.attemptId);
+  const merchantId = search.get("merchant") ?? DEFAULT_MERCHANT_ID;
+
+  const { phase, data, error } = useApi<AutopsyView>(
+    `/api/autopsy/${encodeURIComponent(merchantId)}/${encodeURIComponent(attemptId)}`,
+  );
 
   return (
-    <div className="w-full space-y-6">
-      {/* Back button */}
-      <Link
-        href="/autopsy"
-        className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors font-mono font-medium"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        <span>Back to Autopsy Explorer</span>
-      </Link>
+    <div className="w-full flex flex-col items-center space-y-6">
+      <div className="w-full flex items-center justify-center">
+        <Link
+          href="/autopsy"
+          className="text-xs font-mono text-slate-500 hover:text-emerald-700 inline-flex items-center gap-1.5 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to lookup
+        </Link>
+      </div>
 
-      {/* Header Summary */}
-      <div className="w-full rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-sm">
-              <Stethoscope className="w-5 h-5" />
+      {phase !== "ready" || !data ? (
+        <div className="w-full rounded-2xl liquid-glass p-8 border border-slate-200/90">
+          <StateNotice
+            phase={phase === "ready" ? "missing" : phase}
+            error={error}
+            emptyTitle="No such payment attempt"
+            emptyBody={`salvage-brain has no attempt ${attemptId} for merchant ${merchantId}. Nothing can be reconstructed about an attempt that was never ingested.`}
+          />
+        </div>
+      ) : (
+        <>
+          <IngestPanel view={data} merchantId={merchantId} />
+          <DiagnosisPanel view={data} />
+          {data.decision ? (
+            <ActionRankingTable
+              actions={data.decision.candidate_valuations}
+              chosenAction={data.decision.chosen_action}
+            />
+          ) : (
+            <div className="w-full rounded-2xl liquid-glass p-8 border border-slate-200/90">
+              <StateNotice
+                phase="missing"
+                emptyTitle="No policy decision"
+                emptyBody="The policy engine has not recorded a decision for this attempt."
+              />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-base font-bold text-slate-900 font-mono">{attemptId}</h1>
-                <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                  {autopsy.merchant_id}
+          )}
+          <HashChainVerifier merchantId={merchantId} highlightAttemptId={attemptId} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function IngestPanel({
+  view,
+  merchantId,
+}: {
+  view: AutopsyView;
+  merchantId: string;
+}): React.ReactElement {
+  const { attempt } = view;
+  return (
+    <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 text-center flex flex-col items-center">
+      <div className="flex flex-col items-center mb-5 space-y-1">
+        <h1 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
+          <FileSearch className="w-4 h-4 text-emerald-600" />
+          {attempt.payment_attempt_id}
+        </h1>
+        <p className="text-xs text-slate-500 font-mono">
+          {merchantId} · order {attempt.order_id}
+        </p>
+      </div>
+
+      <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
+        <Field label="Amount" value={formatRupeesDetailed(attempt.amount_paise)} strong />
+        <Field label="Method" value={attempt.payment_method} />
+        <Field label="Issuer" value={attempt.issuer} />
+        <Field label="Recurring" value={attempt.is_recurring ? "yes" : "no"} />
+      </div>
+
+      <div className="w-full mt-5 pt-4 border-t border-slate-100">
+        <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">
+          Failures recorded ({attempt.failures.length})
+        </span>
+        {attempt.failures.length === 0 ? (
+          <p className="text-xs text-slate-500 mt-2">No failure events on this attempt.</p>
+        ) : (
+          <div className="mt-2 space-y-1.5">
+            {attempt.failures.map((failure) => (
+              <div
+                key={failure.event_id}
+                className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono"
+              >
+                <span className="px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-800 font-bold">
+                  {failure.provider_error_code}
                 </span>
-                <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
-                  RECOVERED VIA {autopsy.actions_evaluated.find((a) => a.is_chosen)?.action}
+                <span className="text-slate-500">{failure.rail_id}</span>
+                <span className="text-slate-400">{formatISTTime(failure.event_timestamp)}</span>
+                <span className="text-slate-500">
+                  taxonomy: {failure.taxonomy_code ?? "unclassified"}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-1 font-mono">
-                Failed at {formatISTTime(autopsy.created_at)} (IST) · Amount:{" "}
-                <strong className="text-slate-800">{formatRupees(autopsy.amount_paise)}</strong> · Rail:{" "}
-                <code className="text-slate-700 font-bold">{autopsy.rail_id}</code>
-              </p>
-            </div>
+            ))}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-          <div className="text-right font-mono text-xs">
-            <span className="text-slate-400 block text-[10px] uppercase font-sans font-medium">Net Value Salvaged</span>
-            <span className="text-xl font-bold text-emerald-700">
-              {formatRupees(157250)}
+function DiagnosisPanel({ view }: { view: AutopsyView }): React.ReactElement {
+  if (!view.diagnosis) {
+    return (
+      <div className="w-full rounded-2xl liquid-glass p-8 border border-slate-200/90">
+        <StateNotice
+          phase="missing"
+          emptyTitle="No diagnosis"
+          emptyBody="The diagnosis engine has not classified this attempt."
+        />
+      </div>
+    );
+  }
+
+  const d = view.diagnosis;
+  return (
+    <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 text-center flex flex-col items-center">
+      <h3 className="text-base sm:text-lg font-serif font-bold text-slate-900 mb-4">Diagnosis</h3>
+
+      <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
+        <Field label="Taxonomy" value={d.taxonomy_code} strong />
+        <Field label="Confidence" value={formatPercent(d.confidence)} />
+        <Field label="Rail" value={d.rail_id} />
+        <Field label="Rail state" value={d.rail_state} />
+      </div>
+
+      <p className="text-xs text-slate-600 mt-4 max-w-2xl font-sans">{d.root_cause}</p>
+
+      {d.explainability_tokens.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
+          {d.explainability_tokens.map((token) => (
+            <span
+              key={token}
+              className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700"
+            >
+              {token}
             </span>
-          </div>
+          ))}
         </div>
-      </div>
+      )}
+    </div>
+  );
+}
 
-      {/* 2-Column Section: Diagnostic & Context */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ingested Raw Error vs Normalized Diagnosis */}
-        <div className="rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 font-mono text-xs">
-          <h3 className="text-sm font-serif font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-500" />
-            Diagnostic Taxonomy & Rail State
-          </h3>
-
-          <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <span className="text-slate-500 block text-[10px] uppercase font-sans font-medium">Raw Provider Error</span>
-              <span className="text-rose-700 font-bold block mt-0.5">
-                {autopsy.raw_error_code} — {autopsy.raw_error_message}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100">
-              <span className="text-emerald-800 block text-[10px] uppercase font-sans font-medium">Normalized Causal Taxonomy</span>
-              <div className="flex items-center justify-between mt-0.5">
-                <span className="text-emerald-900 font-bold text-sm">
-                  {autopsy.taxonomy_code}
-                </span>
-                <span className="text-emerald-800 font-semibold text-[11px]">
-                  Confidence: {formatPercent(autopsy.taxonomy_confidence)}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-sans text-xs">
-                <Users className="w-4 h-4 text-indigo-600" />
-                <span className="text-slate-700 font-medium">Cross-Tenant Corroboration</span>
-              </div>
-              <span className="text-slate-900 font-bold font-mono">
-                {autopsy.corroborating_merchants_count} Merchants
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Safety Bounds & Deterministic Limits Checklist */}
-        <div className="rounded-2xl liquid-glass p-5 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 font-mono text-xs">
-          <h3 className="text-sm font-serif font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-emerald-600" />
-            Hard Safety Bounds Checklist (In Code)
-          </h3>
-
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <span className="text-slate-700">Quiet Hours Guard (22:00-08:00 IST)</span>
-              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Permitted
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <span className="text-slate-700">Attempt Cap Guard (&le; 3 attempts)</span>
-              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Attempt 1/3 (OK)
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <span className="text-slate-700">Customer Opt-Out Registry Check</span>
-              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Consented
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <span className="text-slate-700">Per-Customer Distributed Lock</span>
-              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Acquired (0 race)
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Expected Net Utility 5-Action Ranking Table */}
-      <ActionRankingTable actions={autopsy.actions_evaluated} />
-
-      {/* 4. Cryptographic Hash-Chain Ledger Verification */}
-      <HashChainVerifier
-        entryIndex={autopsy.ledger_proof.entry_index}
-        entryHash={autopsy.ledger_proof.entry_hash}
-        previousHash={autopsy.ledger_proof.previous_hash}
-      />
+function Field({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}): React.ReactElement {
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">
+        {label}
+      </span>
+      <span
+        className={`mt-1 text-xs sm:text-sm truncate max-w-full ${
+          strong ? "font-bold text-slate-900" : "text-slate-700"
+        }`}
+        title={value}
+      >
+        {value}
+      </span>
     </div>
   );
 }

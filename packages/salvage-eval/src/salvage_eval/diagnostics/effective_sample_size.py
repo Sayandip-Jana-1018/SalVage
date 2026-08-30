@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 
 
 class ESSDiagnostic:
     """Calculates Kish's Effective Sample Size and produces diagnostic warnings."""
 
     @classmethod
-    def calculate_ess(cls, weights: np.ndarray) -> float:  # type: ignore[type-arg]
+    def calculate_ess(cls, weights: npt.NDArray[np.float64]) -> float:
         """Computes Kish's ESS: (sum(w))^2 / sum(w^2)."""
         sum_w = float(np.sum(weights))
         sum_w_sq = float(np.sum(weights**2))

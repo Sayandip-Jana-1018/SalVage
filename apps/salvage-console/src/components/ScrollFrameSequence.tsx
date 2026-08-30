@@ -187,44 +187,58 @@ export function ScrollFrameSequence(): React.ReactElement {
     renderFrame(frame);
   };
 
-  // Determine active story stage based on current frame
+  /**
+   * The narrative overlaid on the hero animation.
+   *
+   * This describes the mechanism and names no bank, no error code, no rupee
+   * figure and no latency. The previous copy asserted an "88.4% error rate
+   * across 34 merchants" for a named real bank, a specific recovery
+   * probability, a rupee amount, a ledger block number and a "38.2ms" recovery
+   * latency -- every one of them invented, on the first screen a visitor sees.
+   *
+   * docs/adr/0006-numbers-policy.md is explicit that claims about the outside
+   * world are not to be written at all, not even as illustration: a reader who
+   * checks real issuer failure rates on their own dashboard every morning
+   * reaches a line like that and stops trusting the repository. Measured
+   * figures live in EVALUATION.md, where they come from a run.
+   */
   const getStageInfo = () => {
     const p = currentFrame / TOTAL_FRAMES;
     if (p < 0.25) {
       return {
         stage: "01",
-        title: "Transaction Initiation",
+        title: "A Payment Fails",
         badge: "PAYMENT_INGESTED",
         badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-300",
-        description: "Customer checkout initiated for ₹1,850.00 on SBI UPI rail. Network handshake stream captured.",
-        subtext: "Capturing timestamp, merchant ID, and rail headers",
+        description: "A payment fails. The gateway reports two words -- payment failed -- and an error code that may or may not say why.",
+        subtext: "Validated against the published schema, then written once",
       };
     } else if (p < 0.5) {
       return {
         stage: "02",
-        title: "Systemic Outage Detection",
-        badge: "ISSUER_DEGRADATION (U30)",
+        title: "Sense The Pattern",
+        badge: "RAIL_HEALTH_SENSED",
         badgeColor: "bg-rose-50 text-rose-800 border-rose-300",
-        description: "Core banking switch timeout detected. 2D Sensing Matrix corroborates 88.4% error rate across 34 merchants.",
-        subtext: "Classifier maps raw error to canonical ISSUER_OUTAGE",
+        description: "Sensing asks whether this failure is isolated or part of a pattern, by pooling the same rail across every merchant stream.",
+        subtext: "Raw provider codes normalised onto a canonical taxonomy",
       };
     } else if (p < 0.75) {
       return {
         stage: "03",
-        title: "Autonomous Decision Calculus",
+        title: "Value Every Action",
         badge: "E[NET_VALUE] MAXIMIZATION",
         badgeColor: "bg-amber-50 text-amber-800 border-amber-300",
-        description: "Policy optimizer ranks candidate actions. Winner: SWITCH_RAIL to HDFC UPI (P(recovery) = 88%, Net Salvaged: ₹1,775.00).",
-        subtext: "Safety bounds verify Quiet Hours and Max Attempt Caps",
+        description: "Every action is valued as P(recovery) times amount, minus cost. Doing nothing is one of the choices, and often the right one.",
+        subtext: "The bounds engine can refuse the chosen action outright",
       };
     } else {
       return {
         stage: "04",
-        title: "Cryptographic Settlement",
+        title: "Record It Immutably",
         badge: "TAMPER_PROOF_RECOVERY",
         badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-300",
-        description: "HDFC rail failover succeeds. Recovery transaction committed to sha256 append-only ledger block #48220.",
-        subtext: "Zero human intervention · Total recovery latency: 38.2ms",
+        description: "The decision, its inputs and its verdict are appended to a hash-chained ledger that anyone can recompute.",
+        subtext: "Replayable bit-identically from the same inputs",
       };
     }
   };

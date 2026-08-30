@@ -124,12 +124,18 @@ AFTER=$($COMPOSE exec -T postgres psql -tAq -U "${POSTGRES_USER:-salvage}" \
 ok "same event published twice, still one failure row"
 
 # ---------------------------------------------------------------------------
-printf '\n\033[1;32mPhase 0 demo passed.\033[0m\n'
+printf '\n\033[1;32mIngest demo passed.\033[0m\n'
 cat <<'SUMMARY'
 
     Proven: Kafka -> Java consumer -> schema validation -> PostgreSQL
             -> Python read path -> HTTP, with event-level deduplication.
 
-    Not yet built: decisions, bounds, the ledger, money movement.
-    Those are Phases 2 through 4.
+    Built since, and not exercised by this script: the hash-chained ledger,
+    idempotency, the transactional outbox, the bounds engine, the saga
+    coordinator, the diagnosis and policy engines, the core read API, the
+    MCP server and the operator console. `make test` covers those.
+
+    Still not built: any code that moves money. salvage-core has no
+    PaymentProvider port, so nothing in this repository reaches a payment
+    gateway. See docs/adr/0003-payment-provider-abstraction.md.
 SUMMARY

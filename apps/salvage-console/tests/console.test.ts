@@ -1,45 +1,56 @@
 import { describe, expect, it } from "vitest";
 import { formatPercent, formatRupees, getHealthColorClass } from "../src/lib/formatters.js";
-import { initialRailGrid, sampleAutopsyDetail } from "../src/lib/mockData.js";
 
-describe("Salvage Console Formatters & Logic", () => {
-  it("formatRupees formats paise into Indian Rupee currency string", () => {
-    const formatted = formatRupees(150000);
-    expect(formatted).toContain("1,500");
+/**
+ * The tests this file replaces asserted properties of a checked-in fixture:
+ * that `initialRailGrid` covered "all 4 major banks", and that
+ * `sampleAutopsyDetail` contained a verified hash chain with 64-character
+ * hashes. Both passed. Neither told anyone anything, because the fixture was
+ * hand-written -- the hash chain was "verified" because a boolean in the file
+ * said so, and the four banks were four string literals.
+ *
+ * The console now has no fixture. Its data comes from salvage-brain and
+ * salvage-core through route handlers under `src/app/api`, so the only things
+ * worth unit-testing here are the pure display helpers. Whether the console
+ * renders live data correctly is exercised by `npm run build` (which
+ * type-checks every route and page against the wire types) and, end to end, by
+ * `make demo` plus the checkout page.
+ */
+
+describe("currency formatting", () => {
+  it("renders paise as rupees", () => {
+    expect(formatRupees(150000)).toContain("1,500");
   });
 
-  it("formatPercent formats decimals into percentage string", () => {
+  it("renders zero rather than blank", () => {
+    // A dashboard that shows nothing for zero is indistinguishable from one
+    // that failed to load.
+    expect(formatRupees(0)).toContain("0");
+  });
+});
+
+describe("percentage formatting", () => {
+  it("renders a fraction to one decimal place", () => {
     expect(formatPercent(0.53)).toBe("53.0%");
     expect(formatPercent(0.012)).toBe("1.2%");
   });
 
-  it("getHealthColorClass returns correct color tokens for health states", () => {
+  it("renders the endpoints exactly", () => {
+    expect(formatPercent(0)).toBe("0.0%");
+    expect(formatPercent(1)).toBe("100.0%");
+  });
+});
+
+describe("health state colours", () => {
+  it("maps each state to a distinct palette", () => {
     expect(getHealthColorClass("HEALTHY").text).toContain("emerald");
     expect(getHealthColorClass("DEGRADED").text).toContain("amber");
     expect(getHealthColorClass("DOWN").text).toContain("rose");
   });
 
-  it("initialRailGrid covers all 4 major banks across 3 payment methods", () => {
-    const banks = new Set(initialRailGrid.map((r) => r.bank));
-    expect(banks.size).toBe(4);
-    expect(initialRailGrid.length).toBeGreaterThanOrEqual(10);
-  });
-
-  it("sampleAutopsyDetail selects action that strictly maximizes expected net utility", () => {
-    const actions = sampleAutopsyDetail.actions_evaluated;
-    const chosen = actions.find((a) => a.is_chosen);
-    expect(chosen).toBeDefined();
-
-    // Verify chosen action has highest net utility among permitted actions
-    const permitted = actions.filter((a) => a.is_permitted_by_bounds);
-    const highest = permitted.reduce((max, a) => (a.net_utility_paise > max.net_utility_paise ? a : max), permitted[0]);
-    expect(chosen?.action).toBe(highest.action);
-  });
-
-  it("sampleAutopsyDetail contains verified cryptographic hash chain", () => {
-    const proof = sampleAutopsyDetail.ledger_proof;
-    expect(proof.verified).toBe(true);
-    expect(proof.entry_hash).toHaveLength(64); // sha256 hex length
-    expect(proof.previous_hash).toHaveLength(64);
+  it("does not render an unknown state as healthy", () => {
+    // Defaulting an unrecognised state to green would paint a rail the
+    // console does not understand as one it has verified is fine.
+    expect(getHealthColorClass("SOMETHING_ELSE").text).not.toContain("emerald");
   });
 });

@@ -14,13 +14,17 @@ SHELL := /usr/bin/env bash
 .SHELLFLAGS := -eu -o pipefail -c
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight up down clean ps logs wait \
-        test test-java test-python lint lint-java lint-python \
-        format demo razorpay-e2e contracts-check
+.PHONY: help preflight up down clean ps logs \
+        test test-java test-python test-python-unit test-sim-slow \
+        test-mcp test-console build-console \
+        lint lint-java lint-python lint-node contracts-check \
+        format eval demo razorpay-e2e
 
 COMPOSE   := docker compose
 CORE_DIR  := services/salvage-core
 BRAIN_DIR := services/salvage-brain
+SIM_DIR   := packages/salvage-sim
+EVAL_DIR  := packages/salvage-eval
 
 # Gradle's file hasher uses IO that the WSL2 9p driver serving /mnt/c does not
 # support; a build from a Windows-hosted path fails with
@@ -93,16 +97,29 @@ CONSOLE_DIR := apps/salvage-console
 # ---------------------------------------------------------------------------
 # Test
 # ---------------------------------------------------------------------------
+#
+# Every `uv run` below passes --frozen. It fails the build when uv.lock is
+# stale rather than silently resolving something other than what was tested.
+# The flag was dropped from every invocation somewhere after Phase 0; a lock
+# file that nothing enforces is decoration.
 
 test: test-java test-python test-mcp test-console ## Run every test
 
 test-java: ## salvage-core tests (starts its own containers via Testcontainers)
 	cd $(CORE_DIR) && $(GRADLE) test
 
-test-python: ## Run all Python test suites (salvage-brain, salvage-sim, salvage-eval)
-	cd $(BRAIN_DIR) && uv run pytest tests -q
-	uv run --project packages/salvage-sim pytest packages/salvage-sim/tests -q
-	uv run --project packages/salvage-eval pytest packages/salvage-eval/tests -q
+test-python: ## salvage-brain, salvage-sim and salvage-eval
+	cd $(BRAIN_DIR) && uv run --frozen pytest tests -q
+	cd $(SIM_DIR) && uv run --frozen pytest tests -q
+	cd $(EVAL_DIR) && uv run --frozen pytest tests -q
+
+test-python-unit: ## The Python tests that do not need Docker
+	cd $(BRAIN_DIR) && uv run --frozen pytest tests -q -m 'not integration'
+	cd $(SIM_DIR) && uv run --frozen pytest tests -q -m 'not slow'
+	cd $(EVAL_DIR) && uv run --frozen pytest tests -q
+
+test-sim-slow: ## The salvage-sim performance acceptance check (100k events)
+	cd $(SIM_DIR) && uv run --frozen pytest tests -q -m slow -s
 
 test-mcp: ## salvage-mcp tests (Vitest)
 	cd $(MCP_DIR) && npm test
@@ -110,44 +127,51 @@ test-mcp: ## salvage-mcp tests (Vitest)
 test-console: ## salvage-console tests (Vitest)
 	cd $(CONSOLE_DIR) && npm test
 
-build-console: ## salvage-console production build (Next.js)
+build-console: ## salvage-console production build (also type-checks every route)
 	cd $(CONSOLE_DIR) && npm run build
-
-test-python-unit: ## salvage-brain tests that do not need Docker
-	cd $(BRAIN_DIR) && uv run pytest tests -q -m 'not integration'
 
 # ---------------------------------------------------------------------------
 # Lint
 # ---------------------------------------------------------------------------
 
-lint: lint-java lint-python contracts-check ## Run every linter
+lint: lint-java lint-python lint-node contracts-check ## Run every linter
 
 lint-java: ## Spotless + compile warnings
 	cd $(CORE_DIR) && $(GRADLE) spotlessCheck
 
 lint-python: ## ruff + mypy (strict)
-	cd $(BRAIN_DIR) && uv run ruff check src tests
-	cd $(BRAIN_DIR) && uv run mypy src
-	uv run --project packages/salvage-sim ruff check packages/salvage-sim/src packages/salvage-sim/tests
-	uv run --project packages/salvage-sim mypy packages/salvage-sim/src
-	uv run --project packages/salvage-eval ruff check packages/salvage-eval/src packages/salvage-eval/tests
-	uv run --project packages/salvage-eval mypy packages/salvage-eval/src
+	cd $(BRAIN_DIR) && uv run --frozen ruff check src tests
+	cd $(BRAIN_DIR) && uv run --frozen mypy src
+	cd $(SIM_DIR) && uv run --frozen ruff check src tests
+	cd $(SIM_DIR) && uv run --frozen mypy src
+	cd $(EVAL_DIR) && uv run --frozen ruff check src tests
+	cd $(EVAL_DIR) && uv run --frozen mypy src
+
+lint-node: ## TypeScript, strict, for the MCP server and the console
+	cd $(MCP_DIR) && npm run typecheck
+	cd $(CONSOLE_DIR) && npx --no-install tsc --noEmit
 
 format: ## Apply formatting fixes
 	cd $(CORE_DIR) && $(GRADLE) spotlessApply
-	cd $(BRAIN_DIR) && uv run ruff check --fix src tests
-	uv run --project packages/salvage-sim ruff check --fix packages/salvage-sim/src packages/salvage-sim/tests
-	uv run --project packages/salvage-eval ruff check --fix packages/salvage-eval/src packages/salvage-eval/tests
+	cd $(BRAIN_DIR) && uv run --frozen ruff check --fix src tests
+	cd $(SIM_DIR) && uv run --frozen ruff check --fix src tests
+	cd $(EVAL_DIR) && uv run --frozen ruff check --fix src tests
 
 contracts-check: ## Validate the contracts and prove nothing has drifted from them
-	python scripts/check_contracts.py
+# Through the wrapper, which is also what CI runs. The Makefile previously
+# called `python scripts/check_contracts.py` directly: a second entry point
+# that can diverge from CI, invoking a bare `python` that on most systems is
+# either absent or Python 2.
+	bash scripts/check-contracts.sh
 
 # ---------------------------------------------------------------------------
 # Evaluation
 # ---------------------------------------------------------------------------
 
-eval: ## Run Phase 5 Off-Policy Evaluation harness and generate EVALUATION.md
-	uv run --project packages/salvage-eval salvage-eval report --output EVALUATION.md
+eval: ## Run the off-policy evaluation harness; writes EVALUATION.md and JSON
+# The JSON is what the console's sandbox page reads, so that it displays
+# measured results rather than a transcription of them.
+	cd $(EVAL_DIR) && uv run --frozen salvage-eval report 	  --output ../../EVALUATION.md --json ../../docs/evaluation-results.json
 
 # ---------------------------------------------------------------------------
 # Demo
@@ -156,7 +180,11 @@ eval: ## Run Phase 5 Off-Policy Evaluation harness and generate EVALUATION.md
 demo: ## End-to-end round trip: Kafka -> core -> PostgreSQL -> brain -> HTTP
 	bash scripts/demo.sh
 
-razorpay-e2e: ## Not built yet - the Razorpay adapter lands in Phase 4
-	@echo "Not built yet. The PaymentProvider port and the Razorpay test-mode"
-	@echo "adapter are Phase 4 deliverables (docs/adr/0003)."
+razorpay-e2e: ## Not built - salvage-core has no PaymentProvider port
+	@echo "Not built. salvage-core has no PaymentProvider port, no"
+	@echo "SimulatedProvider and no RazorpayTestProvider, so no code in this"
+	@echo "repository moves money through any gateway. The policy, saga and"
+	@echo "ledger layers exist and record what they would do; the effector"
+	@echo "that would carry it out does not."
+	@echo "See docs/adr/0003-payment-provider-abstraction.md."
 	@exit 1
