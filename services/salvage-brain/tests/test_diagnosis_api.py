@@ -12,6 +12,8 @@ import sqlalchemy
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
+from salvage_brain.sensing.tracker import default_rail_tracker
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _EXTENSIONS_SQL = _REPO_ROOT / "ops" / "postgres" / "init" / "01-extensions.sql"
 _V1_SQL = (
@@ -77,14 +79,27 @@ def client(postgres_url: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(create_app())
 
 
-def test_sensing_rails_endpoint_returns_200_and_active_matrix(client: TestClient) -> None:
+def test_sensing_rails_endpoint_reports_only_observed_rails(client: TestClient) -> None:
+    """A rail appears once traffic names it, and not before.
+
+    The tracker used to union the observed rails with seven hardcoded ones,
+    so this endpoint reported seven named real banks as HEALTHY with a 100%
+    success rate on a completely fresh install. That is an invented claim
+    about real institutions, and "healthy" is the reading most likely to stop
+    someone investigating. See docs/adr/0006-numbers-policy.md.
+    """
+    observed = "issuer_alpha|upi|simulated"
+    now = dt.datetime.now(dt.UTC)
+    default_rail_tracker.record_outcome(observed, is_success=True, timestamp=now)
+
     response = client.get("/v1/sensing/rails")
     assert response.status_code == 200
     data = response.json()
     assert "timestamp" in data
-    assert "rails" in data
-    assert len(data["rails"]) > 0
-    assert any(r["rail_id"] == "HDFC|UPI|RAZORPAY" for r in data["rails"])
+    rail_ids = [r["rail_id"] for r in data["rails"]]
+    assert observed in rail_ids
+    # Nothing the tracker has not seen may appear.
+    assert all("|" in rail_id for rail_id in rail_ids)
 
 
 def test_diagnose_endpoint_returns_structured_response(
@@ -111,7 +126,7 @@ def test_diagnose_endpoint_returns_structured_response(
                      is_recurring, raw_event, created_at)
                 VALUES
                     (:id, :m_id, :ord_id, :att_id, :cust_id,
-                     :amount, 'INR', 'upi', 'razorpay', 'HDFC',
+                     :amount, 'INR', 'upi', 'razorpay', 'issuer_alpha',
                      true, '{}'::jsonb, :created_at)
                 """
             ),
@@ -133,7 +148,7 @@ def test_diagnose_endpoint_returns_structured_response(
                      provider_error_code, provider_error_desc, rail_id, event_timestamp)
                 VALUES
                     (:id, :m_id, :evt_id, :att_uuid,
-                     'U30', 'Insufficient funds in account', 'HDFC|UPI|RAZORPAY', :ts)
+                     'U30', 'Insufficient funds in account', 'issuer_alpha|upi|simulated', :ts)
                 """
             ),
             {
@@ -158,7 +173,7 @@ def test_diagnose_endpoint_returns_structured_response(
     assert diag["payment_attempt_id"] == attempt_id
     assert diag["taxonomy_code"] == "INSUFFICIENT_FUNDS"
     assert diag["confidence"] >= 0.90
-    assert diag["rail_id"] == "HDFC|UPI|RAZORPAY"
+    assert diag["rail_id"] == "issuer_alpha|upi|simulated"
     assert diag["suggested_action"] in ("RETRY_SMART_SCHEDULE", "CUSTOMER_NUDGE")
     assert len(diag["explainability_tokens"]) > 0
 

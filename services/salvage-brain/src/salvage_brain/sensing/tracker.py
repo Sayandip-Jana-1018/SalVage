@@ -145,19 +145,30 @@ class RailHealthTracker:
         self,
         observation_timestamp: dt.datetime | None = None,
     ) -> list[RailHealthSnapshot]:
-        """Returns health snapshots for all monitored rails."""
+        """Health snapshots for every rail this tracker has actually observed.
+
+        Observed means at least one ingested attempt named the rail. Rails with
+        no traffic are absent, and an empty matrix means nothing has been
+        ingested yet.
+
+        This previously unioned the observed rails with a hardcoded set of
+        seven: ``HDFC|UPI|RAZORPAY``, ``SBI|UPI|RAZORPAY``,
+        ``ICICI|CARD|RAZORPAY`` and so on. Because those rails had no events,
+        every one of them reported ``HEALTHY`` with a five-minute success rate
+        of 1.0 -- so a fresh install served an operator seven named real banks,
+        all of them perfect, none of them measured. That is an invented claim
+        about real institutions, which
+        ``docs/adr/0006-numbers-policy.md`` prohibits, and it is a dangerous
+        one: "healthy" is precisely the reading that would stop someone
+        investigating.
+
+        The console renders an empty matrix as "no rails observed yet", and
+        says explicitly that this is an absence of data rather than an
+        all-clear. That is the honest presentation of nothing, and it is the
+        one the sensing service should make possible.
+        """
         ref_dt = observation_timestamp or dt.datetime.now(dt.UTC)
-        default_rails = {
-            "HDFC|UPI|RAZORPAY",
-            "ICICI|UPI|RAZORPAY",
-            "SBI|UPI|RAZORPAY",
-            "AXIS|UPI|RAZORPAY",
-            "HDFC|CARD|RAZORPAY",
-            "ICICI|CARD|RAZORPAY",
-            "SBI|CARD|RAZORPAY",
-        }
-        all_rails = set(self._events.keys()) | default_rails
-        return [self.get_snapshot(rail_id, ref_dt) for rail_id in sorted(all_rails)]
+        return [self.get_snapshot(rail_id, ref_dt) for rail_id in sorted(self._events)]
 
 
 # Singleton tracker for active in-memory health sensing

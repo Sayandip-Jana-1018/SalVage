@@ -11,7 +11,7 @@ from salvage_brain.sensing.tracker import RailHealthTracker
 def test_rail_starts_as_healthy_with_zero_events() -> None:
     tracker = RailHealthTracker()
     now = dt.datetime.now(dt.UTC)
-    snapshot = tracker.get_snapshot("HDFC|UPI|RAZORPAY", now)
+    snapshot = tracker.get_snapshot("issuer_alpha|upi|simulated", now)
 
     assert snapshot.state == RailState.HEALTHY
     assert snapshot.success_rate_5m == 1.0
@@ -21,7 +21,7 @@ def test_rail_starts_as_healthy_with_zero_events() -> None:
 def test_rail_degrades_and_goes_down_under_consecutive_failures() -> None:
     tracker = RailHealthTracker()
     now = dt.datetime.now(dt.UTC)
-    rail = "ICICI|UPI|RAZORPAY"
+    rail = "issuer_beta|upi|simulated"
 
     # Record 10 successes
     for i in range(10):
@@ -45,7 +45,7 @@ def test_rail_degrades_and_goes_down_under_consecutive_failures() -> None:
 def test_consecutive_timeout_spike_triggers_down_state_immediately() -> None:
     tracker = RailHealthTracker()
     now = dt.datetime.now(dt.UTC)
-    rail = "SBI|UPI|RAZORPAY"
+    rail = "issuer_gamma|upi|simulated"
 
     # Record 10 successes
     for i in range(10):
@@ -64,7 +64,7 @@ def test_consecutive_timeout_spike_triggers_down_state_immediately() -> None:
 def test_old_events_outside_window_are_excluded() -> None:
     tracker = RailHealthTracker()
     now = dt.datetime.now(dt.UTC)
-    rail = "AXIS|UPI|RAZORPAY"
+    rail = "issuer_delta|upi|simulated"
 
     # Outage 10 minutes ago
     for i in range(10):

@@ -1,4 +1,38 @@
-"""Deterministic failure taxonomy classifier for raw provider error codes and messages."""
+"""Deterministic failure taxonomy classifier for raw provider error codes and messages.
+
+.. warning::
+
+   **The real-world code mappings below are unverified.**
+
+   The synthetic ``SIM_*`` codes are ours and are correct by construction: the
+   simulator emits them and this table consumes them.
+
+   The NPCI UPI codes (``U30``, ``ZM``, ``ZA``, ...) and the ISO-8583 card
+   decline codes (``51``, ``54``, ``91``, ...) are a different matter. Each
+   entry asserts what a code issued by a real body means, and attaches a
+   confidence to that assertion. None of it has been checked against NPCI or
+   ISO documentation; it was written from memory.
+
+   That is precisely what :doc:`ADR-0006 </docs/adr/0006-numbers-policy>` kind
+   three forbids, and this repository has already been caught by it once --
+   ADR-0003 originally quoted a Stripe test card as Razorpay behaviour. There
+   is direct evidence of the same failure here: an earlier version of the
+   operator console described ``U69`` as "Insufficient Balance" while this
+   table maps it to ``NETWORK_TIMEOUT``. Both were written from memory, and
+   they disagree, so at least one is wrong.
+
+   Some entries are very likely right -- ISO-8583 ``51`` for insufficient
+   funds and ``54`` for an expired card are widely known. That does not make
+   the table sourced, and a reader at a payments company knows these codes
+   exactly. Verifying this table against the NPCI UPI specification and the
+   ISO-8583 standard is tracked in ``docs/OPEN_NUMBERS.md`` and is a
+   prerequisite for pointing this system at real provider traffic.
+
+   Until then the table is retained rather than deleted, because the mapping
+   *mechanism* is real and tested, and because deleting it would hide the
+   problem rather than fix it. It is marked here so that nobody mistakes it
+   for verified.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +40,8 @@ import re
 
 from salvage_brain.taxonomy.codes import TaxonomyCode, TaxonomyMappingResult
 
-# Direct exact-code lookup table for known error codes across NPCI, ISO-8583, and major gateways.
+# Exact-code lookup. The SIM_* entries are ours; everything below the
+# 'NPCI UPI' comment is UNVERIFIED -- see the module docstring.
 _EXACT_CODE_MAP: dict[str, tuple[TaxonomyCode, float, bool, bool]] = {
     # Synthetic Simulator Codes
     "INSUFFICIENT_FUNDS": (TaxonomyCode.INSUFFICIENT_FUNDS, 0.98, False, False),

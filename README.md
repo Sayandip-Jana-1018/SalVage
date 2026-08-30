@@ -3,16 +3,25 @@
 An autonomous system that diagnoses failed payments and recovers the money,
 with every decision bounded, explainable, and replayable.
 
-> **Status: All 9 Phases (Phase 0 through Phase 8) Complete & Verified.**
-> - **Phase 0 (Foundation)**: CI/CD, Testcontainers, Multi-Tenant Database, Observability & Contract Drift Gate.
-> - **Phase 1 (Data Engine)**: `salvage-sim` Causal payment stream simulator with counterfactual labels, Markov rail state models, salary cycle dynamics, and zero leakage invariants (87/87 tests).
-> - **Phase 2 (The Money Core)**: `salvage-core` Cryptographic append-only ledger with continuous verification, multi-tier idempotency store (Redis fast-path + PostgreSQL fallback), per-customer distributed locking, transactional outbox with `SKIP LOCKED`, hard bounds engine (quiet hours, attempt caps, opt-outs, contact budgets, kill switches), and persistent recovery sagas (46/46 tests).
-> - **Phase 3 (Sense & Diagnose)**: `salvage-brain` Universal failure taxonomy (NPCI/ISO-8583/gateways), real-time sliding-window rail health sensing, point-in-time leak-free feature store, and contextual root cause diagnostic engine with explainability tokens (61/61 tests).
-> - **Phase 4 (Decide & Act)**: Expected Net Utility Optimizer ($\arg\max_a \mathbb{E}[\text{Net Value}(a)]$) and `RecoveryPolicyExecutor` bridging ML decisions into bounded, distributed-locked saga executions.
-> - **Phase 5 (Off-Policy Evaluation)**: `salvage-eval` Off-policy statistical evaluation harness (Direct Method, IPS, SNIPS, Doubly Robust), 95% bootstrap confidence intervals, and Kish Effective Sample Size diagnostics (8/8 tests).
-> - **Phase 6 (Language & MCP Layer)**: `salvage-mcp` TypeScript Model Context Protocol server exposing read-only explainability tools, rail health telemetry, and policy counterfactual simulations (10/10 tests).
-> - **Phase 7 (Operator Console)**: `salvage-console` Next.js 15 operator interface featuring The War Room, The Autopsy View with live hash-chain verification, and The Policy Sandbox with ESS refusal guard (6/6 tests).
-> - **Phase 8 (Hardening & Production Operations)**: Grafana Dashboards as Code (`ops/grafana/`), High-Throughput Load & Latency Benchmarking Harness (`scripts/stress_test.py`, 13,163 schemas/sec, P99 decision latency 47.05ms < 100ms SLA), Multi-Tenant End-to-End Production Drill (`scripts/e2e_demo.py`), and Production Operations SRE Runbook (`docs/PRODUCTION_RUNBOOK.md`).
+> **Status: Phases 0 through 8 are built. The system does not yet move money.**
+>
+> Everything below runs and is covered by tests. One thing is deliberately
+> absent: `salvage-core` has no `PaymentProvider` port, no `SimulatedProvider`
+> and no `RazorpayTestProvider`, so no code here reaches a payment gateway. The
+> policy, saga and ledger layers decide, record and audit what they *would* do;
+> the effector that would carry it out is not written. `make razorpay-e2e`
+> says so and exits non-zero. See
+> [ADR-0003](docs/adr/0003-payment-provider-abstraction.md).
+>
+> - **Phase 0 — Foundations**: CI, Testcontainers, multi-tenant schema with append-only triggers, health endpoints, contract drift gate.
+> - **Phase 1 — `salvage-sim`**: causal failure simulator with ground-truth counterfactual labels, a two-level continuous-time Markov chain for rail health, salary-cycle balance dynamics, and two enforced no-leakage properties.
+> - **Phase 2 — `salvage-core`**: hash-chained append-only ledger with independent verification, multi-tier idempotency, per-customer distributed locking, transactional outbox, bounds engine, recovery sagas.
+> - **Phase 3 — `salvage-brain`**: failure taxonomy, sliding-window rail health sensing, point-in-time feature store, diagnosis engine with explainability tokens.
+> - **Phase 4 — decide**: expected-net-value optimiser and `RecoveryPolicyExecutor`, which records bounded decisions through sagas into the ledger.
+> - **Phase 5 — `salvage-eval`**: off-policy evaluation (Direct Method, IPS, SNIPS, Doubly Robust), bootstrap confidence intervals, Kish ESS, calibration and regret accounting.
+> - **Phase 6 — `salvage-mcp`**: read-only MCP tools over the live services. No tool decides or executes anything.
+> - **Phase 7 — `salvage-console`**: Next.js 15 operator interface reading the live services through server-side routes. No fixtures.
+> - **Phase 8 — hardening**: Grafana dashboards as code, load and latency harness, multi-tenant end-to-end drill, SRE runbook.
 
 ## The problem
 
@@ -207,13 +216,13 @@ salvage/
 ## What works today
 
 - **Phase 0 (Foundations & Stack)**: PostgreSQL 16 + TimescaleDB, Redis 7, Redpanda, health endpoints with dependency round-tripping, contract drift gate (`scripts/check_contracts.py`).
-- **Phase 1 (`salvage-sim`)**: Causal Payment Failure Simulator modeling 8 NPCI failure modes, Indian salary cycle calendar anchors, and zero-leakage invariant generator (87/87 tests).
-- **Phase 2 (`salvage-core`)**: Financial Money Core including tamper-evident cryptographically linked ledger, Redis-backed sliding-window rate limiters and idempotency guards, transactional outbox with guaranteed exactly-once delivery, non-bypassable Bounds Engine (Quiet Hours, Attempt Caps $\le 3$, Opt-Outs, Contact Budgets, Kill Switches), and resilient Saga Coordinator (46/46 tests).
+- **Phase 1 (`salvage-sim`)**: causal failure simulator. Seven failure causes with four distinct correct responses, a two-level Markov chain producing bursty correlated outages, salary-cycle balance dynamics, mandate lifecycle, and ground-truth counterfactuals. Issuers are synthetic by design (ADR-0006). No-leakage is enforced by an import-graph test and a nuisance-perturbation test (87 tests).
+- **Phase 2 (`salvage-core`)**: Financial Money Core including tamper-evident cryptographically linked ledger, Redis-backed sliding-window rate limiters and idempotency guards, transactional outbox with guaranteed exactly-once delivery, non-bypassable Bounds Engine (Quiet Hours, Attempt Caps $\le 3$, Opt-Outs, Contact Budgets, Kill Switches), and resilient Saga Coordinator, plus a tenant-scoped read API for telemetry and ledger verification (59 tests).
 - **Phase 3 (`salvage-brain`)**: Sense & Diagnose Engine with 8 canonical taxonomy mappers (NPCI UPI, ISO-8583 card response codes), sliding-window rail health sensing (1m, 5m, 15m), point-in-time leak-free feature store, and FastAPI endpoints `POST /v1/diagnose` and `GET /v1/sensing/rails`.
 - **Phase 4 (`salvage-brain` + `salvage-core`)**: Recoverability Estimation Model, Expected Net Utility Optimizer, `POST /v1/decide`, and `salvage-core` `RecoveryPolicyExecutor` bridging intelligence decisions into bounded distributed-locked saga executions and immutable ledger audits.
 - **Phase 5 (`salvage-eval`)**: Off-Policy Evaluation Harness implementing 4 classical estimators (IPS, SNIPS, Direct Method, Doubly Robust), 95% bootstrap confidence intervals, Kish Effective Sample Size diagnostics, calibration curves, and automated regret accounting generated via `make eval` (8/8 tests).
-- **Phase 6 (`salvage-mcp`)**: Model Context Protocol Server providing AI assistants with read-only causal decision explainability (`explain_decision`), real-time rail health telemetry (`get_rail_health`), aggregate recovery statistics (`get_recovery_stats`), incident monitoring (`list_open_incidents`), and counterfactual policy simulation (`simulate_policy_change`) (10/10 tests).
-- **Phase 7 (`salvage-console`)**: Next.js 15 Operator Interface featuring **The War Room** (money-at-risk ticker, 2D rail health matrix, active blast radius cards, live decision feed), **The Autopsy View** (causal failure dissection, 5-action expected net utility ranking, bounds gate audit, sha256 hash-chain verifier), and **The Policy Sandbox** (natural language hypothesis evaluator with ESS refusal guard) (6/6 tests).
+- **Phase 6 (`salvage-mcp`)**: Model Context Protocol server exposing five read-only tools over the live services: `explain_decision`, `get_rail_health`, `get_recovery_stats`, `list_open_incidents`, `verify_ledger`. Every tool reads; none decides or executes, and neither backend exposes a route that would let one. Errors surface as tool errors rather than as plausible answers (22 tests).
+- **Phase 7 (`salvage-console`)**: Next.js 15 operator interface, reading the live services through six server-side route handlers. **War Room** (live rail sensing matrix, open incidents, ledger stream with chain verification), **Autopsy** (one attempt: ingest, diagnosis, action valuations, ledger entries), **Checkout** (publishes a real `payment_failed.v1` event and follows it through the actual pipeline), **Evaluation** (the measured off-policy results from `make eval`). Loading, empty and unreachable are distinct states everywhere -- an empty matrix and a lost backend never look the same.
 - **Phase 8 (Hardening & Production Operations)**: Full production readiness including declarative Grafana Dashboards as Code (`ops/grafana/`), High-Throughput Load & Latency Benchmarking Harness (`scripts/stress_test.py`, 13,163 schemas/sec, P99 decision latency 47.05ms < 100ms SLA), Multi-Tenant End-to-End Production Drill (`scripts/e2e_demo.py`), and Production Operations SRE Runbook (`docs/PRODUCTION_RUNBOOK.md`).
 
 ## Documentation

@@ -4,6 +4,25 @@ Every entry here is a place where a real-world figure would strengthen the
 writing. These are **not** estimates, guesses, or placeholders — they are
 gaps to be filled with sourced data. See [ADR-0006](adr/0006-numbers-policy.md).
 
+## Blocking: unverified external code mappings
+
+`services/salvage-brain/src/salvage_brain/taxonomy/mapper.py` asserts a meaning
+and a confidence for specific NPCI UPI error codes and ISO-8583 card decline
+codes. None of those assertions has been checked against a specification; they
+were written from memory. One internal contradiction is already known: `U69` is
+mapped to `NETWORK_TIMEOUT` there while an earlier version of the operator
+console described the same code as "Insufficient Balance".
+
+This is the highest-priority open number in this file, because unlike the rows
+below it is not a gap in the writing -- it is a claim the code currently acts
+on.
+
+| What needs verifying | Source that would settle it |
+|---|---|
+| NPCI UPI decline code meanings (U30, U16, U28, U66, U69, U96, U19, U29, U48, ZA, ZM, ZH, ZG, Z8, Z9, XB, XY) | NPCI UPI Procedural Guidelines / API specification |
+| ISO-8583 card response code meanings (05, 14, 41, 43, 51, 54, 61, 91, 96) | ISO 8583 standard; acquirer response-code documentation |
+| Per-code confidence values | Empirical: agreement between code and observed outcome in gateway data |
+
 ## Payment Failure Landscape
 
 | Where it would go | What kind of number | Likely source |
