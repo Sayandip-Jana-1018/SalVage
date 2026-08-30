@@ -57,9 +57,9 @@ def _dummy_features(
         currency="INR",
         payment_method="upi",
         provider="razorpay",
-        issuer="HDFC",
+        issuer="issuer_alpha",
         is_recurring=is_recurring,
-        rail_id="HDFC|UPI|RAZORPAY",
+        rail_id="issuer_alpha|UPI|RAZORPAY",
         hour_of_day_ist=14,
         day_of_week=2,
         day_of_month=25 if is_pre_payday else 15,
@@ -76,7 +76,7 @@ def _dummy_features(
 
 def test_insufficient_funds_diagnosis_on_recurring_suggests_smart_schedule() -> None:
     features = _dummy_features("U30", is_recurring=True, is_pre_payday=True)
-    snapshot = _dummy_snapshot("HDFC|UPI|RAZORPAY", RailState.HEALTHY)
+    snapshot = _dummy_snapshot("issuer_alpha|UPI|RAZORPAY", RailState.HEALTHY)
 
     resp = DiagnosisEngine.diagnose(features, snapshot)
     assert resp.taxonomy_code == TaxonomyCode.INSUFFICIENT_FUNDS
@@ -87,7 +87,7 @@ def test_insufficient_funds_diagnosis_on_recurring_suggests_smart_schedule() -> 
 
 def test_insufficient_funds_on_adhoc_checkout_suggests_customer_nudge() -> None:
     features = _dummy_features("INSUFFICIENT_FUNDS", is_recurring=False)
-    snapshot = _dummy_snapshot("HDFC|UPI|RAZORPAY", RailState.HEALTHY)
+    snapshot = _dummy_snapshot("issuer_alpha|UPI|RAZORPAY", RailState.HEALTHY)
 
     resp = DiagnosisEngine.diagnose(features, snapshot)
     assert resp.taxonomy_code == TaxonomyCode.INSUFFICIENT_FUNDS
@@ -96,7 +96,7 @@ def test_insufficient_funds_on_adhoc_checkout_suggests_customer_nudge() -> None:
 
 def test_systemic_rail_outage_corroborates_issuer_outage_and_suggests_rail_switch() -> None:
     features = _dummy_features("NETWORK_TIMEOUT")
-    snapshot = _dummy_snapshot("HDFC|UPI|RAZORPAY", RailState.DOWN, sr=0.40)
+    snapshot = _dummy_snapshot("issuer_alpha|UPI|RAZORPAY", RailState.DOWN, sr=0.40)
 
     resp = DiagnosisEngine.diagnose(features, snapshot)
     assert resp.taxonomy_code == TaxonomyCode.ISSUER_OUTAGE
@@ -107,7 +107,7 @@ def test_systemic_rail_outage_corroborates_issuer_outage_and_suggests_rail_switc
 
 def test_transient_timeout_on_healthy_rail_suggests_immediate_retry() -> None:
     features = _dummy_features("NETWORK_TIMEOUT")
-    snapshot = _dummy_snapshot("HDFC|UPI|RAZORPAY", RailState.HEALTHY, sr=1.0)
+    snapshot = _dummy_snapshot("issuer_alpha|UPI|RAZORPAY", RailState.HEALTHY, sr=1.0)
 
     resp = DiagnosisEngine.diagnose(features, snapshot)
     assert resp.taxonomy_code == TaxonomyCode.NETWORK_TIMEOUT
@@ -117,7 +117,7 @@ def test_transient_timeout_on_healthy_rail_suggests_immediate_retry() -> None:
 
 def test_mandate_invalid_suggests_no_action() -> None:
     features = _dummy_features("MANDATE_EXPIRED")
-    snapshot = _dummy_snapshot("HDFC|UPI|RAZORPAY", RailState.HEALTHY)
+    snapshot = _dummy_snapshot("issuer_alpha|UPI|RAZORPAY", RailState.HEALTHY)
 
     resp = DiagnosisEngine.diagnose(features, snapshot)
     assert resp.taxonomy_code == TaxonomyCode.MANDATE_INVALID

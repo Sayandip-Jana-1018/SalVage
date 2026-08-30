@@ -447,3 +447,48 @@ counterfactual:
   # affinity. Bounds label volume: every additional rail multiplies the label
   # count by the number of offsets. Source: structural.
   alternative_rails_per_failure: 2
+
+# ---------------------------------------------------------------------------
+# Recovery action economics
+#
+# Read by the evaluation harness (packages/salvage-eval) to turn a
+# counterfactual success or failure into a payoff, and to decide which
+# counterfactual offset a scheduled retry is evaluated at.
+#
+# These live here rather than in the harness so that they fall under the
+# calibration file's SHA-256 digest: every run manifest records that digest,
+# so an evaluation result can be traced to the exact economics that produced
+# it. The simulator itself does not read this block -- it changes no
+# counterfactual and no label, only how a label is scored.
+# ---------------------------------------------------------------------------
+recovery_actions:
+  # Paise. Charged whether or not the action recovers the payment, which is
+  # what makes a low-probability action negative-value rather than free.
+  #
+  # Source: STRUCTURAL ASSUMPTION, NOT MEASURED. These are the harness's cost
+  # model, not observed gateway pricing. A real deployment would set them from
+  # its own contracted per-attempt fees and its own estimate of the customer
+  # friction a nudge costs. Nothing in this repository has verified any
+  # provider's published fees; see docs/adr/0006-numbers-policy.md.
+  cost_paise:
+    retry_immediate: 50
+    retry_scheduled: 70
+    switch_rail: 75
+
+  # Minutes. The delay at which RETRY_SCHEDULED is evaluated. Every value must
+  # appear in counterfactual.offsets_minutes, since that is the grid the
+  # simulator actually labelled.
+  #
+  # This is a property of the environment, applied identically to every policy
+  # under evaluation, so it favours none of them. It does mean the harness
+  # measures a policy's choice of *action* and not its choice of *delay*: a
+  # policy that picks RETRY_SCHEDULED is scored at the delay this rule gives
+  # it, not one it chose. EVALUATION.md states that limitation.
+  #
+  # Source: structural, chosen so the three cases a scheduled retry exists to
+  # serve are each represented -- wait out an outage, wait for payday, and
+  # everything else.
+  scheduled_offset_minutes:
+    default: 15
+    issuer_outage: 60
+    pre_payday_insufficient_funds: 4320

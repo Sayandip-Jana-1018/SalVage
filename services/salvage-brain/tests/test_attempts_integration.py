@@ -107,7 +107,7 @@ def _seed(url: str, merchant_id: str, attempt_id: str, event_id: uuid.UUID) -> N
                 "INSERT INTO payment_attempts "
                 "(merchant_id, order_id, payment_attempt_id, amount_paise, currency, "
                 " payment_method, provider, issuer, is_recurring, raw_event) "
-                "VALUES (:m, :o, :p, 249900, 'INR', 'upi', 'razorpay', 'HDFC', false, "
+                "VALUES (:m, :o, :p, 249900, 'INR', 'upi', 'razorpay', 'issuer_alpha', false, "
                 "        '{}'::jsonb) RETURNING id"
             ),
             {"m": merchant_id, "o": "order_1", "p": attempt_id},
@@ -117,7 +117,7 @@ def _seed(url: str, merchant_id: str, attempt_id: str, event_id: uuid.UUID) -> N
                 "INSERT INTO failure_events "
                 "(merchant_id, event_id, payment_attempt_id, provider_error_code, "
                 " rail_id, event_timestamp) "
-                "VALUES (:m, :e, :a, 'BAD_REQUEST_ERROR', 'HDFC|upi|razorpay', :ts)"
+                "VALUES (:m, :e, :a, 'BAD_REQUEST_ERROR', 'issuer_alpha|upi|razorpay', :ts)"
             ),
             {
                 "m": merchant_id,
@@ -167,10 +167,10 @@ def test_an_ingested_attempt_is_readable_with_its_failures(
     assert response.status_code == 200
     body = response.json()
     assert body["amount_paise"] == 249900
-    assert body["issuer"] == "HDFC"
+    assert body["issuer"] == "issuer_alpha"
     assert body["payment_method"] == "upi"
     assert len(body["failures"]) == 1
-    assert body["failures"][0]["rail_id"] == "HDFC|upi|razorpay"
+    assert body["failures"][0]["rail_id"] == "issuer_alpha|upi|razorpay"
     # Phase 3 owns the taxonomy; nothing has classified this yet.
     assert body["failures"][0]["taxonomy_code"] is None
 
@@ -178,6 +178,55 @@ def test_an_ingested_attempt_is_readable_with_its_failures(
 def test_a_missing_attempt_is_404(client: TestClient) -> None:
     response = client.get("/v1/attempts/merch_read_1/pay_does_not_exist")
     assert response.status_code == 404
+
+
+def test_listing_returns_this_tenants_attempts_with_failure_counts(
+    client: TestClient, postgres_url: str
+) -> None:
+    merchant_id = "merch_list_1"
+    _seed(postgres_url, merchant_id, "pay_list_1", uuid.uuid4())
+
+    response = client.get(f"/v1/attempts/{merchant_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["merchant_id"] == merchant_id
+    ids = [a["payment_attempt_id"] for a in body["attempts"]]
+    assert "pay_list_1" in ids
+    listed = next(a for a in body["attempts"] if a["payment_attempt_id"] == "pay_list_1")
+    assert listed["amount_paise"] == 249900
+    assert listed["failure_count"] == 1
+
+
+def test_listing_never_crosses_the_tenant_boundary(
+    client: TestClient, postgres_url: str
+) -> None:
+    owner = "merch_list_owner"
+    stranger = "merch_list_stranger"
+    _seed(postgres_url, owner, "pay_owned", uuid.uuid4())
+    _seed(postgres_url, stranger, "pay_stranger", uuid.uuid4())
+
+    response = client.get(f"/v1/attempts/{stranger}")
+
+    assert response.status_code == 200
+    ids = [a["payment_attempt_id"] for a in response.json()["attempts"]]
+    assert "pay_owned" not in ids
+    assert "pay_stranger" in ids
+
+
+def test_an_empty_tenant_lists_nothing_rather_than_erroring(client: TestClient) -> None:
+    """An absence of data is a successfully answered question."""
+    response = client.get("/v1/attempts/merch_that_has_never_transacted")
+
+    assert response.status_code == 200
+    assert response.json()["attempts"] == []
+
+
+def test_an_out_of_range_limit_is_rejected_rather_than_clamped(client: TestClient) -> None:
+    # Clamping would answer a different question than the caller asked and
+    # then label the answer with the limit they requested.
+    assert client.get("/v1/attempts/merch_read_1?limit=0").status_code == 422
+    assert client.get("/v1/attempts/merch_read_1?limit=100000").status_code == 422
 
 
 def test_an_attempt_is_not_readable_through_another_merchants_id(

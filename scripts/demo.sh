@@ -71,7 +71,7 @@ ok "merchant ${MERCHANT_ID} exists"
 # ---------------------------------------------------------------------------
 step "Publishing a payment_failed.v1 event"
 EVENT=$(cat <<JSON
-{"event_id":"${EVENT_ID}","event_version":1,"event_timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","merchant_id":"${MERCHANT_ID}","order_id":"${ORDER_ID}","payment_attempt_id":"${ATTEMPT_ID}","amount_paise":${AMOUNT_PAISE},"currency":"INR","payment_method":"upi","provider":"razorpay","provider_error_code":"BAD_REQUEST_ERROR","provider_error_description":"Payment processing failed at the issuer","issuer":"HDFC","customer_id":"cust_demo_0001","is_recurring":false}
+{"event_id":"${EVENT_ID}","event_version":1,"event_timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","merchant_id":"${MERCHANT_ID}","order_id":"${ORDER_ID}","payment_attempt_id":"${ATTEMPT_ID}","amount_paise":${AMOUNT_PAISE},"currency":"INR","payment_method":"upi","provider":"razorpay","provider_error_code":"BAD_REQUEST_ERROR","provider_error_description":"Payment processing failed at the issuer","issuer":"issuer_alpha","customer_id":"cust_demo_0001","is_recurring":false}
 JSON
 )
 printf '%s\n' "$EVENT" | $COMPOSE exec -T redpanda \
@@ -104,8 +104,8 @@ assert_contains() {
 assert_contains "\"payment_attempt_id\":\"${ATTEMPT_ID}\"" "attempt id round-tripped"
 assert_contains "\"order_id\":\"${ORDER_ID}\""             "order id round-tripped"
 assert_contains "\"amount_paise\":${AMOUNT_PAISE}"         "amount round-tripped exactly"
-assert_contains "\"issuer\":\"HDFC\""                      "issuer round-tripped"
-assert_contains "\"rail_id\":\"HDFC|upi|razorpay\""        "rail derived as issuer|method|provider"
+assert_contains "\"issuer\":\"issuer_alpha\""                      "issuer round-tripped"
+assert_contains "\"rail_id\":\"issuer_alpha|upi|razorpay\""        "rail derived as issuer|method|provider"
 assert_contains "\"taxonomy_code\":null"                   "failure is unclassified (taxonomy is Phase 3)"
 
 # ---------------------------------------------------------------------------

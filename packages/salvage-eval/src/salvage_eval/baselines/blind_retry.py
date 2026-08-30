@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from salvage_eval.baselines.base import AbstractPolicy
+from salvage_eval.dataset.from_simulator import MAX_ATTEMPTS
 from salvage_eval.types import EvaluatedAction
 
 
@@ -20,9 +21,10 @@ class BlindRetryPolicy(AbstractPolicy):
         context: dict[str, Any],
         feasible_actions: list[EvaluatedAction],
     ) -> dict[EvaluatedAction, float]:
-        attempt_count = int(context.get("attempt_count", 1))
+        # The attempt's position in its order journey, read off the event.
+        attempt_count = int(context.get("attempt_sequence", 1))
         can_retry = (
-            attempt_count < 3 and EvaluatedAction.RETRY_IMMEDIATE in feasible_actions
+            attempt_count < MAX_ATTEMPTS and EvaluatedAction.RETRY_IMMEDIATE in feasible_actions
         )
 
         chosen = EvaluatedAction.RETRY_IMMEDIATE if can_retry else EvaluatedAction.NO_ACTION

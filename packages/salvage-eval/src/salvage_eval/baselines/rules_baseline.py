@@ -1,15 +1,22 @@
-"""Baseline policy: Heuristic diagnostic rules."""
+"""Baseline policy: heuristic rules over the observable failure code."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from salvage_eval.baselines.base import AbstractPolicy
+from salvage_eval.baselines.observable import ObservedCause, is_permanent, observed_cause
 from salvage_eval.types import EvaluatedAction
 
 
 class RulesBaselinePolicy(AbstractPolicy):
-    """Deterministic heuristic rules baseline based on failure taxonomy."""
+    """One action per observed cause, with no valuation and no probabilities.
+
+    This is the policy a competent engineer writes in an afternoon, and it is
+    the bar the Salvage policy has to clear to justify its complexity. It
+    holds no belief about recovery probability, so it reports no calibration
+    rather than a fabricated one.
+    """
 
     @property
     def name(self) -> str:
@@ -20,20 +27,21 @@ class RulesBaselinePolicy(AbstractPolicy):
         context: dict[str, Any],
         feasible_actions: list[EvaluatedAction],
     ) -> dict[EvaluatedAction, float]:
-        tax = str(context.get("taxonomy_code", "UNKNOWN"))
-        rail_state = str(context.get("rail_state", "HEALTHY"))
+        cause = observed_cause(context)
 
-        if tax == "NETWORK_TIMEOUT" and rail_state == "HEALTHY":
-            desired = EvaluatedAction.RETRY_IMMEDIATE
-        elif tax == "INSUFFICIENT_FUNDS":
-            desired = EvaluatedAction.RETRY_SCHEDULED
-        elif tax == "ISSUER_OUTAGE" or rail_state in ("DEGRADED", "DOWN"):
-            desired = EvaluatedAction.SWITCH_RAIL
-        elif tax in ("CARD_EXPIRED", "CUSTOMER_ABANDONED"):
-            desired = EvaluatedAction.CUSTOMER_NUDGE
-        else:
+        if is_permanent(cause):
             desired = EvaluatedAction.NO_ACTION
+        elif cause is ObservedCause.ISSUER_TROUBLE:
+            desired = EvaluatedAction.SWITCH_RAIL
+        elif cause is ObservedCause.INSUFFICIENT_FUNDS:
+            desired = EvaluatedAction.RETRY_SCHEDULED
+        elif cause is ObservedCause.DECLINED:
+            desired = EvaluatedAction.NO_ACTION
+        else:
+            # Generic code. Waiting costs little and learns something; an
+            # immediate retry against an unknown cause mostly buys a second
+            # identical failure.
+            desired = EvaluatedAction.RETRY_SCHEDULED
 
-        # Mask with feasible actions
         chosen = desired if desired in feasible_actions else EvaluatedAction.NO_ACTION
         return {act: 1.0 if act == chosen else 0.0 for act in EvaluatedAction}

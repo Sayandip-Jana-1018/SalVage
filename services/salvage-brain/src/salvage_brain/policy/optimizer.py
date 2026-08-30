@@ -27,6 +27,31 @@ class PolicyOptimizer:
     COST_NUDGE_SMS_PAISE: ClassVar[int] = 170
 
     @classmethod
+    def _best_alternative_rail(
+        cls,
+        features: ExtractedFeatures,
+        active_rails: list[RailHealthSnapshot],
+    ) -> RailHealthSnapshot | None:
+        """The healthiest observed rail other than the one that just failed.
+
+        Returns ``None`` when there is nowhere better to send the payment,
+        which is a normal condition during a broad outage and not an error.
+
+        Only rails currently classified ``HEALTHY`` qualify. A ``DEGRADED``
+        alternative might still beat a ``DOWN`` current rail, but asserting
+        that it does would need evidence this system does not yet have, so
+        the stricter filter stands.
+        """
+        candidates = [
+            rail
+            for rail in active_rails
+            if rail.rail_id != features.rail_id and rail.state == RailState.HEALTHY
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda rail: rail.success_rate_5m)
+
+    @classmethod
     def evaluate_actions(
         cls,
         features: ExtractedFeatures,
@@ -47,14 +72,37 @@ class PolicyOptimizer:
         valuations: list[ActionValuation] = []
         tokens: list[str] = []
 
-        # Candidate action list
+        # Resolved before the valuation loop, because whether a healthy
+        # alternative exists decides whether SWITCH_RAIL is an action at all.
+        #
+        # RecoverabilityModel scores SWITCH_RAIL from the taxonomy alone -- an
+        # issuer outage scores highly whether or not anywhere better exists to
+        # switch to. Leaving it in the candidate list during a broad outage
+        # therefore let it win on a probability that assumed a destination,
+        # and the code then invented one: it assigned a hardcoded rail naming
+        # a real bank, chosen precisely when the evidence said no rail was
+        # healthy. Both halves were wrong. An action with no destination is
+        # not an action, so it is removed from the running and the optimiser
+        # falls through to the next-best one it can actually carry out.
+        target_rail = cls._best_alternative_rail(features, active_rails)
+
+        # Order is preserved exactly: max() returns the first maximal element,
+        # so this list's order is the tie-breaking rule between equally valued
+        # actions.
         candidates = [
             RecoveryActionType.RETRY_IMMEDIATE,
             RecoveryActionType.RETRY_SCHEDULED,
-            RecoveryActionType.SWITCH_RAIL,
-            RecoveryActionType.CUSTOMER_NUDGE,
-            RecoveryActionType.NO_ACTION,
         ]
+        if target_rail is not None:
+            candidates.append(RecoveryActionType.SWITCH_RAIL)
+        else:
+            tokens.append("SWITCH_RAIL_UNAVAILABLE_NO_HEALTHY_ALTERNATIVE")
+        candidates.extend(
+            [
+                RecoveryActionType.CUSTOMER_NUDGE,
+                RecoveryActionType.NO_ACTION,
+            ]
+        )
 
         for action in candidates:
             prob = RecoverabilityModel.estimate_probability(
@@ -112,18 +160,18 @@ class PolicyOptimizer:
         nudge_channel: CommunicationChannel | None = None
 
         if chosen_action == RecoveryActionType.SWITCH_RAIL:
-            # Pick the healthiest alternative rail
-            candidates_rails = [
-                r
-                for r in active_rails
-                if r.rail_id != features.rail_id and r.state == RailState.HEALTHY
-            ]
-            if candidates_rails:
-                best_rail = max(candidates_rails, key=lambda r: r.success_rate_5m)
-                target_rail_id = best_rail.rail_id
-                tokens.append(f"TARGET_HEALTHY_RAIL_{target_rail_id}")
-            else:
-                target_rail_id = "HDFC|UPI|RAZORPAY"
+            if target_rail is None:
+                # Unreachable by construction: SWITCH_RAIL only enters the
+                # candidate list when target_rail is not None. Raising rather
+                # than substituting a rail means that if those two places ever
+                # diverge, it fails here instead of quietly routing a payment
+                # somewhere nobody chose.
+                raise AssertionError(
+                    "SWITCH_RAIL was selected with no healthy alternative rail; "
+                    "the candidate list and this branch have diverged"
+                )
+            target_rail_id = target_rail.rail_id
+            tokens.append(f"TARGET_HEALTHY_RAIL_{target_rail_id}")
 
         elif chosen_action == RecoveryActionType.RETRY_SCHEDULED:
             if (

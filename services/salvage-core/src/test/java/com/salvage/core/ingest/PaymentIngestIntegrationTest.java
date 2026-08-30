@@ -131,13 +131,13 @@ class PaymentIngestIntegrationTest extends SalvageInfrastructure {
                 .findByMerchantIdAndPaymentAttemptId(SampleEvents.MERCHANT_ID, attemptId)
                 .orElseThrow();
         assertThat(attempt.getAmountPaise()).isEqualTo(249900L);
-        assertThat(attempt.getIssuer()).isEqualTo("HDFC");
+        assertThat(attempt.getIssuer()).isEqualTo("issuer_alpha");
         assertThat(attempt.getRawEvent()).contains("BAD_REQUEST_ERROR");
         assertThat(attempt.getCreatedAt()).isNotNull();
 
         var failure = failures
                 .findByMerchantIdAndEventId(SampleEvents.MERCHANT_ID, eventId).orElseThrow();
-        assertThat(failure.getRailId()).isEqualTo("HDFC|upi|razorpay");
+        assertThat(failure.getRailId()).isEqualTo("issuer_alpha|upi|razorpay");
         assertThat(failure.getPaymentAttemptId()).isEqualTo(attempt.getId());
         // Nothing has classified it yet; Phase 3 owns the taxonomy.
         assertThat(failure.getTaxonomyCode()).isNull();
@@ -223,7 +223,7 @@ class PaymentIngestIntegrationTest extends SalvageInfrastructure {
                         + "(merchant_id, event_id, payment_attempt_id, provider_error_code, "
                         + " rail_id, event_timestamp) VALUES (?, ?, ?, ?, ?, now())",
                 "merch_other", UUID.randomUUID(), mine.paymentAttemptId(),
-                "STOLEN", "HDFC|upi|razorpay"))
+                "STOLEN", "issuer_alpha|upi|razorpay"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -238,7 +238,7 @@ class PaymentIngestIntegrationTest extends SalvageInfrastructure {
                         + " taxonomy_code, rail_id, event_timestamp) "
                         + "VALUES (?, ?, ?, ?, ?, ?, now())",
                 SampleEvents.MERCHANT_ID, UUID.randomUUID(), result.paymentAttemptId(),
-                "ERR", "ISSUER_DOWN", "HDFC|upi|razorpay"))
+                "ERR", "ISSUER_DOWN", "issuer_alpha|upi|razorpay"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

@@ -45,7 +45,7 @@ class SagaCoordinatorTest extends SalvageInfrastructure {
         RecoverySagaRecord saga = sagaCoordinator.startSaga(
                 merchantId,
                 paymentAttemptId,
-                Map.of("amount", 100000L, "initial_rail", "HDFC|UPI|RAZORPAY"));
+                Map.of("amount", 100000L, "initial_rail", "issuer_alpha|UPI|RAZORPAY"));
 
         assertThat(saga.getCurrentState()).isEqualTo(SagaState.STARTED);
         assertThat(saga.getCurrentStep()).isEqualTo(0);
@@ -55,7 +55,7 @@ class SagaCoordinatorTest extends SalvageInfrastructure {
                 merchantId,
                 saga.getSagaId(),
                 SagaState.RETRY_INITIATED,
-                Map.of("retry_rail", "HDFC|UPI|RAZORPAY", "status", "ISSUER_UNAVAILABLE"));
+                Map.of("retry_rail", "issuer_alpha|UPI|RAZORPAY", "status", "ISSUER_UNAVAILABLE"));
 
         assertThat(step1.getCurrentState()).isEqualTo(SagaState.RETRY_INITIATED);
         assertThat(step1.getCurrentStep()).isEqualTo(1);
@@ -65,7 +65,7 @@ class SagaCoordinatorTest extends SalvageInfrastructure {
                 merchantId,
                 saga.getSagaId(),
                 SagaState.RAIL_SWITCH_INITIATED,
-                Map.of("new_rail", "ICICI|CARD|RAZORPAY", "status", "SUCCESS"));
+                Map.of("new_rail", "issuer_beta|CARD|RAZORPAY", "status", "SUCCESS"));
 
         assertThat(step2.getCurrentState()).isEqualTo(SagaState.RAIL_SWITCH_INITIATED);
         assertThat(step2.getCurrentStep()).isEqualTo(2);

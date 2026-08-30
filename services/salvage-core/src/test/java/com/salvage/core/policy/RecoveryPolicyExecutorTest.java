@@ -69,7 +69,7 @@ class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
                 RecoveryActionType.SWITCH_RAIL,
                 0.85,
                 150000L,
-                "ICICI|UPI|RAZORPAY",
+                "issuer_beta|UPI|RAZORPAY",
                 null,
                 null,
                 List.of("SYSTEMIC_OUTAGE_CORROBORATED", "SWITCH_RAIL_HEALTHY"),
@@ -82,7 +82,7 @@ class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
                 attemptId,
                 customerId,
                 1, // attempt 1 of 3 (permitted)
-                "HDFC|UPI|RAZORPAY",
+                "issuer_alpha|UPI|RAZORPAY",
                 ZoneId.of("Asia/Kolkata"));
 
         assertThat(decision).isNotNull();
@@ -146,7 +146,7 @@ class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
                 attemptId,
                 customerId,
                 3, // attempt count = 3 -> rejected by AttemptCapGuard
-                "HDFC|UPI|RAZORPAY",
+                "issuer_alpha|UPI|RAZORPAY",
                 ZoneId.of("Asia/Kolkata"));
 
         assertThat(decision).isNotNull();

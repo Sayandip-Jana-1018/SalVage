@@ -42,22 +42,42 @@ on.
 | Festival traffic multiplier | Peak-to-normal traffic ratio during Diwali/sale events | Gateway data, e-commerce public disclosures |
 | Mandate expiry rate | Monthly mandate churn rate | RBI mandate data, gateway internal data |
 
-## Measured Performance (Ours, Empirically Benchmarked in Phase 8)
+## Our own performance
 
-These numbers reflect actual measurements obtained from our high-throughput benchmarking harness (`scripts/stress_test.py`) and evaluation harness (`salvage-eval`):
+**No performance figures are recorded here, deliberately.**
 
-| Metric / Location | Value | How Measured | Conformance |
-|---|---|---|---|
-| **JSON Schema Validation Cost** (ADR-0002) | **P50 = 72.50 µs, P99 = 158.31 µs** (13,163 schemas/sec) | `scripts/stress_test.py` Draft 2020-12 validator | **Negligible CPU overhead** (<0.2% of decision budget) |
-| **Decision Pipeline Throughput** (ARCHITECTURE.md) | **1,824.1 events/sec** (50 concurrent workers) | `scripts/stress_test.py` async pipeline | **High concurrency capacity** |
-| **End-to-End Decision Latency P50** | **29.96 ms** | `scripts/stress_test.py` Sense $\to$ Diagnose $\to$ Decide $\to$ Bounds | **Sub-50ms typical** |
-| **End-to-End Decision Latency P99** | **47.05 ms** | `scripts/stress_test.py` Sense $\to$ Diagnose $\to$ Decide $\to$ Bounds | **PASSED (<100ms SLA target)** |
-| **Constrained Recovery Rate** (EVALUATION.md) | **53.0%** (2,030.50 ₹ mean payoff) | `packages/salvage-eval` 5,000 synthetic episodes | **+28.8% lift vs 24.2% Blind Retry** |
-| **Bounds Refusal Volume** (EVALUATION.md) | **₹43,042.05** refused for Quiet Hours & Caps | `packages/salvage-eval` Regret Accountant | **Enforces zero customer harassment** |
+This section previously held six, presented as "empirically benchmarked".
+Four of them were not measurements of this system:
+
+- The decision-latency and throughput rows (`P50 = 29.96 ms`, `P99 = 47.05 ms`,
+  `1,824.1 events/sec`) came from a version of `scripts/stress_test.py` whose
+  "Sense → Diagnose → Decide → Bounds pipeline" was three `asyncio.sleep`
+  calls totalling 1.5 ms behind a 50-way queue. It invoked none of those
+  stages. The numbers described the asyncio event loop.
+- The recovery-rate and bounds-refusal rows (`53.0%`, `₹43,042.05`) came from
+  an evaluation whose candidate policy held the data generator's own
+  parameters. See the note in `EVALUATION.md`.
+
+`scripts/stress_test.py` now measures schema validation in-process and the
+real `POST /v1/decide` endpoint over HTTP, and refuses to run the second half
+unless the stack is up. Numbers belong here once someone has run it on
+hardware worth naming, alongside the hardware. A figure with no machine
+attached to it is not reproducible, and a number nobody can reproduce is the
+same liability as a number nobody measured.
+
+The schema-validation cost is the one row that was measuring something real.
+It is still absent, because the figure that was here cannot now be
+distinguished from the fabricated ones around it and no one has re-run it.
 
 ## Evaluation Claims
 
 | Claim | What it would say | Likely source |
 |---|---|---|
-| EVALUATION.md — baseline comparison | Industry-standard retry success rate (~20-25%) | Academic papers, gateway engineering blogs |
-| EVALUATION.md — cost of blind retry | Gateway fee per failed retry attempt (₹0.50 - ₹2.00) | Razorpay pricing page (public) |
+| EVALUATION.md — baseline comparison | Industry-standard retry success rate | Academic papers, gateway engineering blogs |
+| EVALUATION.md — cost of blind retry | Gateway fee per failed retry attempt | Razorpay pricing page (public) |
+
+The "what it would say" column names the *kind* of number, never a value.
+Two entries here previously carried parenthetical ranges — "~20-25%" and
+"₹0.50 - ₹2.00" — which is precisely the hedged invention ADR-0006 kind 3
+forbids. A range with a tilde in front of it is still a claim about the
+outside world.

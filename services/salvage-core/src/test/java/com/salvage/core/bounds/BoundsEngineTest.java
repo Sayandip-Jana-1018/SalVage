@@ -63,21 +63,21 @@ class BoundsEngineTest extends SalvageInfrastructure {
         // 1st attempt: permitted
         BoundsContext ctx1 = new BoundsContext(
                 merchantId, customerId, paymentAttemptId, ActionType.RETRY_IMMEDIATE,
-                null, "HDFC|UPI|RAZORPAY", 0, dayTime, IST);
+                null, "issuer_alpha|UPI|RAZORPAY", 0, dayTime, IST);
         BoundsEvaluationResult res1 = boundsEngine.evaluate(ctx1);
         assertThat(res1.isPermitted()).isTrue();
 
         // 2nd attempt: permitted
         BoundsContext ctx2 = new BoundsContext(
                 merchantId, customerId, paymentAttemptId, ActionType.RETRY_IMMEDIATE,
-                null, "HDFC|UPI|RAZORPAY", 2, dayTime, IST);
+                null, "issuer_alpha|UPI|RAZORPAY", 2, dayTime, IST);
         BoundsEvaluationResult res2 = boundsEngine.evaluate(ctx2);
         assertThat(res2.isPermitted()).isTrue();
 
         // 3rd attempt (attempt count = 3 >= MAX_RECOVERY_ATTEMPTS): REJECTED
         BoundsContext ctx3 = new BoundsContext(
                 merchantId, customerId, paymentAttemptId, ActionType.RETRY_IMMEDIATE,
-                null, "HDFC|UPI|RAZORPAY", 3, dayTime, IST);
+                null, "issuer_alpha|UPI|RAZORPAY", 3, dayTime, IST);
         BoundsEvaluationResult res3 = boundsEngine.evaluate(ctx3);
         assertThat(res3.isPermitted()).isFalse();
         assertThat(res3.rejectedByGuard()).contains("AttemptCapGuard");
@@ -92,7 +92,7 @@ class BoundsEngineTest extends SalvageInfrastructure {
         // Nudge at 23:30 IST -> REJECTED
         BoundsContext nightCtx = new BoundsContext(
                 merchantId, customerId, "att_qh_1", ActionType.CUSTOMER_NUDGE,
-                Channel.WHATSAPP, "HDFC|UPI|RAZORPAY", 0, nightTime, IST);
+                Channel.WHATSAPP, "issuer_alpha|UPI|RAZORPAY", 0, nightTime, IST);
         BoundsEvaluationResult nightRes = boundsEngine.evaluate(nightCtx);
         assertThat(nightRes.isPermitted()).isFalse();
         assertThat(nightRes.rejectedByGuard()).contains("QuietHoursGuard");
@@ -100,14 +100,14 @@ class BoundsEngineTest extends SalvageInfrastructure {
         // Nudge at 11:00 IST -> PERMITTED
         BoundsContext morningCtx = new BoundsContext(
                 merchantId, customerId, "att_qh_1", ActionType.CUSTOMER_NUDGE,
-                Channel.WHATSAPP, "HDFC|UPI|RAZORPAY", 0, morningTime, IST);
+                Channel.WHATSAPP, "issuer_alpha|UPI|RAZORPAY", 0, morningTime, IST);
         BoundsEvaluationResult morningRes = boundsEngine.evaluate(morningCtx);
         assertThat(morningRes.isPermitted()).isTrue();
 
         // Financial retry at 23:30 IST -> PERMITTED (non-intrusive backend action)
         BoundsContext retryNightCtx = new BoundsContext(
                 merchantId, customerId, "att_qh_1", ActionType.RETRY_IMMEDIATE,
-                null, "HDFC|UPI|RAZORPAY", 0, nightTime, IST);
+                null, "issuer_alpha|UPI|RAZORPAY", 0, nightTime, IST);
         BoundsEvaluationResult retryNightRes = boundsEngine.evaluate(retryNightCtx);
         assertThat(retryNightRes.isPermitted()).isTrue();
     }
@@ -123,7 +123,7 @@ class BoundsEngineTest extends SalvageInfrastructure {
         // Attempt WhatsApp Nudge -> REJECTED
         BoundsContext waCtx = new BoundsContext(
                 merchantId, customerId, "att_opt_1", ActionType.CUSTOMER_NUDGE,
-                Channel.WHATSAPP, "HDFC|UPI|RAZORPAY", 0, dayTime, IST);
+                Channel.WHATSAPP, "issuer_alpha|UPI|RAZORPAY", 0, dayTime, IST);
         BoundsEvaluationResult waRes = boundsEngine.evaluate(waCtx);
         assertThat(waRes.isPermitted()).isFalse();
         assertThat(waRes.rejectedByGuard()).contains("OptOutGuard");
@@ -131,7 +131,7 @@ class BoundsEngineTest extends SalvageInfrastructure {
         // SMS Nudge for same customer -> PERMITTED
         BoundsContext smsCtx = new BoundsContext(
                 merchantId, customerId, "att_opt_1", ActionType.CUSTOMER_NUDGE,
-                Channel.SMS, "HDFC|UPI|RAZORPAY", 0, dayTime, IST);
+                Channel.SMS, "issuer_alpha|UPI|RAZORPAY", 0, dayTime, IST);
         BoundsEvaluationResult smsRes = boundsEngine.evaluate(smsCtx);
         assertThat(smsRes.isPermitted()).isTrue();
     }
@@ -151,7 +151,7 @@ class BoundsEngineTest extends SalvageInfrastructure {
         // 3rd contact attempt -> REJECTED
         BoundsContext ctx = new BoundsContext(
                 merchantId, customerId, "att_bud_1", ActionType.CUSTOMER_NUDGE,
-                Channel.SMS, "HDFC|UPI|RAZORPAY", 0, dayTime, IST);
+                Channel.SMS, "issuer_alpha|UPI|RAZORPAY", 0, dayTime, IST);
         BoundsEvaluationResult res = boundsEngine.evaluate(ctx);
         assertThat(res.isPermitted()).isFalse();
         assertThat(res.rejectedByGuard()).contains("ContactBudgetGuard");
@@ -166,7 +166,7 @@ class BoundsEngineTest extends SalvageInfrastructure {
 
         BoundsContext ctx = new BoundsContext(
                 merchantId, "cust_ks_1", "att_ks_1", ActionType.RETRY_IMMEDIATE,
-                null, "HDFC|UPI|RAZORPAY", 0, dayTime, IST);
+                null, "issuer_alpha|UPI|RAZORPAY", 0, dayTime, IST);
         BoundsEvaluationResult res = boundsEngine.evaluate(ctx);
         assertThat(res.isPermitted()).isFalse();
         assertThat(res.rejectedByGuard()).contains("KillSwitchGuard");

@@ -35,7 +35,7 @@ public final class SampleEvents {
                   "provider": "razorpay",
                   "provider_error_code": "BAD_REQUEST_ERROR",
                   "provider_error_description": "Payment processing failed at the issuer",
-                  "issuer": "HDFC",
+                  "issuer": "issuer_alpha",
                   "customer_id": "cust_demo_0001",
                   "is_recurring": false
                 }

@@ -42,19 +42,30 @@ This document serves as the operational guide for on-call engineers, SREs, and p
 
 ---
 
-### SEV-2: Active Issuer Outage (e.g. SBI UPI Down)
+### SEV-2: Active Issuer Outage
 - **Symptoms**:
-  - Sensing matrix reports `rail_id="SBI|UPI|RAZORPAY"` error rate > 20% over 5m window.
+  - Sensing matrix reports a rail whose 5m sliding-window success rate has
+    fallen below the `DEGRADED` threshold, or which has crossed the
+    consecutive-timeout threshold.
   - Active incidents card appears in **The War Room**.
 - **Automated Mitigation**:
-  - The Expected Net Utility Optimizer automatically de-weights the degraded rail and chooses `SWITCH_RAIL` (rerouting to healthy alternatives like HDFC or ICICI UPI).
+  - The expected-net-value optimiser de-weights the degraded rail. It chooses
+    `SWITCH_RAIL` **only if a healthy alternative rail has actually been
+    observed**; during a broad outage where nothing is healthy, `SWITCH_RAIL`
+    is removed from the candidate set entirely and the optimiser falls through
+    to the next action it can carry out. There is no default target rail.
 - **Operator Verification**:
   1. Open the Operator Console at `http://localhost:3000/war-room`.
-  2. Verify auto-rerouted volume counter is incrementing.
+  2. Confirm the degraded rail's verdict and window statistics.
   3. Query rail health via MCP:
      ```bash
-     # MCP Tool: get_rail_health(rail_id="SBI|UPI|RAZORPAY")
+     # MCP Tool: get_rail_health(rail_id="<issuer>|<method>|<provider>")
      ```
+
+> Rail identifiers are written as `issuer|method|provider`. No specific
+> issuer is named in this runbook: naming one alongside an example error rate
+> would attribute an invented figure to a real institution, which
+> [ADR-0006](adr/0006-numbers-policy.md) forbids.
 
 ---
 

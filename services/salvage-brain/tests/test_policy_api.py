@@ -111,7 +111,7 @@ def test_decide_endpoint_returns_optimal_action(client: TestClient, postgres_url
                      is_recurring, raw_event, created_at)
                 VALUES
                     (:id, :m_id, :ord_id, :att_id, :cust_id,
-                     :amount, 'INR', 'upi', 'razorpay', 'HDFC',
+                     :amount, 'INR', 'upi', 'razorpay', 'issuer_alpha',
                      true, '{}'::jsonb, :created_at)
                 """
             ),
@@ -133,7 +133,7 @@ def test_decide_endpoint_returns_optimal_action(client: TestClient, postgres_url
                      provider_error_code, provider_error_desc, rail_id, event_timestamp)
                 VALUES
                     (:id, :m_id, :evt_id, :att_uuid,
-                     'TIMED_OUT', 'Gateway timeout on NPCI switch', 'HDFC|UPI|RAZORPAY', :ts)
+                     'TIMED_OUT', 'Gateway timeout on NPCI switch', 'issuer_alpha|UPI|RAZORPAY', :ts)
                 """
             ),
             {

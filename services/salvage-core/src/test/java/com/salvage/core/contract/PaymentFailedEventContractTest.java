@@ -101,7 +101,7 @@ class PaymentFailedEventContractTest {
 
         assertThat(event.merchantId()).isEqualTo("merch_demo");
         assertThat(event.amountPaise()).isEqualTo(249900L);
-        assertThat(event.railId()).isEqualTo("HDFC|upi|razorpay");
+        assertThat(event.railId()).isEqualTo("issuer_alpha|upi|razorpay");
         assertThat(event.recurring()).isFalse();
     }
 

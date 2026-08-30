@@ -275,6 +275,36 @@ class CounterfactualSettings(_Frozen):
         return self
 
 
+class ActionCostSettings(_Frozen):
+    """Paise charged for taking an action, recovered or not."""
+
+    retry_immediate: int = Field(ge=0)
+    retry_scheduled: int = Field(ge=0)
+    switch_rail: int = Field(ge=0)
+
+
+class ScheduledOffsetSettings(_Frozen):
+    """Which counterfactual offset a scheduled retry is scored at."""
+
+    default: float = Field(ge=0)
+    issuer_outage: float = Field(ge=0)
+    pre_payday_insufficient_funds: float = Field(ge=0)
+
+    def all_offsets(self) -> tuple[float, ...]:
+        return (self.default, self.issuer_outage, self.pre_payday_insufficient_funds)
+
+
+class RecoveryActionSettings(_Frozen):
+    """How the evaluation harness scores a counterfactual.
+
+    Read by ``salvage-eval``. The simulator does not consult this block: it
+    changes no label, only how a label is turned into a payoff.
+    """
+
+    cost_paise: ActionCostSettings
+    scheduled_offset_minutes: ScheduledOffsetSettings
+
+
 class Calibration(_Frozen):
     """The whole calibration file, validated.
 
@@ -294,6 +324,7 @@ class Calibration(_Frozen):
     customers: CustomerSettings
     mandates: MandateSettings
     counterfactual: CounterfactualSettings
+    recovery_actions: RecoveryActionSettings
 
     source_digest: str = Field(min_length=64, max_length=64)
     source_path: pathlib.Path
@@ -303,7 +334,27 @@ class Calibration(_Frozen):
         self._check_method_shares()
         self._check_issuer_shares()
         self._check_every_method_is_reachable()
+        self._check_scheduled_offsets_are_labelled()
         return self
+
+    def _check_scheduled_offsets_are_labelled(self) -> None:
+        """A scheduled retry can only be scored at an offset that was labelled.
+
+        The simulator evaluates counterfactuals on the grid in
+        ``counterfactual.offsets_minutes`` and nowhere else. Naming an offset
+        here that is not on that grid would leave the harness with no ground
+        truth for the action, and the failure would surface as a missing key
+        deep inside an estimator rather than as a bad configuration file.
+        """
+        labelled = set(self.counterfactual.offsets_minutes)
+        for offset in self.recovery_actions.scheduled_offset_minutes.all_offsets():
+            if offset not in labelled:
+                raise ValueError(
+                    f"recovery_actions.scheduled_offset_minutes contains {offset!r}, "
+                    f"which is not in counterfactual.offsets_minutes "
+                    f"({sorted(labelled)}). A scheduled retry can only be scored at "
+                    "an offset the simulator actually labelled."
+                )
 
     def _check_method_shares(self) -> None:
         total = sum(m.traffic_share for m in self.payment_methods.values())

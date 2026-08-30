@@ -72,6 +72,98 @@ _FAILURES_SQL = text(
 )
 
 
+class AttemptSummary(BaseModel):
+    """One attempt in a listing: enough to identify and choose it, no more."""
+
+    merchant_id: str
+    payment_attempt_id: str
+    order_id: str
+    amount_paise: int
+    currency: str
+    payment_method: str
+    issuer: str
+    created_at: dt.datetime
+    failure_count: int
+
+
+class AttemptPage(BaseModel):
+    """A bounded page of attempts for one tenant."""
+
+    merchant_id: str
+    limit: int
+    attempts: list[AttemptSummary]
+
+
+_LIST_SQL = text(
+    """
+    SELECT a.merchant_id, a.payment_attempt_id, a.order_id, a.amount_paise,
+           a.currency, a.payment_method, a.issuer, a.created_at,
+           count(f.event_id) AS failure_count
+      FROM salvage.payment_attempts a
+      LEFT JOIN salvage.failure_events f
+             ON f.payment_attempt_id = a.id
+            AND f.merchant_id = a.merchant_id
+     WHERE a.merchant_id = :merchant_id
+     GROUP BY a.merchant_id, a.payment_attempt_id, a.order_id, a.amount_paise,
+              a.currency, a.payment_method, a.issuer, a.created_at, a.id
+     ORDER BY a.created_at DESC
+     LIMIT :limit
+    """
+)
+
+MAX_LIST_LIMIT = 200
+
+
+@router.get(
+    "/{merchant_id}",
+    response_model=AttemptPage,
+    responses={422: {"description": "limit out of range"}},
+)
+def list_attempts(merchant_id: str, limit: int = 50) -> AttemptPage:
+    """Most recent attempts for one tenant, newest first.
+
+    Bounded and tenant-scoped, like every other read here. There is no
+    cross-tenant listing and no unbounded one: this is called from an operator
+    console page load and from the load harness, and an audit table grows
+    without limit.
+
+    The limit is rejected rather than clamped when out of range. Clamping
+    would answer a different question than the caller asked and label the
+    result with the limit they requested.
+    """
+    if limit < 1 or limit > MAX_LIST_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"limit must be between 1 and {MAX_LIST_LIMIT}, got {limit}",
+        )
+
+    with database.engine.connect() as conn:
+        rows = (
+            conn.execute(_LIST_SQL, {"merchant_id": merchant_id, "limit": limit})
+            .mappings()
+            .all()
+        )
+
+    return AttemptPage(
+        merchant_id=merchant_id,
+        limit=limit,
+        attempts=[
+            AttemptSummary(
+                merchant_id=row["merchant_id"],
+                payment_attempt_id=row["payment_attempt_id"],
+                order_id=row["order_id"],
+                amount_paise=row["amount_paise"],
+                currency=row["currency"],
+                payment_method=row["payment_method"],
+                issuer=row["issuer"],
+                created_at=row["created_at"],
+                failure_count=int(row["failure_count"]),
+            )
+            for row in rows
+        ],
+    )
+
+
 @router.get(
     "/{merchant_id}/{payment_attempt_id}",
     response_model=AttemptView,

@@ -27,7 +27,7 @@ def _dummy_stats(sr: float = 1.0) -> SlidingWindowStats:
 
 def _dummy_snapshot(state: RailState = RailState.HEALTHY) -> RailHealthSnapshot:
     return RailHealthSnapshot(
-        rail_id="HDFC|UPI|RAZORPAY",
+        rail_id="issuer_alpha|UPI|RAZORPAY",
         state=state,
         success_rate_5m=1.0 if state == RailState.HEALTHY else 0.4,
         failure_velocity_5m=0.0,
@@ -48,9 +48,9 @@ def _dummy_features(is_pre_payday: bool = False) -> ExtractedFeatures:
         currency="INR",
         payment_method="upi",
         provider="razorpay",
-        issuer="HDFC",
+        issuer="issuer_alpha",
         is_recurring=True,
-        rail_id="HDFC|UPI|RAZORPAY",
+        rail_id="issuer_alpha|UPI|RAZORPAY",
         hour_of_day_ist=12,
         day_of_week=3,
         day_of_month=25 if is_pre_payday else 10,
@@ -71,7 +71,7 @@ def _dummy_diag(tax: TaxonomyCode) -> DiagnosisResponse:
         taxonomy_code=tax,
         confidence=0.95,
         root_cause="Test failure",
-        rail_id="HDFC|UPI|RAZORPAY",
+        rail_id="issuer_alpha|UPI|RAZORPAY",
         rail_state="HEALTHY",
         explainability_tokens=["TEST_TOKEN"],
         suggested_action=SuggestedAction.RETRY_IMMEDIATE,
