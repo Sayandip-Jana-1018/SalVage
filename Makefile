@@ -180,11 +180,8 @@ eval: ## Run the off-policy evaluation harness; writes EVALUATION.md and JSON
 demo: ## End-to-end round trip: Kafka -> core -> PostgreSQL -> brain -> HTTP
 	bash scripts/demo.sh
 
-razorpay-e2e: ## Not built - salvage-core has no PaymentProvider port
-	@echo "Not built. salvage-core has no PaymentProvider port, no"
-	@echo "SimulatedProvider and no RazorpayTestProvider, so no code in this"
-	@echo "repository moves money through any gateway. The policy, saga and"
-	@echo "ledger layers exist and record what they would do; the effector"
-	@echo "that would carry it out does not."
-	@echo "See docs/adr/0003-payment-provider-abstraction.md."
-	@exit 1
+razorpay-e2e: ## Exercise the Razorpay test-mode adapter (needs rzp_test_ credentials)
+# Reads .env rather than taking credentials on the command line, so they do
+# not land in shell history. The process refuses to start on an rzp_live_ key
+# whatever this target does; see ProviderCredentialsGuard.
+	@bash scripts/razorpay_e2e.sh

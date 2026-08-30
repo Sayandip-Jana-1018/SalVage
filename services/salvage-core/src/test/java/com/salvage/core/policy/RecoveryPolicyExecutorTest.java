@@ -8,6 +8,7 @@ import com.salvage.core.ingest.SalvageInfrastructure;
 import com.salvage.core.ledger.model.LedgerEntry;
 import com.salvage.core.ledger.repository.LedgerEntryRepository;
 import com.salvage.core.model.Merchant;
+import com.salvage.core.model.PaymentAttempt;
 import com.salvage.core.policy.client.BrainClient;
 import com.salvage.core.policy.model.PolicyDecisionResponse;
 import com.salvage.core.policy.model.RecoveryActionType;
@@ -15,6 +16,7 @@ import com.salvage.core.policy.model.RecoveryDecisionRecord;
 import com.salvage.core.policy.repository.RecoveryDecisionRepository;
 import com.salvage.core.policy.service.RecoveryPolicyExecutor;
 import com.salvage.core.repository.MerchantRepository;
+import com.salvage.core.repository.PaymentAttemptRepository;
 import com.salvage.core.saga.model.RecoverySagaRecord;
 import com.salvage.core.saga.model.SagaState;
 import com.salvage.core.saga.repository.RecoverySagaRepository;
@@ -28,9 +30,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest
+@TestPropertySource(
+        properties = {
+            // Pinned so the saga's terminal state is a property of the code
+            // under test rather than of a hash draw.
+            "salvage.payment.provider=simulated",
+            "salvage.payment.simulated.success-rate=1.0",
+            "salvage.payment.simulated.timeout-rate=0.0"
+        })
 class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
 
     @MockitoBean
@@ -51,6 +62,9 @@ class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
     @Autowired
     private MerchantRepository merchantRepository;
 
+    @Autowired
+    private PaymentAttemptRepository attemptRepository;
+
     private String merchantId;
 
     @BeforeEach
@@ -63,6 +77,23 @@ class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
     void permitted_rail_switch_decision_initiates_saga_and_ledger_entry() {
         String attemptId = "att_" + UUID.randomUUID().toString().substring(0, 8);
         String customerId = "cust_perm_1";
+
+        // The effector charges the amount on the attempt row, so one has to
+        // exist. It refuses to invent an amount.
+        attemptRepository.save(
+                new PaymentAttempt(
+                        merchantId,
+                        "order_" + attemptId,
+                        attemptId,
+                        249900L,
+                        "INR",
+                        "upi",
+                        "razorpay",
+                        "issuer_alpha",
+                        customerId,
+                        false,
+                        null,
+                        "{}"));
 
         PolicyDecisionResponse brainDecision = new PolicyDecisionResponse(
                 attemptId,
@@ -114,13 +145,53 @@ class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
         // would silently find nothing.
         RecoverySagaRecord saga =
                 sagaRepository.findByMerchantIdAndId(merchantId, sagaId).orElseThrow();
-        assertThat(saga.getCurrentState()).isEqualTo(SagaState.RAIL_SWITCH_INITIATED);
         assertThat(saga.getMerchantId()).isEqualTo(merchantId);
+        // The saga no longer stops at RAIL_SWITCH_INITIATED. Since Phase 9 the
+        // effector runs and the saga's terminal state reflects what the
+        // provider actually did -- here COMPLETED, because the simulated
+        // provider captured the payment.
+        assertThat(saga.getCurrentState()).isEqualTo(SagaState.COMPLETED);
 
         // Verify Immutable Ledger entries
         List<LedgerEntry> entries = ledgerRepository.findAllByMerchantIdOrderByEntryIndexAsc(merchantId);
         assertThat(entries).isNotEmpty();
         assertThat(entries).anyMatch(e -> e.getEventType().equals("DECISION_PERMITTED"));
+        // The money movement itself is in the ledger too, not just the
+        // decision to attempt it.
+        assertThat(entries).anyMatch(e -> e.getEventType().startsWith("RETRY_"));
+    }
+
+    @Test
+    void a_permitted_decision_for_an_attempt_that_does_not_exist_fails_closed() {
+        // The effector refuses to invent an amount to charge. Without a
+        // payment_attempts row there is no amount, so nothing is attempted and
+        // the saga fails rather than guessing.
+        String attemptId = "att_missing_" + UUID.randomUUID().toString().substring(0, 8);
+
+        when(brainClient.decide(anyString(), anyString()))
+                .thenReturn(
+                        new PolicyDecisionResponse(
+                                attemptId,
+                                RecoveryActionType.RETRY_IMMEDIATE,
+                                0.80,
+                                100000L,
+                                null,
+                                null,
+                                null,
+                                List.of("TRANSIENT_GATEWAY_TIMEOUT"),
+                                Instant.now()));
+
+        RecoveryDecisionRecord decision =
+                policyExecutor.processRecoveryDecision(
+                        merchantId, attemptId, "cust_missing_1", 1, "issuer_alpha|UPI|RAZORPAY",
+                        ZoneId.of("Asia/Kolkata"));
+
+        assertThat(decision.getBoundsEvaluationStatus()).isEqualTo("PERMITTED");
+        RecoverySagaRecord saga =
+                sagaRepository
+                        .findByMerchantIdAndId(merchantId, Objects.requireNonNull(decision.getSagaId()))
+                        .orElseThrow();
+        assertThat(saga.getCurrentState()).isEqualTo(SagaState.FAILED);
     }
 
     @Test

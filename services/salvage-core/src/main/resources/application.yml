@@ -111,13 +111,54 @@ salvage:
     # off unless switched on, and it should stay off anywhere shared.
     enabled: ${SALVAGE_DEMO_INGEST_ENABLED:false}
 
+  payment:
+    # Which adapter the PaymentProvider port resolves to.
+    #
+    #   simulated  the default. Deterministic, in-process, no credentials, no
+    #              network. `make demo` and CI use this, and the quickstart
+    #              works with it for someone who has just cloned the repo.
+    #   razorpay   real HTTP against Razorpay. Requires RAZORPAY_KEY_ID and
+    #              RAZORPAY_KEY_SECRET; the process refuses to start without
+    #              them rather than silently falling back to the simulator,
+    #              because an operator who asked for a gateway and got a
+    #              simulation would be told about recoveries that never
+    #              happened.
+    provider: ${SALVAGE_PAYMENT_PROVIDER:simulated}
+
+    simulated:
+      # Outcomes are a pure function of this seed and the caller's idempotency
+      # key, so a run replays bit-identically.
+      seed: ${SALVAGE_SIM_SEED:20260831}
+
+      # STRUCTURAL ASSUMPTIONS, NOT MEASUREMENTS. Chosen so that a short run
+      # exercises every branch of the calling code, including the rare and
+      # dangerous one. Nothing here has measured a real gateway's rates; see
+      # docs/adr/0006-numbers-policy.md.
+      success-rate: ${SALVAGE_SIM_SUCCESS_RATE:0.55}
+
+      # Share of calls that return UNKNOWN -- the caller learns nothing.
+      timeout-rate: ${SALVAGE_SIM_TIMEOUT_RATE:0.10}
+
+      # Of those timeouts, the share that actually captured the money. This is
+      # the double-charge scenario: the caller saw a timeout, the customer was
+      # charged, and only a reconciliation read can tell the difference.
+      timeout-captured-rate: ${SALVAGE_SIM_TIMEOUT_CAPTURED_RATE:0.30}
+
   razorpay:
     # Read by ProviderCredentialsGuard, which refuses to start on a key
-    # beginning `rzp_live_`. No PaymentProvider adapter exists yet, so setting
-    # this causes no call to Razorpay; the guard is in place ahead of the
-    # adapter deliberately, because it is the control that stops the adapter
-    # from ever being pointed at live money by accident.
+    # beginning `rzp_live_` whatever the provider setting says. That guard is
+    # independent of the adapter on purpose: it is the control that stops the
+    # system from being pointed at live money by accident.
     key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
+
+    # Used to verify the HMAC-SHA256 signature on inbound webhooks. Without
+    # it, verification fails closed and every webhook is rejected -- which is
+    # the correct behaviour for an unauthenticated write into the money
+    # pipeline.
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+
+    base-url: ${RAZORPAY_BASE_URL:https://api.razorpay.com/v1}
 
 # ---- logging ---------------------------------------------------------------
 logging:

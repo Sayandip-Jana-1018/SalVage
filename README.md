@@ -3,15 +3,26 @@
 An autonomous system that diagnoses failed payments and recovers the money,
 with every decision bounded, explainable, and replayable.
 
-> **Status: Phases 0 through 8 are built. The system does not yet move money.**
+> **Status: Phases 0 through 9 are built. The system executes recovery actions.**
 >
-> Everything below runs and is covered by tests. One thing is deliberately
-> absent: `salvage-core` has no `PaymentProvider` port, no `SimulatedProvider`
-> and no `RazorpayTestProvider`, so no code here reaches a payment gateway. The
-> policy, saga and ledger layers decide, record and audit what they *would* do;
-> the effector that would carry it out is not written. `make razorpay-e2e`
-> says so and exits non-zero. See
-> [ADR-0003](docs/adr/0003-payment-provider-abstraction.md).
+> `salvage-core` has a `PaymentProvider` port with two adapters. The default
+> `SimulatedProvider` needs no credentials and no network, so the quickstart
+> works for anyone. `RazorpayTestProvider` makes real calls against Razorpay
+> test mode, and `make razorpay-e2e` has been run successfully against it —
+> it creates a real, payable test-mode payment link and reads it back.
+>
+> Every retry passes through a **reconciliation guard** that asks the provider
+> what actually happened before charging anyone again. A timed-out call is
+> recorded as `UNKNOWN`, never as a failure, because treating "we don't know"
+> as "it failed" is how a customer gets charged twice.
+>
+> **One honest limitation, and it is a property of payments rather than of this
+> code:** a gateway cannot re-charge an arbitrary failed one-off payment.
+> Collecting again needs the customer to authorise it. So against real Razorpay
+> the executable recovery for a one-off failure is a **payment link**, not a
+> silent retry — `RazorpayTestProvider.retry()` refuses and says why. Anything
+> claiming otherwise is using a saved token, acting under a mandate, or lying.
+> See [ADR-0003](docs/adr/0003-payment-provider-abstraction.md).
 >
 > - **Phase 0 — Foundations**: CI, Testcontainers, multi-tenant schema with append-only triggers, health endpoints, contract drift gate.
 > - **Phase 1 — `salvage-sim`**: causal failure simulator with ground-truth counterfactual labels, a two-level continuous-time Markov chain for rail health, salary-cycle balance dynamics, and two enforced no-leakage properties.
@@ -21,7 +32,8 @@ with every decision bounded, explainable, and replayable.
 > - **Phase 5 — `salvage-eval`**: off-policy evaluation (Direct Method, IPS, SNIPS, Doubly Robust), bootstrap confidence intervals, Kish ESS, calibration and regret accounting.
 > - **Phase 6 — `salvage-mcp`**: read-only MCP tools over the live services. No tool decides or executes anything.
 > - **Phase 7 — `salvage-console`**: Next.js 15 operator interface reading the live services through server-side routes. No fixtures.
-> - **Phase 8 — hardening**: Grafana dashboards as code, load and latency harness, multi-tenant end-to-end drill, SRE runbook.
+> - **Phase 8 — hardening**: Grafana dashboards as code, load and latency harness, multi-tenant isolation drill, SRE runbook.
+> - **Phase 9 — the effector**: `PaymentProvider` port, deterministic `SimulatedProvider`, `RazorpayTestProvider`, reconciliation guard, append-only provider-operation audit, signed webhook ingest.
 
 ## The problem
 
@@ -223,6 +235,7 @@ salvage/
 - **Phase 5 (`salvage-eval`)**: Off-Policy Evaluation Harness implementing 4 classical estimators (IPS, SNIPS, Direct Method, Doubly Robust), 95% bootstrap confidence intervals, Kish Effective Sample Size diagnostics, calibration curves, and automated regret accounting generated via `make eval` (8/8 tests).
 - **Phase 6 (`salvage-mcp`)**: Model Context Protocol server exposing five read-only tools over the live services: `explain_decision`, `get_rail_health`, `get_recovery_stats`, `list_open_incidents`, `verify_ledger`. Every tool reads; none decides or executes, and neither backend exposes a route that would let one. Errors surface as tool errors rather than as plausible answers (22 tests).
 - **Phase 7 (`salvage-console`)**: Next.js 15 operator interface, reading the live services through six server-side route handlers. **War Room** (live rail sensing matrix, open incidents, ledger stream with chain verification), **Autopsy** (one attempt: ingest, diagnosis, action valuations, ledger entries), **Checkout** (publishes a real `payment_failed.v1` event and follows it through the actual pipeline), **Evaluation** (the measured off-policy results from `make eval`). Loading, empty and unreachable are distinct states everywhere -- an empty matrix and a lost backend never look the same.
+- **Phase 9 (The effector)**: `PaymentProvider` port with `SimulatedProvider` (deterministic, credential-free, models the timeout-that-actually-captured case) and `RazorpayTestProvider` (verified against the live test API). `ReconciliationGuard` refuses every retry that is not backed by positive evidence no money moved — only `FAILED` and `NOT_FOUND` qualify; `UNKNOWN` blocks. Idempotency keys are derived, never generated, so a redelivery cannot charge twice. `provider_operations` records intent before the call and settles once, so a crash mid-payment leaves a discoverable row rather than nothing. Signed webhook ingest with constant-time HMAC-SHA256 verification (104 tests).
 - **Phase 8 (Hardening & Production Operations)**: declarative Grafana dashboards as code (`ops/grafana/`), a load and latency harness (`scripts/stress_test.py`) measuring schema validation in-process and the real `POST /v1/decide` endpoint over HTTP, a multi-tenant isolation drill running under Testcontainers (`MultiTenantIsolationTest`), and an SRE runbook (`docs/PRODUCTION_RUNBOOK.md`). **No performance figures are quoted**, here or in `docs/OPEN_NUMBERS.md` — the ones that used to be were measuring an `asyncio.sleep`, not this system. See [docs/PHASE_8_SUMMARY.md](docs/PHASE_8_SUMMARY.md).
 
 ## Documentation

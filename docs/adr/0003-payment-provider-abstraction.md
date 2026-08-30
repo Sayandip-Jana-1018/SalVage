@@ -12,17 +12,57 @@ Additionally, Razorpay test mode provides deterministic test instruments (test c
 
 ## Decision
 
-**Status of implementation:** the live-credential guard exists. Nothing else in this section does.
+**Status of implementation: built.** `PaymentProvider` is a Java interface in
+`com.salvage.core.payment` with two adapters.
 
-`ProviderCredentialsGuard` in salvage-core refuses to start when `RAZORPAY_KEY_ID` begins with `rzp_live_`, and `ProviderCredentialsGuardTest` covers it. That control was described in this ADR and in `.env.example` for several phases before it was written, while `docs/PHASE_0_SUMMARY.md` correctly recorded that it did not exist -- the repository contradicted itself, and the user-facing file was the one that was wrong. It is built now.
+- **`SimulatedProvider`** is the default and requires no credentials and no
+  network. It is deterministic -- every outcome is SHA-256 over a seed and the
+  caller's idempotency key -- so a run replays bit-identically. It enforces
+  idempotency the way a gateway does, and it models the failure mode that
+  matters most: a share of calls return `UNKNOWN` (the call timed out), and of
+  those a share **actually captured the money**. The caller cannot tell which
+  without a status read. That asymmetry is what makes the double-charge bug
+  reproducible in a test rather than a story about production.
+- **`RazorpayTestProvider`** issues real HTTP against Razorpay test mode.
+  Activated by `SALVAGE_PAYMENT_PROVIDER=razorpay` plus `RAZORPAY_KEY_ID`,
+  `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`. If the provider is set
+  to `razorpay` without credentials the process **refuses to start** rather
+  than falling back to the simulator: an operator who asked for a gateway and
+  silently got a simulation would be told about recoveries that never happened.
+- **`ProviderCredentialsGuard`** refuses to start on a key beginning
+  `rzp_live_`, independently of any of the above.
+- **`ReconciliationGuard`** sits in front of every retry. It asks the provider
+  what actually happened before this system charges anyone again.
 
-The port and both adapters remain unbuilt. This ADR records the decision so that Phase 2 does not accidentally couple the money core to a specific provider SDK. The port and both adapters are Phase 4 deliverables. `make razorpay-e2e` currently exits non-zero saying exactly that.
+### What has been executed against the live Razorpay API
 
-- `PaymentProvider` is a Java interface (port) with methods for creating payment links, processing payments, issuing refunds, and verifying webhook signatures.
-- `SimulatedProvider` is the default. It is deterministic (seeded), in-process, requires no credentials, and models the full payment lifecycle including realistic failure modes from the simulator's calibration. This is what `make demo` and CI use.
-- `RazorpayTestProvider` issues real HTTP calls against Razorpay's test mode API. Activated by setting `SALVAGE_PAYMENT_PROVIDER=razorpay` plus providing `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in `.env`.
-- Contract tests run against recorded real responses so the adapter is provably faithful without needing live credentials in CI.
-- `RazorpayTestProvider` exercises real Razorpay objects: Orders, Payment Links, Payments, Refunds, and genuine webhook signature verification (HMAC-SHA256).
+`scripts/razorpay_e2e.sh` (`make razorpay-e2e`) has been run successfully
+against Razorpay test mode. It verified Basic authentication,
+`POST /payment_links`, `GET /payment_links/{id}`, and the response field names
+the adapter reads. It created a real, payable test-mode payment link.
+
+Not yet executed from this repository: `GET /payments/{id}`,
+`POST /payments/{id}/refund`, and webhook verification against a signature
+Razorpay actually produced. Those remain transcribed rather than verified.
+
+### The constraint that shapes the adapter
+
+**A gateway cannot re-charge an arbitrary failed one-off payment.** Collecting
+again requires the customer to authorise it; there is no server-side call that
+charges a card again on its own. Any system claiming to "retry a failed
+payment" against a real gateway is using a saved token, acting under a mandate,
+or lying.
+
+So `RazorpayTestProvider.retry()` **refuses**, with an exception saying why,
+rather than pretending. For one-off payments the executable recovery is a
+payment link the customer chooses to pay -- which is exactly why
+`CUSTOMER_NUDGE` is a first-class action and not an afterthought. Server-side
+charging is available only for tokenised or mandate-backed payments, which this
+adapter does not yet implement.
+
+`SimulatedProvider.retry()` does charge, because the simulator models a world
+in which tokens exist. That difference is a real property of the two
+environments, not an inconsistency to be smoothed over.
 
 ## Consequences
 
