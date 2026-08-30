@@ -7,7 +7,7 @@ import { registerResources } from "../src/resources/index.js";
 import { registerTools } from "../src/tools/index.js";
 
 describe("McpServer Registration", () => {
-  it("registers all 5 tools, resources, and prompts without error", () => {
+  it("registers all tools, resources, and prompts without error", () => {
     const server = new McpServer({
       name: "salvage-mcp-test",
       version: "0.1.0",

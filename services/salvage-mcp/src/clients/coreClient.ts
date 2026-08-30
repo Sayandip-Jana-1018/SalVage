@@ -1,29 +1,28 @@
 import axios, { AxiosInstance } from "axios";
 import { config } from "../config.js";
+import { asBackendError } from "./errors.js";
+import type { ChainVerification, LedgerEntryView, MerchantStats } from "./types.js";
 
-export interface MerchantRecoveryStats {
-  merchant_id: string;
-  time_window_hours: number;
-  total_failures_observed: number;
-  total_recoveries_executed: number;
-  recovery_rate_pct: number;
-  gross_recovered_paise: number;
-  gross_recovered_inr: number;
-  bounds_refusal_count: number;
-  taxonomy_breakdown: Record<string, number>;
-  action_breakdown: Record<string, number>;
-}
+const SERVICE = "salvage-core";
 
-export interface LedgerAuditRecord {
-  entry_index: number;
-  event_type: string;
-  merchant_id: string;
-  payload: Record<string, unknown>;
-  previous_entry_hash: string;
-  entry_hash: string;
-  created_at: string;
-}
-
+/**
+ * Read-only client for salvage-core.
+ *
+ * The endpoints below exist. That sentence is worth writing down, because the
+ * version of this file it replaces called `/api/v1/telemetry/...` and
+ * `/api/v1/ledger/...` at a time when salvage-core served nothing but
+ * `/health/liveness` and `/health/readiness`. Every call failed, every failure
+ * was caught, and the catch block returned invented figures -- a 52.9%
+ * recovery rate, ₹181,000 recovered, and, worst of all, fabricated ledger
+ * entries with made-up `entry_hash` values.
+ *
+ * That last one is the reason this class now throws instead. The ledger is the
+ * product's integrity claim: it exists so that an auditor can recompute the
+ * chain and confirm nothing was altered. Serving invented hashes through a
+ * tool that an operator trusts turns that guarantee inside out. If core is
+ * unreachable, the honest answer is "I could not reach the ledger", and it is
+ * the only acceptable one.
+ */
 export class CoreClient {
   private client: AxiosInstance;
 
@@ -35,68 +34,46 @@ export class CoreClient {
     });
   }
 
-  async getMerchantStats(merchantId: string, timeWindowHours: number = 24): Promise<MerchantRecoveryStats> {
+  /** GET /api/v1/telemetry/merchants/{id}/stats */
+  async getMerchantStats(merchantId: string, windowHours = 24): Promise<MerchantStats> {
     try {
-      const response = await this.client.get(`/api/v1/telemetry/merchants/${merchantId}/stats`, {
-        params: { hours: timeWindowHours },
-      });
+      const response = await this.client.get<MerchantStats>(
+        `/api/v1/telemetry/merchants/${encodeURIComponent(merchantId)}/stats`,
+        { params: { hours: windowHours } },
+      );
       return response.data;
     } catch (error) {
-      // Mocked calibrated response for operator visibility if core telemetry API is not directly connected
-      return {
-        merchant_id: merchantId,
-        time_window_hours: timeWindowHours,
-        total_failures_observed: 342,
-        total_recoveries_executed: 181,
-        recovery_rate_pct: 52.9,
-        gross_recovered_paise: 18100000,
-        gross_recovered_inr: 181000.0,
-        bounds_refusal_count: 48,
-        taxonomy_breakdown: {
-          INSUFFICIENT_FUNDS: 120,
-          ISSUER_OUTAGE: 78,
-          NETWORK_TIMEOUT: 64,
-          CUSTOMER_ABANDONED: 45,
-          MANDATE_INVALID: 35,
-        },
-        action_breakdown: {
-          RETRY_SCHEDULED: 85,
-          SWITCH_RAIL: 54,
-          RETRY_IMMEDIATE: 28,
-          CUSTOMER_NUDGE: 14,
-          NO_ACTION: 161,
-        },
-      };
+      throw asBackendError(SERVICE, error);
     }
   }
 
-  async getLedgerEntries(merchantId: string, limit: number = 20): Promise<LedgerAuditRecord[]> {
+  /** GET /api/v1/ledger/merchants/{id}/entries */
+  async getLedgerEntries(merchantId: string, limit = 20): Promise<LedgerEntryView[]> {
     try {
-      const response = await this.client.get(`/api/v1/ledger/merchants/${merchantId}/entries`, {
-        params: { limit },
-      });
+      const response = await this.client.get<LedgerEntryView[]>(
+        `/api/v1/ledger/merchants/${encodeURIComponent(merchantId)}/entries`,
+        { params: { limit } },
+      );
       return response.data;
     } catch (error) {
-      return [
-        {
-          entry_index: 104,
-          event_type: "DECISION_PERMITTED",
-          merchant_id: merchantId,
-          payload: { action: "SWITCH_RAIL", target_rail_id: "ICICI|UPI|RAZORPAY", expected_net_paise: 150000 },
-          previous_entry_hash: "a3f5e921d7b...",
-          entry_hash: "c8b14e92a10...",
-          created_at: new Date(Date.now() - 120000).toISOString(),
-        },
-        {
-          entry_index: 103,
-          event_type: "BOUNDS_REJECTED",
-          merchant_id: merchantId,
-          payload: { guard: "AttemptCapGuard", max_attempts: 3, observed_attempt: 3 },
-          previous_entry_hash: "82f1b49aa21...",
-          entry_hash: "a3f5e921d7b...",
-          created_at: new Date(Date.now() - 450000).toISOString(),
-        },
-      ];
+      throw asBackendError(SERVICE, error);
+    }
+  }
+
+  /**
+   * GET /api/v1/ledger/merchants/{id}/verify
+   *
+   * Rewalks the chain server-side and recomputes every hash. A `valid: false`
+   * result is a successful call reporting tampering, not an error.
+   */
+  async verifyLedger(merchantId: string): Promise<ChainVerification> {
+    try {
+      const response = await this.client.get<ChainVerification>(
+        `/api/v1/ledger/merchants/${encodeURIComponent(merchantId)}/verify`,
+      );
+      return response.data;
+    } catch (error) {
+      throw asBackendError(SERVICE, error);
     }
   }
 }

@@ -92,13 +92,28 @@ class RecoveryPolicyExecutorTest extends SalvageInfrastructure {
         UUID decisionId = Objects.requireNonNull(decision.getId());
         UUID sagaId = Objects.requireNonNull(decision.getSagaId());
 
-        // Verify Decision persistence
-        RecoveryDecisionRecord persistedDecision = decisionRepository.findById(decisionId).orElseThrow();
+        // Verify Decision persistence. Read back through the tenant-scoped
+        // query rather than findById: the repository deliberately exposes no
+        // unscoped lookup, because a decision is a record of what was done
+        // with one merchant's money and reading one without naming the
+        // merchant is not a query this application should be able to express.
+        RecoveryDecisionRecord persistedDecision =
+                decisionRepository
+                        .findByMerchantIdAndPaymentAttemptIdOrderByCreatedAtDesc(merchantId, attemptId)
+                        .stream()
+                        .filter(record -> decisionId.equals(record.getId()))
+                        .findFirst()
+                        .orElseThrow();
         assertThat(persistedDecision.getChosenAction()).isEqualTo(RecoveryActionType.SWITCH_RAIL);
         assertThat(persistedDecision.getExpectedNetValuePaise()).isEqualTo(150000L);
 
         // Verify Saga creation
-        RecoverySagaRecord saga = sagaRepository.findById(sagaId).orElseThrow();
+        // decision.getSagaId() holds the saga row's primary key, not its
+        // business saga_id -- recovery_decisions.saga_id is a foreign key onto
+        // recovery_sagas.id. Resolving it through findByMerchantIdAndSagaId
+        // would silently find nothing.
+        RecoverySagaRecord saga =
+                sagaRepository.findByMerchantIdAndId(merchantId, sagaId).orElseThrow();
         assertThat(saga.getCurrentState()).isEqualTo(SagaState.RAIL_SWITCH_INITIATED);
         assertThat(saga.getMerchantId()).isEqualTo(merchantId);
 

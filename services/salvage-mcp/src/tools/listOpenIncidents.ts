@@ -2,30 +2,42 @@ import { z } from "zod";
 import { BrainClient } from "../clients/brainClient.js";
 
 export const listOpenIncidentsSchema = z.object({
-  min_severity: z.enum(["DEGRADED", "DOWN"]).default("DEGRADED").describe("Minimum incident severity to filter on"),
+  min_severity: z
+    .enum(["DEGRADED", "DOWN"])
+    .default("DEGRADED")
+    .describe("Minimum severity to report. DEGRADED includes DOWN."),
 });
 
 export type ListOpenIncidentsArgs = z.infer<typeof listOpenIncidentsSchema>;
 
-export async function handleListOpenIncidents(args: ListOpenIncidentsArgs, brainClient: BrainClient) {
-  const { rails, sensing_timestamp } = await brainClient.getRailHealth();
+/**
+ * Rails currently in a degraded or down state, from live sensing.
+ *
+ * Derived entirely from the sensing matrix. It deliberately does not suggest a
+ * recovery action per incident: choosing an action is the policy engine's job,
+ * it depends on the specific failure and payer rather than on the rail alone,
+ * and an action named here would be an unbounded recommendation reaching an
+ * operator without having passed the bounds engine. `explain_decision` answers
+ * that question for a real attempt, through the real policy path.
+ */
+export async function handleListOpenIncidents(
+  args: ListOpenIncidentsArgs,
+  brainClient: BrainClient,
+) {
+  const matrix = await brainClient.getRailHealth();
 
-  const activeIncidents = Object.values(rails)
-    .filter((r) => {
-      if (args.min_severity === "DOWN") {
-        return r.state === "DOWN";
-      }
-      return r.state === "DEGRADED" || r.state === "DOWN";
-    })
-    .map((r) => ({
-      incident_id: `inc_${r.rail_id.replace(/\|/g, "_").toLowerCase()}`,
-      affected_rail: r.rail_id,
-      severity: r.state,
-      error_rate_1m: `${(r.error_rate_1m * 100).toFixed(1)}%`,
-      error_rate_5m: `${(r.error_rate_5m * 100).toFixed(1)}%`,
-      p95_latency_ms: r.p95_latency_ms,
-      active_reroutes_to: r.healthy_alternative_rails,
-      recommended_action: r.state === "DOWN" ? "SWITCH_RAIL" : "RETRY_SCHEDULED",
+  const incidents = matrix.rails
+    .filter((rail) =>
+      args.min_severity === "DOWN"
+        ? rail.state === "DOWN"
+        : rail.state === "DEGRADED" || rail.state === "DOWN",
+    )
+    .map((rail) => ({
+      affected_rail: rail.rail_id,
+      severity: rail.state,
+      success_rate_5m: `${(rail.success_rate_5m * 100).toFixed(1)}%`,
+      failure_velocity_5m: rail.failure_velocity_5m,
+      last_evaluated_at: rail.last_evaluated_at,
     }));
 
   return {
@@ -34,12 +46,14 @@ export async function handleListOpenIncidents(args: ListOpenIncidentsArgs, brain
         type: "text",
         text: JSON.stringify(
           {
-            open_incident_count: activeIncidents.length,
-            sensing_timestamp,
-            incidents: activeIncidents,
+            timestamp: matrix.timestamp,
+            min_severity: args.min_severity,
+            observed_rail_count: matrix.rails.length,
+            open_incident_count: incidents.length,
+            incidents,
           },
           null,
-          2
+          2,
         ),
       },
     ],

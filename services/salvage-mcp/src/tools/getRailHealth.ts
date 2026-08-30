@@ -2,23 +2,62 @@ import { z } from "zod";
 import { BrainClient } from "../clients/brainClient.js";
 
 export const getRailHealthSchema = z.object({
-  rail_id: z.string().optional().describe("Optional specific rail identifier (e.g. 'HDFC|UPI|RAZORPAY') to inspect"),
+  rail_id: z
+    .string()
+    .optional()
+    .describe(
+      "Optional rail identifier to inspect, in issuer|method|provider form. Omit for the whole matrix.",
+    ),
 });
 
 export type GetRailHealthArgs = z.infer<typeof getRailHealthSchema>;
 
+/**
+ * Serve the live rail health matrix from salvage-brain.
+ *
+ * Reports exactly the fields the sensing service publishes -- state,
+ * five-minute success rate, failure velocity, evaluation time -- and no
+ * others. The previous version formatted `error_rate_1m`, `p95_latency_ms`,
+ * `observed_attempts` and `healthy_alternative_rails`, none of which the
+ * service returns; they came out as `undefined` or, when the service was
+ * unreachable, as invented values attached to real bank names.
+ */
 export async function handleGetRailHealth(args: GetRailHealthArgs, brainClient: BrainClient) {
-  const data = await brainClient.getRailHealth();
-  const { rails, sensing_timestamp } = data;
+  const matrix = await brainClient.getRailHealth();
+
+  const view = (rail: (typeof matrix.rails)[number]) => ({
+    rail_id: rail.rail_id,
+    state: rail.state,
+    success_rate_5m: `${(rail.success_rate_5m * 100).toFixed(1)}%`,
+    failure_velocity_5m: rail.failure_velocity_5m,
+    last_evaluated_at: rail.last_evaluated_at,
+  });
 
   if (args.rail_id) {
-    const specific = rails[args.rail_id];
+    const specific = matrix.rails.find((rail) => rail.rail_id === args.rail_id);
     if (!specific) {
+      const known = matrix.rails.map((rail) => rail.rail_id);
       return {
         content: [
           {
             type: "text",
-            text: `Rail '${args.rail_id}' not found in active sensing matrix. Available rails: ${Object.keys(rails).join(", ")}`,
+            text: JSON.stringify(
+              {
+                error: "rail_not_observed",
+                requested_rail_id: args.rail_id,
+                // An empty matrix means the sensing tracker has seen no
+                // traffic, which is a different situation from the rail being
+                // unknown. Saying so avoids implying the rail does not exist.
+                detail:
+                  known.length === 0
+                    ? "The sensing matrix is empty: no attempts have been observed yet."
+                    : "That rail is not in the active sensing matrix.",
+                observed_rails: known,
+                timestamp: matrix.timestamp,
+              },
+              null,
+              2,
+            ),
           },
         ],
       };
@@ -28,39 +67,25 @@ export async function handleGetRailHealth(args: GetRailHealthArgs, brainClient: 
       content: [
         {
           type: "text",
-          text: JSON.stringify(
-            {
-              rail_id: specific.rail_id,
-              state: specific.state,
-              error_rate_1m: `${(specific.error_rate_1m * 100).toFixed(1)}%`,
-              error_rate_5m: `${(specific.error_rate_5m * 100).toFixed(1)}%`,
-              error_rate_15m: `${(specific.error_rate_15m * 100).toFixed(1)}%`,
-              p95_latency_ms: specific.p95_latency_ms,
-              observed_attempts: specific.observed_attempts,
-              healthy_alternative_rails: specific.healthy_alternative_rails,
-              sensing_timestamp,
-            },
-            null,
-            2
-          ),
+          text: JSON.stringify({ ...view(specific), timestamp: matrix.timestamp }, null, 2),
         },
       ],
     };
   }
 
-  const summary = Object.values(rails).map((r) => ({
-    rail_id: r.rail_id,
-    state: r.state,
-    error_rate_5m: `${(r.error_rate_5m * 100).toFixed(1)}%`,
-    p95_latency_ms: r.p95_latency_ms,
-    healthy_alternatives: r.healthy_alternative_rails,
-  }));
-
   return {
     content: [
       {
         type: "text",
-        text: JSON.stringify({ summary, sensing_timestamp }, null, 2),
+        text: JSON.stringify(
+          {
+            timestamp: matrix.timestamp,
+            observed_rail_count: matrix.rails.length,
+            rails: matrix.rails.map(view),
+          },
+          null,
+          2,
+        ),
       },
     ],
   };
