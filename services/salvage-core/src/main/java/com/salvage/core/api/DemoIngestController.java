@@ -100,8 +100,14 @@ public class DemoIngestController {
                     .body(new ApiExceptionHandler.ApiError("contract_violation", e.getMessage()));
         }
 
-        Object merchantId = event.get("merchant_id");
-        if (merchantId == null || !merchants.existsByMerchantId(merchantId.toString())) {
+        // Narrowed to a String once, here, rather than calling toString() at
+        // the point of use. Object.toString() carries no non-null guarantee, so
+        // passing its result straight into a Kafka send whose key parameter is
+        // declared non-null is an unchecked conversion. String.valueOf is
+        // total.
+        Object rawMerchantId = event.get("merchant_id");
+        String merchantId = rawMerchantId == null ? "" : String.valueOf(rawMerchantId);
+        if (merchantId.isEmpty() || !merchants.existsByMerchantId(merchantId)) {
             // The consumer fails closed on an unknown merchant rather than
             // provisioning one, so publishing would drop the message. Saying so
             // here is more useful than a silent no-op.
@@ -109,12 +115,15 @@ public class DemoIngestController {
                     .body(
                             new ApiExceptionHandler.ApiError(
                                     "unknown_merchant",
-                                    "No merchant "
+                                    "No merchant '"
                                             + merchantId
-                                            + " is provisioned. salvage-core does not create tenants on ingest."));
+                                            + "' is provisioned. salvage-core does not create tenants on ingest."));
         }
 
-        kafkaTemplate.send(PaymentFailedConsumer.TOPIC, merchantId.toString(), payload);
+        // Keyed by merchant so that one tenant's events keep their relative
+        // order on a partition, which is what makes redelivery dedup behave
+        // predictably for a given attempt.
+        kafkaTemplate.send(PaymentFailedConsumer.TOPIC, merchantId, payload);
         log.info("demo ingest published event for merchant {}", merchantId);
 
         return ResponseEntity.accepted()

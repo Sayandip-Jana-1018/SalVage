@@ -82,7 +82,12 @@ public class TelemetryService {
             // a number the operator needs; hiding it would make the mapper's
             // coverage look better than it is.
             String code = event.getTaxonomyCode() == null ? "UNCLASSIFIED" : event.getTaxonomyCode();
-            taxonomy.merge(code, 1L, Long::sum);
+            // getOrDefault + put rather than merge(.., Long::sum). Long::sum is
+            // a BiFunction<Long,Long,Long>, so merge boxes both operands and
+            // unboxes the result, and the unboxing is the step that can throw
+            // on a null the compiler cannot rule out. This form does the same
+            // counting with no boxing contract in the middle.
+            taxonomy.put(code, taxonomy.getOrDefault(code, 0L) + 1L);
         }
 
         Map<RecoveryActionType, Long> actions = new EnumMap<>(RecoveryActionType.class);
@@ -90,7 +95,8 @@ public class TelemetryService {
         long refused = 0;
         long expectedNetPaise = 0;
         for (RecoveryDecisionRecord decision : decisionRows) {
-            actions.merge(decision.getChosenAction(), 1L, Long::sum);
+            RecoveryActionType action = decision.getChosenAction();
+            actions.put(action, actions.getOrDefault(action, 0L) + 1L);
             if (BoundsStatus.isRefusal(decision.getBoundsEvaluationStatus())) {
                 refused++;
             } else {
