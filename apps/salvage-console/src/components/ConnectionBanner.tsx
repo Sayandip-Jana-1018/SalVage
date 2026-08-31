@@ -55,7 +55,7 @@ export function ConnectionBanner(): React.ReactElement | null {
   );
 
   return (
-    <div className="state-down state-tile pop flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+    <div className="state-down state-tile pop flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:px-7">
       <span className="flex items-center gap-2.5">
         <PlugZap className="h-4 w-4 shrink-0 text-down" />
         <span className="text-[13px] font-semibold text-down">

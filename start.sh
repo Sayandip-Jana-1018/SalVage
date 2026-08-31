@@ -90,6 +90,37 @@ else
   warn "salvage-brain is up but not answering on ${BRAIN_PORT} yet"
 fi
 
+CORE_URL="http://localhost:${CORE_PORT}"
+BRAIN_URL="http://localhost:${BRAIN_PORT}"
+
+# Is what answered on that port actually ours?
+#
+# Docker publishes a port only if it is free, and "free" is decided when the
+# container starts -- it says nothing about a process outside this stack that
+# already holds it. If something else does, every check above can pass against
+# the wrong server: an unrelated API returning a correct 404 for paths it has
+# never heard of, which the console renders as screens of "nothing ingested".
+#
+# FastAPI publishes info.title, so ask. Parsed with node rather than grepped:
+# an openapi document contains a "title" for every schema in it, and a greedy
+# pattern happily returns the last one. node is already required below.
+title=$(curl -fsS --max-time 5 "${BRAIN_URL}/openapi.json" 2>/dev/null   | node -e 'let b="";process.stdin.on("data",d=>b+=d).on("end",()=>{try{const t=JSON.parse(b).info.title;if(typeof t==="string")process.stdout.write(t)}catch{}})' 2>/dev/null)
+
+# A missing title proves nothing and is ignored; only a present, different one
+# is evidence.
+if [ -n "$title" ] && [ "$title" != "Salvage Brain" ]; then
+  printf '
+[31mFAILED: %s is not salvage-brain.[0m
+' "$BRAIN_URL"
+  printf "  Something else is listening there. It calls itself '%s'.
+" "$title"
+  printf '  Stop it, or pick another port:
+'
+  printf '    BRAIN_HOST_PORT=8011 ./start.sh
+'
+  exit 1
+fi
+
 if [ "$CONSOLE" = no ]; then
   printf '\n\033[32mBackend is up.\033[0m Console not started (--backend).\n'
   printf '  core   http://localhost:%s\n  brain  http://localhost:%s\n' "$CORE_PORT" "$BRAIN_PORT"
@@ -118,5 +149,12 @@ cat <<'NEXT'
   Stop them with: ./start.sh --stop
 
 NEXT
+
+# The console defaults to these, but only because they are the ports this file
+# publishes. Setting them explicitly keeps the two in step when BRAIN_HOST_PORT
+# or CORE_HOST_PORT is overridden, rather than leaving the console reading a
+# port nothing is on.
+export BRAIN_BASE_URL="$BRAIN_URL"
+export CORE_BASE_URL="$CORE_URL"
 
 npm run dev

@@ -14,7 +14,28 @@
  * invented failure rates to them.
  */
 
-export const BRAIN_BASE_URL = process.env.BRAIN_BASE_URL ?? "http://localhost:8000";
+/**
+ * Where the two services are, when nobody has said otherwise.
+ *
+ * These defaults must match the host ports `docker-compose.yml` publishes, and
+ * for salvage-brain that is **8001, not 8000**. The compose file moves both
+ * services off the obvious port deliberately -- its own comment calls 8000 and
+ * 8080 "among the most contended ports on a developer machine" -- and this
+ * module defaulted to 8000 anyway.
+ *
+ * That is not a cosmetic mismatch, because of what lives on a contended port.
+ * On the machine this was found on, port 8000 was serving an unrelated
+ * project's API. Every brain-backed route -- the rail matrix, the attempt
+ * listing, the language status -- was proxied into that stranger's service,
+ * which answered a perfectly correct 404 for paths it had never heard of. The
+ * console then rendered "no attempts ingested" and "the layer could not be
+ * read": true statements about the wrong server. Nothing errored, nothing
+ * logged, and the screens looked merely empty rather than misdirected.
+ *
+ * A wrong port is therefore not a connection failure. It is a silent read of
+ * somebody else's data, and it is why {@link assertSalvageBrain} exists.
+ */
+export const BRAIN_BASE_URL = process.env.BRAIN_BASE_URL ?? "http://localhost:8001";
 export const CORE_BASE_URL = process.env.CORE_BASE_URL ?? "http://localhost:8081";
 
 /**
@@ -88,6 +109,87 @@ export class NotFound extends Error {
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * Is the thing on that port actually ours?
+ *
+ * A 404 from a backend is normally an answer: no such attempt, no such
+ * merchant. But it is also exactly what an unrelated service returns for a
+ * path it has never heard of, and the console cannot tell those apart from the
+ * status code alone. That ambiguity is not hypothetical -- it is how a
+ * misconfigured BRAIN_BASE_URL presented as five screens quietly reporting
+ * "nothing ingested" while a stranger's API answered every request.
+ *
+ * So on a 404, and only on a 404, ask the address who it is. FastAPI serves
+ * `info.title` at /openapi.json, and salvage-brain sets it to "Salvage Brain".
+ *
+ * Three outcomes, and only one of them changes anything:
+ *
+ *   confirmed ours       -> the 404 was a real answer. Leave it alone.
+ *   confirmed a stranger -> Misconfigured, naming the address. This is a
+ *                           configuration bug, not an empty database, and the
+ *                           banner already renders those differently.
+ *   could not tell       -> leave it alone. A guess here would replace a true
+ *                           "no such record" with a false accusation, and this
+ *                           console's whole discipline is not doing that.
+ *
+ * Cached per address, because the answer is a property of the deployment and
+ * this sits behind a polling loop.
+ * ------------------------------------------------------------------------ */
+
+type Identity = "ours" | "stranger" | "unknown";
+
+const IDENTITY_TTL_MS = 60000;
+const identityCache = new Map<string, { verdict: Identity; checkedAt: number }>();
+
+async function identify(baseUrl: string, expectedTitle: string): Promise<Identity> {
+  const cached = identityCache.get(baseUrl);
+  if (cached && Date.now() - cached.checkedAt < IDENTITY_TTL_MS) return cached.verdict;
+
+  let verdict: Identity = "unknown";
+  try {
+    const response = await fetch(`${baseUrl}/openapi.json`, {
+      signal: AbortSignal.timeout(2000),
+      cache: "no-store",
+    });
+    if (response.ok) {
+      const document = (await response.json()) as { info?: { title?: unknown } };
+      const title = document.info?.title;
+      // An absent title is not evidence of a stranger -- a proxy or a stripped
+      // schema can drop it -- so only a present, different title convicts.
+      if (typeof title === "string") {
+        verdict = title === expectedTitle ? "ours" : "stranger";
+      }
+    }
+  } catch {
+    // Unreachable or not JSON. Says nothing either way.
+  }
+
+  identityCache.set(baseUrl, { verdict, checkedAt: Date.now() });
+  return verdict;
+}
+
+/**
+ * Turn a 404 into a configuration error when the address is demonstrably not
+ * salvage-brain. Returns the error to throw, or null to let the 404 stand.
+ */
+async function strangerAtTheAddress(
+  service: string,
+  baseUrl: string,
+  expectedTitle: string,
+): Promise<Misconfigured | null> {
+  if ((await identify(baseUrl, expectedTitle)) !== "stranger") return null;
+  return new Misconfigured(
+    service,
+    `${baseUrl} is not ${service}. Something else is listening there and it answered 404. `
+      + `Check ${service === "salvage-brain" ? "BRAIN_BASE_URL" : "CORE_BASE_URL"} against the host port `
+      + "docker-compose.yml publishes.",
+  );
+}
+
+const SERVICE_TITLES: Record<string, string> = {
+  "salvage-brain": "Salvage Brain",
+};
+
 async function request<T>(
   service: string,
   baseUrl: string,
@@ -123,6 +225,11 @@ async function request<T>(
     );
   }
   if (response.status === 404) {
+    const expectedTitle = SERVICE_TITLES[service];
+    if (expectedTitle) {
+      const stranger = await strangerAtTheAddress(service, baseUrl, expectedTitle);
+      if (stranger) throw stranger;
+    }
     throw new NotFound(`${service} has no record at ${path}`);
   }
   if (!response.ok) {

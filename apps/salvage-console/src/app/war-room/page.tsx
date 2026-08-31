@@ -22,7 +22,7 @@ import { RailHealthMatrix } from "@/components/RailHealthMatrix";
  */
 export default function WarRoomPage(): React.ReactElement {
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <ConnectionBanner />
       <IncidentCard />
       <PipelineStrip />

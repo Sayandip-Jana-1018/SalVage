@@ -55,17 +55,17 @@ export function Navigation(): React.ReactElement {
   }, [pathname]);
 
   return (
-    <nav className="flex justify-center px-4">
+    <nav className="flex justify-center px-4 sm:px-6">
       <div
         ref={listRef}
-        className="glass relative flex items-center gap-0.5 overflow-x-auto p-1.5"
+        className="glass relative flex max-w-full items-center gap-1 overflow-x-auto p-2"
         role="tablist"
         aria-label="Console sections"
       >
         {marker ? (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-1.5 rounded-[14px] border border-white/10 bg-white/[0.07] transition-[left,width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            className="pointer-events-none absolute inset-y-2 rounded-[15px] border border-white/10 bg-white/[0.07] transition-[left,width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ left: marker.left, width: marker.width }}
           />
         ) : null}
@@ -79,7 +79,7 @@ export function Navigation(): React.ReactElement {
               href={tab.href}
               data-active={active}
               aria-current={active ? "page" : undefined}
-              className={`relative z-10 flex shrink-0 items-center gap-2 rounded-[14px] px-4 py-2 text-[13px] font-medium transition-colors duration-300 ${
+              className={`relative z-10 flex shrink-0 items-center gap-2 rounded-[15px] px-4 py-2.5 text-[13px] font-medium transition-colors duration-300 ${
                 active ? "text-fg" : "text-fg-muted hover:text-fg"
               }`}
             >

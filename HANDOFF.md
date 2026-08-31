@@ -416,11 +416,22 @@ See `docs/adr/0009-api-authentication.md`.
    `POST /payments/{id}/refund`, and webhook verification against a signature
    Razorpay actually produced. Transcribed but unverified; the class docstring
    marks which is which. Keep that distinction accurate.
-5. **The console has never been seen rendering live data.** Phase 12 verified
-   every screen in a browser, but with the stack down — so the loading,
-   missing and unavailable states are checked and the `ready` state is not,
-   except on `/sandbox`, which reads a file. Run `make up && make demo` and
-   look at the war room.
+5. **The rail sensing matrix can never populate.** `default_rail_tracker`
+   (`services/salvage-brain/src/salvage_brain/sensing/tracker.py`) has its
+   `record_outcome` called from **tests only** — no production code path feeds
+   it, because salvage-brain has no Kafka consumer (`confluent-kafka` is a
+   dependency but is used only by `probes.py` for the health check). Ingest
+   runs console → salvage-core → Kafka → salvage-core's consumer → PostgreSQL,
+   and salvage-brain never sees an event. So `GET /v1/sensing/rails` returns
+   `{"rails": []}` forever and the war room says "No rails have been observed
+   yet" no matter how much traffic is ingested — verified with six attempts
+   ingested for `merch_demo`. The empty state is honest, and it is also
+   permanent, which the `get_all_snapshots` docstring does not say: it claims
+   "observed means at least one ingested attempt named the rail", and nothing
+   observes. Pick one of a consumer in the brain, feeding the tracker from the
+   diagnosis/policy request path, or rebuilding snapshots from PostgreSQL on
+   read — and note the tracker is an in-memory singleton, so any choice needs a
+   story for restart and for more than one replica.
 6. **`docker-compose.prod.yml` has been validated, not run.** `docker compose
    config` accepts it and refuses without secrets, which is what was checked.
    Nobody has brought the production stack up end to end; `docs/DEPLOYMENT.md`
@@ -510,6 +521,37 @@ with 21 counterfactuals per failure. That cost is deliberate — see §8.
 - **Docker credential helper.** `~/.docker/config.json` was replaced with `{}`
   (backup at `.bak`) because `docker-credential-desktop.exe` cannot run without
   WSL interop registered. Images are public, so no helper is needed.
+- **A client's default port must match the port compose publishes, and for
+  salvage-brain that is 8001.** `docker-compose.yml` moves both services off
+  the obvious port on purpose -- its own comment calls 8000 and 8080 "among the
+  most contended ports on a developer machine" -- and then the console
+  (`apps/salvage-console/src/lib/backend.ts`) and the MCP server
+  (`services/salvage-mcp/src/config.ts`) both defaulted to the contended ones.
+  On a machine where an unrelated project held 8000, every brain-backed
+  route -- the rail matrix, the attempt listing, the language status -- was
+  proxied into that stranger's API, which answered a perfectly correct 404 for
+  paths it had never heard of. The console rendered "No attempts ingested" and
+  "The console could not read the language layer's status": true sentences
+  about the wrong server. Nothing errored and nothing logged, so the screens
+  looked merely empty rather than misdirected, and the natural next move is to
+  go debugging the ingest pipeline, which is fine.
+  **A wrong port is not a connection failure. It is a silent read of somebody
+  else's data.** `backend.ts` now asks `/openapi.json` for `info.title` on a
+  404 and reports a configuration error when the address demonstrably belongs
+  to something else -- only when it is *certain*, because guessing there would
+  replace a true "no such record" with a false accusation. Both launchers make
+  the same check before starting the console, and both export `BRAIN_BASE_URL`
+  and `CORE_BASE_URL` from the ports they actually published, so overriding
+  `BRAIN_HOST_PORT` no longer desynchronises the two.
+- **One component per fact, not one request per component.** `/api/rails` is
+  read by the header, the connection banner and the rail matrix. Each mounted
+  its own poll, so the war room issued three identical requests every ten
+  seconds -- six in development, where StrictMode mounts every effect twice --
+  and the dev server log was a wall of the same line. `useApi` now collapses
+  concurrent reads of a URL and results younger than 1.2s. That is a request
+  collapser, not a cache: it is deliberately far below every poll interval on
+  the site, because an operator console must not answer from a store when it
+  could ask.
 
 ---
 

@@ -35,6 +35,7 @@ export function ActionRankingTable({
   return (
     <Panel>
       <PanelHeader
+        align="left"
         eyebrow="Expected net value"
         title="Action ranking"
         note="net = P(recovery) × amount − cost. The engine ranks every action in its bounded action space and takes the highest. Doing nothing is one of them."

@@ -112,19 +112,50 @@ Write-Step "Checking the read path"
 $corePort  = if ($env:CORE_HOST_PORT)  { $env:CORE_HOST_PORT }  else { "8081" }
 $brainPort = if ($env:BRAIN_HOST_PORT) { $env:BRAIN_HOST_PORT } else { "8001" }
 
+$coreUrl  = "http://localhost:$corePort"
+$brainUrl = "http://localhost:$brainPort"
+
 try {
-    Invoke-RestMethod -Uri "http://localhost:$corePort/health/readiness" -TimeoutSec 10 | Out-Null
+    Invoke-RestMethod -Uri "$coreUrl/health/readiness" -TimeoutSec 10 | Out-Null
     Write-Ok "salvage-core answering on $corePort"
 } catch {
     Write-Warn "salvage-core is up but not answering on $corePort yet; it may still be migrating"
 }
 
 try {
-    Invoke-RestMethod -Uri "http://localhost:$brainPort/v1/sensing/rails" -TimeoutSec 10 | Out-Null
+    Invoke-RestMethod -Uri "$brainUrl/v1/sensing/rails" -TimeoutSec 10 | Out-Null
     Write-Ok "salvage-brain answering on $brainPort"
 } catch {
     Write-Warn "salvage-brain is up but not answering on $brainPort yet"
 }
+
+# Is what answered on that port actually ours?
+#
+# Docker publishes a port only if it is free, but "free" is decided when the
+# container starts and says nothing about what was already bound by a process
+# outside this stack. If something else holds the port, docker compose reports
+# the bind failure and every check above can still pass against the wrong
+# server -- an unrelated API answering a correct 404 for paths it has never
+# heard of, which the console renders as five screens of "nothing ingested".
+#
+# FastAPI publishes info.title, so ask.
+function Test-Identity($url, $expected, $name) {
+    try {
+        $doc = Invoke-RestMethod -Uri "$url/openapi.json" -TimeoutSec 5
+    } catch {
+        return    # Cannot tell. Not evidence of anything.
+    }
+    if ($doc.info.title -and $doc.info.title -ne $expected) {
+        Write-Host ""
+        Write-Host "FAILED: $url is not $name." -ForegroundColor Red
+        Write-Host "  Something else is listening there. It calls itself '$($doc.info.title)'." -ForegroundColor Red
+        Write-Host "  Stop it, or pick another port:" -ForegroundColor Yellow
+        Write-Host "    `$env:BRAIN_HOST_PORT = '8011'; .\start.ps1" -ForegroundColor Yellow
+        exit 1
+    }
+}
+
+Test-Identity $brainUrl "Salvage Brain" "salvage-brain"
 
 if ($BackendOnly) {
     Write-Host "`nBackend is up. Console not started (-BackendOnly)." -ForegroundColor Green
@@ -157,5 +188,12 @@ Write-Host ""
 Write-Host "  Ctrl-C stops the console. Containers keep running." -ForegroundColor DarkGray
 Write-Host "  Stop them with: .\start.ps1 -Stop" -ForegroundColor DarkGray
 Write-Host ""
+
+# The console defaults to these, but only because they are the ports this file
+# publishes. Setting them explicitly keeps the two in step when BRAIN_HOST_PORT
+# or CORE_HOST_PORT is overridden, rather than leaving the console reading a
+# port nothing is on.
+$env:BRAIN_BASE_URL = $brainUrl
+$env:CORE_BASE_URL  = $coreUrl
 
 npm run dev

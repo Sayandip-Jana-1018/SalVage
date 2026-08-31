@@ -40,6 +40,7 @@ export function LiveDecisionStream(): React.ReactElement {
   return (
     <Panel index={3}>
       <PanelHeader
+        align="left"
         eyebrow="Append-only"
         title="Ledger stream"
         note={

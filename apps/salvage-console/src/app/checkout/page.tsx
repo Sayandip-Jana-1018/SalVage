@@ -173,7 +173,7 @@ export default function CheckoutPage(): React.ReactElement {
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
-      <div className="space-y-5">
+      <div className="space-y-6">
         <ConnectionBanner />
         <Panel index={0}>
           <PanelHeader
@@ -190,7 +190,7 @@ export default function CheckoutPage(): React.ReactElement {
           />
 
           <PanelBody className="space-y-4">
-            <div className="grid gap-2.5 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               {SCENARIOS.map((option) => {
                 const selected = scenario === option.id;
                 return (
@@ -198,7 +198,7 @@ export default function CheckoutPage(): React.ReactElement {
                     key={option.id}
                     type="button"
                     onClick={() => setScenario(option.id)}
-                    className={`rounded-xl border p-3 text-left transition-colors ${
+                    className={`rounded-2xl border p-4 text-left transition-all duration-300 ${
                       selected
                         ? "border-iris/45 bg-iris/[0.08]"
                         : "border-white/[0.07] bg-white/[0.035] hover:border-white/12"
@@ -216,41 +216,53 @@ export default function CheckoutPage(): React.ReactElement {
               })}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <label className="block sm:w-40">
-                <span className="eyebrow">Amount (₹)</span>
+            {/* Centred, and both buttons built to one spec. They previously sat
+                hard left under a full-width row of cards, and disagreed with
+                each other about capitalisation and weight -- one lowercase and
+                iris, one title case and grey -- which reads as two controls
+                from two different screens. */}
+            <div className="flex flex-col items-center gap-4 border-t border-white/[0.06] pt-6 sm:flex-row sm:justify-center sm:gap-5">
+              <label className="w-full sm:w-44">
+                <span className="eyebrow block text-center">Amount (₹)</span>
                 <input
                   value={amountRupees}
                   onChange={(event) => setAmountRupees(event.target.value)}
                   inputMode="decimal"
-                  className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
+                  aria-label="Amount in rupees"
+                  className="num mt-2 h-10 w-full rounded-xl border border-white/12 bg-white/[0.035] px-3.5 text-center font-mono text-[13px] text-fg outline-none transition-colors focus:border-iris/60"
                 />
               </label>
 
-              <button
-                onClick={run}
-                disabled={busy}
-                className="inline-flex items-center gap-2 rounded-lg border border-iris/40 bg-iris/10 px-4 py-2 font-mono text-xs font-semibold text-iris transition-colors hover:bg-iris/15 disabled:opacity-50"
-              >
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                {stage === "publishing"
-                  ? "publishing"
-                  : stage === "waiting"
-                    ? "waiting for ingest"
-                    : "publish failure event"}
-              </button>
+              <div className="flex w-full flex-col gap-3 sm:mt-[26px] sm:w-auto sm:flex-row">
+                <button
+                  onClick={run}
+                  disabled={busy}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-iris/40 bg-iris/12 px-5 text-[13px] font-semibold text-iris transition-all duration-300 hover:border-iris/60 hover:bg-iris/20 disabled:opacity-50"
+                >
+                  {busy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="h-3.5 w-3.5" />
+                  )}
+                  {stage === "publishing"
+                    ? "Publishing"
+                    : stage === "waiting"
+                      ? "Waiting for ingest"
+                      : "Publish failure event"}
+                </button>
 
-              <button
-                onClick={openRazorpay}
-                title="Opens Razorpay test-mode checkout, if a key is configured"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-4 py-2 font-mono text-xs text-fg transition-colors hover:border-fg-faint"
-              >
-                Razorpay test checkout
-              </button>
+                <button
+                  onClick={openRazorpay}
+                  title="Opens Razorpay test-mode checkout, if a key is configured"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-5 text-[13px] font-medium text-fg-muted transition-all duration-300 hover:border-white/20 hover:text-fg"
+                >
+                  Razorpay test checkout
+                </button>
+              </div>
             </div>
 
             {attemptId ? (
-              <p className="font-mono text-[11px] text-fg-faint">
+              <p className="text-center font-mono text-[11px] text-fg-faint">
                 attempt <Mono value={attemptId} className="text-fg" />
               </p>
             ) : null}

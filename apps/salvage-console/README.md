@@ -13,9 +13,20 @@ npm test           # display helpers
 npm run build      # also type-checks every route and page against the wire types
 ```
 
-Backends are read from `BRAIN_BASE_URL` (default `http://localhost:8000`) and
-`CORE_BASE_URL` (default `http://localhost:8081`). Start them with `make up`
-and `make demo` from the repository root.
+Backends are read from `BRAIN_BASE_URL` (default `http://localhost:8001`) and
+`CORE_BASE_URL` (default `http://localhost:8081`). Those are the **host** ports
+`docker-compose.yml` publishes, not the 8000 and 8080 the containers listen on
+internally — the compose file moves both off the obvious port because they are
+the two most contended ports on a developer machine. Start the services with
+`make up` and `make demo` from the repository root, or run `./start.ps1` /
+`./start.sh`, which set both variables from the ports they actually published.
+
+If something unrelated is already holding one of those ports, the console will
+read *it* rather than failing: a stranger's API answers a perfectly correct 404
+for `/v1/sensing/rails`, and the screens go quiet instead of loud. `src/lib/backend.ts`
+checks `info.title` on a 404 and reports a configuration error when the address
+demonstrably belongs to something else; both launchers make the same check
+before starting.
 
 ## Screens
 
@@ -61,6 +72,16 @@ and they are the ones that were never about flatness:
    allowed — panels rise in sequence, the nav marker slides between items. A
    looping animation still means something is wrong. All of it stops under
    `prefers-reduced-motion`.
+
+Panel headers are **centred**, and their supporting note is held to a readable
+measure. The version before this pinned every header hard left and capped the
+note at `max-w-2xl` inside a panel three times that wide, so each one trailed
+off into a third of a panel of nothing — one panel like that is a choice, five
+stacked read as unfinished. Dense panels (tables, the rail matrix) opt out with
+`align="left"`, because a centred header floating above left-aligned rows reads
+as two unrelated blocks. Long prose is centred as a *block* and left-aligned as
+*text*: a ragged edge on both sides of a four-line paragraph is harder to read
+than the dead space it was meant to fix.
 
 Performance: `backdrop-filter` is the expensive property here, so it is applied
 to a small number of large surfaces — panels, header, nav — never to chips or

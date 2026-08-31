@@ -40,8 +40,8 @@ export function TopBar(): React.ReactElement {
   }, []);
 
   return (
-    <header className="flex justify-center px-4 pt-5">
-      <div className="glass flex w-full max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3.5">
+    <header className="flex justify-center px-4 pt-6 sm:px-6">
+      <div className="glass flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-iris/25 bg-gradient-to-br from-iris/25 to-iris/5 font-mono text-[12px] font-bold tracking-tight text-iris shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
             SV

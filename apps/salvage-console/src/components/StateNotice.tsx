@@ -34,7 +34,7 @@ export function StateNotice({
 }): React.ReactElement {
   if (phase === "loading") {
     return (
-      <div className="px-6 py-12">
+      <div className="px-6 py-16">
         <div className="mx-auto max-w-xs">
           <LoadingBar />
           <p className="mt-3 text-center font-mono text-[11px] text-fg-faint">
@@ -47,7 +47,7 @@ export function StateNotice({
 
   if (phase === "unavailable") {
     return (
-      <div className="flex items-start justify-center gap-2.5 px-6 py-10 text-center">
+      <div className="flex items-start justify-center gap-2.5 px-6 py-14 text-center">
         <PlugZap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-faint" />
         <p className="max-w-md text-[12px] leading-relaxed text-fg-faint">
           This panel has no reading. Not an all-clear — the console cannot see what it would
@@ -61,12 +61,12 @@ export function StateNotice({
   }
 
   return (
-    <div className="flex flex-col items-center gap-2.5 px-6 py-12 text-center">
-      <span className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04]">
-        <Inbox className="h-4 w-4 text-fg-faint" />
+    <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+      <span className="mb-1 grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.04]">
+        <Inbox className="h-5 w-5 text-fg-faint" />
       </span>
-      <p className="text-[13px] font-medium text-fg">{emptyTitle ?? "Nothing recorded yet"}</p>
-      <p className="max-w-md text-[12px] leading-relaxed text-fg-muted">
+      <p className="text-[14px] font-semibold text-fg">{emptyTitle ?? "Nothing recorded yet"}</p>
+      <p className="max-w-sm text-[12.5px] leading-relaxed text-fg-muted">
         {emptyBody ?? "The services answered, and they have nothing to show for this query."}
       </p>
     </div>

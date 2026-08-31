@@ -56,7 +56,7 @@ export function SandboxSimulator(): React.ReactElement {
     data.policies.find((policy) => policy.policy_name === shippedName) ?? data.policies[0];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Panel index={1}>
         <PanelHeader
           eyebrow="Held-out synthetic episodes"
@@ -79,12 +79,12 @@ export function SandboxSimulator(): React.ReactElement {
         />
 
         <PanelBody className="!px-0 !py-0">
-          <div className="state-degraded mx-5 mt-4 flex items-start gap-2 rounded-lg border border-degraded/30 bg-degraded/[0.06] px-3 py-2.5">
+          <div className="state-degraded mx-6 mt-6 flex items-start gap-2.5 rounded-xl border border-degraded/30 bg-degraded/[0.06] px-4 py-3 sm:mx-8">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-degraded" />
-            <p className="max-w-3xl text-[11px] leading-relaxed text-degraded">{data.framing}</p>
+            <p className="text-[11.5px] leading-relaxed text-degraded">{data.framing}</p>
           </div>
 
-          <div className="px-5 py-5">
+          <div className="px-4 py-7 sm:px-8">
             <ForestPlot policies={data.policies} />
           </div>
         </PanelBody>
@@ -97,7 +97,7 @@ export function SandboxSimulator(): React.ReactElement {
             title="Head to head"
             note="One resample, both policies scored on it, the per-episode difference bootstrapped. Comparing two independently-built intervals for overlap throws away the variance the policies share and is badly under-powered."
           />
-          <PanelBody className="grid gap-3 lg:grid-cols-2">
+          <PanelBody className="grid gap-4 lg:grid-cols-2">
             {data.policy_vs_best_baseline ? (
               <PairedComparison
                 comparison={data.policy_vs_best_baseline}
@@ -116,9 +116,10 @@ export function SandboxSimulator(): React.ReactElement {
         </Panel>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_auto]">
         <Panel index={3}>
           <PanelHeader
+            align="left"
             eyebrow="Every policy, every column"
             title="Results table"
             note="Kish effective sample size is how many episodes the importance weights are really worth. A large gap between it and the episode count means the estimate rests on far fewer observations than it appears to."
@@ -164,7 +165,7 @@ export function SandboxSimulator(): React.ReactElement {
         ) : null}
       </div>
 
-      <p className="max-w-3xl px-1 text-[11px] leading-relaxed text-fg-faint">
+      <p className="mx-auto max-w-2xl px-1 text-center text-[11px] leading-relaxed text-fg-faint">
         These are simulated episodes from{" "}
         <span className="font-mono">packages/salvage-sim</span>, not production performance.
         Nothing in this system has run against real payment traffic, and no figure on this page

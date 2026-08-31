@@ -34,6 +34,7 @@ export function RailHealthMatrix(): React.ReactElement {
   return (
     <Panel index={2}>
       <PanelHeader
+        align="left"
         eyebrow="Five-minute sliding window"
         title="Rail sensing matrix"
         note="Aggregated across every ingested merchant stream. A cell is one issuer on one method; a dash means that issuer carries no traffic on that method."

@@ -36,7 +36,7 @@ export default function AutopsyDetailPage(): React.ReactElement {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <Link
         href="/autopsy"
         className="inline-flex items-center gap-1.5 font-mono text-[11px] text-fg-muted transition-colors hover:text-iris"

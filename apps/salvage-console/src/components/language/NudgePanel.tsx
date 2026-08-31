@@ -3,7 +3,7 @@
 import { Loader2, MessageSquare } from "lucide-react";
 import React, { useState } from "react";
 import {
-  LanguageDisabledNotice,
+  LanguageOffLine,
   Provenance,
   useLanguageStatus,
 } from "@/components/language/LanguageGate";
@@ -67,7 +67,7 @@ export function NudgePanel(): React.ReactElement {
 
       <PanelBody className="space-y-4">
         {!enabled ? (
-          <LanguageDisabledNotice
+          <LanguageOffLine
             status={status.data}
             unreachable={status.phase === "unavailable"}
           />

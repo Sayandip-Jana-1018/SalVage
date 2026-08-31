@@ -13,9 +13,44 @@ import type { LanguageStatus } from "@/types";
  * the screen, and an endpoint that failed for both would make them look the
  * same. Off is stated calmly with the variable to set. Unreachable is stated as
  * an outage.
+ *
+ * Every caller shares one request: `useApi` collapses concurrent reads of the
+ * same URL, so the two panels on this page asking independently is two hook
+ * calls and one fetch.
  */
 export function useLanguageStatus() {
   return useApi<LanguageStatus>("/api/language/status");
+}
+
+/**
+ * The compact form, for a panel whose feature is unavailable.
+ *
+ * The full explanation below is correct and it is four lines long, and this
+ * page has two panels gated on the same fact. Rendering it in both printed the
+ * identical paragraph twice, one panel apart — which reads as a stuck screen
+ * rather than as one condition affecting two features. The explanation is now
+ * given once at the top of the page, and each panel says only that it is
+ * affected.
+ */
+export function LanguageOffLine({
+  status,
+  unreachable,
+}: {
+  status: LanguageStatus | null;
+  unreachable: boolean;
+}): React.ReactElement {
+  const [Icon, text] = unreachable
+    ? [PowerOff, "salvage-brain is unreachable, so this cannot run."]
+    : status === null
+      ? [Info, "The console could not read the layer's status, so this cannot run."]
+      : [PowerOff, "The language layer is switched off, so this cannot run."];
+
+  return (
+    <p className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-5 text-center text-[12px] text-fg-faint">
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {text}
+    </p>
+  );
 }
 
 export function LanguageDisabledNotice({

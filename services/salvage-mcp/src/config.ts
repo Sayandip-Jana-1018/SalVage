@@ -7,8 +7,15 @@ export interface SalvageConfig {
 }
 
 export const config: SalvageConfig = {
-  brainBaseUrl: process.env.BRAIN_BASE_URL || "http://localhost:8000",
-  coreBaseUrl: process.env.CORE_BASE_URL || "http://localhost:8080",
+  /**
+   * The host ports `docker-compose.yml` publishes -- 8001 and 8081, not the
+   * 8000 and 8080 the containers listen on internally. The compose file moves
+   * both off the obvious port on purpose, calling them "among the most
+   * contended ports on a developer machine", and defaulting to the contended
+   * ones means this server reads whatever else happens to be running there.
+   */
+  brainBaseUrl: process.env.BRAIN_BASE_URL || "http://localhost:8001",
+  coreBaseUrl: process.env.CORE_BASE_URL || "http://localhost:8081",
   /**
    * The key this server authenticates with.
    *

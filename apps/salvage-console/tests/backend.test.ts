@@ -163,3 +163,101 @@ describe("the other outcomes still read as themselves", () => {
     );
   });
 });
+
+/**
+ * A 404 is only an answer if it came from the right server.
+ *
+ * The console defaulted to port 8000 for salvage-brain while the compose file
+ * publishes 8001. On a machine where an unrelated project held 8000, every
+ * brain-backed route was proxied into that stranger's API, which answered a
+ * perfectly correct 404 for paths it had never heard of -- and the console
+ * rendered "no attempts ingested" and "the layer could not be read". True
+ * sentences about the wrong server, with nothing in any log to say so.
+ */
+describe("a 404 from the wrong server is not an empty database", () => {
+  function respondWithIdentity(title: string | undefined) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).endsWith("/openapi.json")) {
+          const info = title === undefined ? {} : { title };
+          return new Response(JSON.stringify({ info }), { status: 200 });
+        }
+        return new Response(JSON.stringify({}), { status: 404 });
+      }),
+    );
+  }
+
+  it("defaults salvage-brain to the host port compose actually publishes", async () => {
+    const { BRAIN_BASE_URL, CORE_BASE_URL } = await freshBackend({
+      BRAIN_BASE_URL: undefined,
+      CORE_BASE_URL: undefined,
+    });
+
+    expect(BRAIN_BASE_URL).toBe("http://localhost:8001");
+    expect(CORE_BASE_URL).toBe("http://localhost:8081");
+  });
+
+  it("still reads a 404 as a missing record when the address is salvage-brain", async () => {
+    respondWithIdentity("Salvage Brain");
+    const { brain, NotFound } = await freshBackend({ SALVAGE_API_KEY: "k" });
+
+    await expect(brain.get("/v1/attempts/m/p")).rejects.toBeInstanceOf(NotFound);
+  });
+
+  it("reports a configuration problem when something else is on the port", async () => {
+    respondWithIdentity("Some Other API");
+    const { brain, Misconfigured } = await freshBackend({ SALVAGE_API_KEY: "k" });
+
+    await expect(brain.get("/v1/sensing/rails")).rejects.toBeInstanceOf(Misconfigured);
+    await expect(brain.get("/v1/sensing/rails")).rejects.toThrow(/BRAIN_BASE_URL/);
+  });
+
+  it("does not convict on a missing title", async () => {
+    // A proxy or a stripped schema can drop info.title. Guessing there would
+    // replace a true "no such record" with a false accusation, which is the
+    // exact failure this console exists to avoid.
+    respondWithIdentity(undefined);
+    const { brain, NotFound } = await freshBackend({ SALVAGE_API_KEY: "k" });
+
+    await expect(brain.get("/v1/attempts/m/p")).rejects.toBeInstanceOf(NotFound);
+  });
+
+  it("does not convict when the identity probe itself fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).endsWith("/openapi.json")) throw new Error("refused");
+        return new Response(JSON.stringify({}), { status: 404 });
+      }),
+    );
+    const { brain, NotFound } = await freshBackend({ SALVAGE_API_KEY: "k" });
+
+    await expect(brain.get("/v1/attempts/m/p")).rejects.toBeInstanceOf(NotFound);
+  });
+
+  it("asks the address at most once across repeated 404s", async () => {
+    // This sits behind a polling loop. A probe per poll would triple the
+    // traffic of the misconfiguration it is diagnosing.
+    let probes = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).endsWith("/openapi.json")) {
+          probes += 1;
+          return new Response(JSON.stringify({ info: { title: "Salvage Brain" } }), {
+            status: 200,
+          });
+        }
+        return new Response(JSON.stringify({}), { status: 404 });
+      }),
+    );
+    const { brain } = await freshBackend({ SALVAGE_API_KEY: "k" });
+
+    await expect(brain.get("/v1/attempts/m/a")).rejects.toThrow();
+    await expect(brain.get("/v1/attempts/m/b")).rejects.toThrow();
+    await expect(brain.get("/v1/attempts/m/c")).rejects.toThrow();
+
+    expect(probes).toBe(1);
+  });
+});
