@@ -22,3 +22,9 @@ gradle/wrapper/gradle-wrapper.jar binary
 # Generated code is checked in so that a reader can see it without running the
 # build, but it should not pollute diffs or language statistics.
 **/generated/** linguist-generated=true
+
+# PowerShell scripts keep CRLF. Windows PowerShell 5.1 reads a file with no BOM
+# as Windows-1252 rather than UTF-8, so start.ps1 is also kept strictly ASCII --
+# an em dash in a comment was enough to make the parser fail on a line twenty
+# lines further down with "Missing argument in parameter list".
+*.ps1 text eol=crlf working-tree-encoding=UTF-8

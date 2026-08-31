@@ -62,6 +62,39 @@ Doing nothing is a first-class action the policy can choose.
 
 ## Quick start
 
+**One command, from the repository root.**
+
+Windows:
+
+```powershell
+.\start.ps1
+```
+
+macOS or Linux:
+
+```bash
+./start.sh
+```
+
+That brings up PostgreSQL, Redis and Redpanda, creates the Kafka topics, builds
+and starts `salvage-core` and `salvage-brain`, waits for all of them to report
+healthy, then runs the console in the foreground. Open the URL it prints. There
+is no data until a payment fails, so open **Checkout** and press *Publish
+failure event* — that pushes a real `payment_failed.v1` through Kafka and the
+ordinary consumer picks it up.
+
+`.\start.ps1 -Stop` (or `./start.sh --stop`) stops the containers.
+
+**These scripts are for development only and say so at the top.** They run
+`docker-compose.yml`, which sets `SALVAGE_AUTH_REQUIRED=false` — every endpoint
+answers any caller for any tenant, on a database password that is in this
+repository. Deployment is [`docker-compose.prod.yml`](docker-compose.prod.yml)
+and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md); the two files are separate on
+purpose, because one file with a "prod" flag is one typo away from serving a
+real merchant's ledger to the internet.
+
+### Doing it by hand
+
 You need **Docker** and **bash**. Nothing else — no JDK, no Python, no Node.
 
 ```bash

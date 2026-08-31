@@ -178,6 +178,15 @@ services:
       # start with this true and no keys configured, which is the production
       # default. See docker-compose.prod.yml, which does not set this.
       SALVAGE_AUTH_REQUIRED: "false"
+      # Without this the endpoint the console's Checkout page posts to answers
+      # 404 `demo_ingest_disabled`, because application.yml defaults it off and
+      # compose was never passing it through. `.env` carrying the variable did
+      # nothing: compose reads that file for *substitution*, not to inject
+      # environment into a container, and this service never referenced it.
+      #
+      # On here, off in docker-compose.prod.yml, which sets it to "false"
+      # explicitly. It is a write path that attributes events to a merchant.
+      SALVAGE_DEMO_INGEST_ENABLED: ${SALVAGE_DEMO_INGEST_ENABLED:-true}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:-salvage}
