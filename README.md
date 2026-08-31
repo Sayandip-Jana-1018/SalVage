@@ -3,7 +3,7 @@
 An autonomous system that diagnoses failed payments and recovers the money,
 with every decision bounded, explainable, and replayable.
 
-> **Status: Phases 0 through 9 are built. The system executes recovery actions.**
+> **Status: Phases 0 through 10 are built. The system executes recovery actions.**
 >
 > `salvage-core` has a `PaymentProvider` port with two adapters. The default
 > `SimulatedProvider` needs no credentials and no network, so the quickstart
@@ -34,6 +34,7 @@ with every decision bounded, explainable, and replayable.
 > - **Phase 7 — `salvage-console`**: Next.js 15 operator interface reading the live services through server-side routes. No fixtures.
 > - **Phase 8 — hardening**: Grafana dashboards as code, load and latency harness, multi-tenant isolation drill, SRE runbook.
 > - **Phase 9 — the effector**: `PaymentProvider` port, deterministic `SimulatedProvider`, `RazorpayTestProvider`, reconciliation guard, append-only provider-operation audit, signed webhook ingest.
+> - **Phase 10 — measurement**: recovery model fitted from logged outcomes with a held-out split, shadow mode with a paired bootstrap, and two measurement defects found and fixed.
 
 ## The problem
 
@@ -235,11 +236,15 @@ salvage/
 - **Phase 5 (`salvage-eval`)**: Off-Policy Evaluation Harness implementing 4 classical estimators (IPS, SNIPS, Direct Method, Doubly Robust), 95% bootstrap confidence intervals, Kish Effective Sample Size diagnostics, calibration curves, and automated regret accounting generated via `make eval` (8/8 tests).
 - **Phase 6 (`salvage-mcp`)**: Model Context Protocol server exposing five read-only tools over the live services: `explain_decision`, `get_rail_health`, `get_recovery_stats`, `list_open_incidents`, `verify_ledger`. Every tool reads; none decides or executes, and neither backend exposes a route that would let one. Errors surface as tool errors rather than as plausible answers (22 tests).
 - **Phase 7 (`salvage-console`)**: Next.js 15 operator interface, reading the live services through six server-side route handlers. **War Room** (live rail sensing matrix, open incidents, ledger stream with chain verification), **Autopsy** (one attempt: ingest, diagnosis, action valuations, ledger entries), **Checkout** (publishes a real `payment_failed.v1` event and follows it through the actual pipeline), **Evaluation** (the measured off-policy results from `make eval`). Loading, empty and unreachable are distinct states everywhere -- an empty matrix and a lost backend never look the same.
+- **Phase 10 (Fitted model & shadow mode)**: `FittedRecoverabilityModel` estimates P(recovery | context, action) by hierarchical shrinkage, fitted on a training split and scored on held-out episodes; it may only see what a production log contains, and two tests pin it away from the counterfactual answer key. **Shadow mode** compares a challenger against the champion with a *paired* bootstrap — one resample, both policies scored on it — which is the statistically correct test and materially more powerful than comparing two intervals for overlap. Against the strongest baseline the policy returns **+9,682.5 paise per failure, 95% CI [+5,707.9, +14,043.2]**, excluding zero; the unpaired overlap test on the same data calls that indistinguishable, and the report prints both (34 tests).
 - **Phase 9 (The effector)**: `PaymentProvider` port with `SimulatedProvider` (deterministic, credential-free, models the timeout-that-actually-captured case) and `RazorpayTestProvider` (verified against the live test API). `ReconciliationGuard` refuses every retry that is not backed by positive evidence no money moved — only `FAILED` and `NOT_FOUND` qualify; `UNKNOWN` blocks. Idempotency keys are derived, never generated, so a redelivery cannot charge twice. `provider_operations` records intent before the call and settles once, so a crash mid-payment leaves a discoverable row rather than nothing. Signed webhook ingest with constant-time HMAC-SHA256 verification (104 tests).
 - **Phase 8 (Hardening & Production Operations)**: declarative Grafana dashboards as code (`ops/grafana/`), a load and latency harness (`scripts/stress_test.py`) measuring schema validation in-process and the real `POST /v1/decide` endpoint over HTTP, a multi-tenant isolation drill running under Testcontainers (`MultiTenantIsolationTest`), and an SRE runbook (`docs/PRODUCTION_RUNBOOK.md`). **No performance figures are quoted**, here or in `docs/OPEN_NUMBERS.md` — the ones that used to be were measuring an `asyncio.sleep`, not this system. See [docs/PHASE_8_SUMMARY.md](docs/PHASE_8_SUMMARY.md).
 
 ## Documentation
 
+- **[HANDOFF.md](HANDOFF.md) — start here if you are picking this project up.**
+  What is built, what is not, the conventions that are not negotiable, the
+  traps that have already cost time, and the work queue.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — system design, components, data flow
 - [EVALUATION.md](EVALUATION.md) — empirical off-policy evaluation report generated by `salvage-eval`
 - [DECISIONS.md](DECISIONS.md) — index of architecture decision records
