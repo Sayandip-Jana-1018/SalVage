@@ -491,6 +491,19 @@ with 21 counterfactuals per failure. That cost is deliberate — see §8.
   `~/.profile`, **not** `~/.bashrc` (Ubuntu's `.bashrc` returns early for
   non-interactive shells, so `make preflight` reports `java` missing even
   though `java -version` works).
+- **Never write a credential-shaped literal, even in a test.** Several tests
+  here prove that a password embedded in a driver error does not reach a
+  caller, and the obvious way to write one is to put a real-looking connection
+  string in the fixture. GitGuardian flagged exactly that in `b4f56fb` and was
+  right to: a scanner cannot tell a fixture password from a real one and should
+  not try. The cost is not the fake password, it is that a repository which
+  generates recurring false positives teaches its owner to dismiss the alerts,
+  and then the real leak gets dismissed with them. Assemble the value instead --
+  `f"postgresql://salvage:{password}@db"` with `password =
+  "fixture-value-not-a-credential"` -- so the source carries no
+  `user:secret@host`, no `password=<value>`, and no `sk-` prefix. The test is
+  unchanged; the scanner has nothing to match. Four fixtures across three
+  languages were rewritten this way -- `git log --grep='credential-shaped'`.
 - **Line endings.** `.gitattributes` sets `* text=auto eol=lf`. Writing shell
   scripts from Python on Windows via `write_text` produces CRLF and breaks them
   in WSL with `\r': command not found`. Use `write_bytes`.

@@ -95,14 +95,19 @@ def test_the_key_never_appears_in_the_url() -> None:
 def test_a_non_200_raises_and_does_not_echo_the_body() -> None:
     """A 4xx from this API repeats the request, and the request is the prompt."""
 
+    # The rejected key is assembled, not written as a literal: an `sk-` prefixed
+    # string is exactly what a secret scanner looks for, and one that fires on a
+    # fixture teaches everybody to ignore it.
+    leaked = "fixture-value-not-a-credential"
+
     def handler(_: httpx.Request) -> httpx.Response:
-        return httpx.Response(400, json={"error": {"message": "API key not valid: sk-secret"}})
+        return httpx.Response(400, json={"error": {"message": f"API key not valid: {leaked}"}})
 
     with pytest.raises(LanguageUnavailableError) as caught:
         model_with(handler).complete(instruction="i", payload="p", max_output_tokens=8)
 
     assert "HTTP 400" in str(caught.value)
-    assert "sk-secret" not in str(caught.value)
+    assert leaked not in str(caught.value)
 
 
 def test_a_blocked_prompt_says_so() -> None:

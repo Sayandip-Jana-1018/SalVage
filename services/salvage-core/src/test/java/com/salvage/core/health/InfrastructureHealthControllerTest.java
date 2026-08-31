@@ -118,14 +118,20 @@ class InfrastructureHealthControllerTest {
      */
     @Test
     void readiness_never_leaks_exception_messages() {
-        String secret = "jdbc:postgresql://db/salvage?password=hunter2";
+        // Assembled rather than written as a literal. A JDBC URL with a
+        // password in it is secret-shaped, and a scanner is right to flag one in
+        // a repository even when it is a fixture -- a repo that trains its owner
+        // to dismiss those alerts is a repo where the real leak gets dismissed
+        // too. The property under test is unchanged.
+        String password = "fixture-value-not-a-credential";
+        String secret = "jdbc:postgresql://db/salvage?password=" + password;
         var controller = new InfrastructureHealthController(List.of(
                 down("postgres", new IllegalStateException(secret))));
 
         ResponseEntity<Map<String, Object>> response = controller.readiness();
 
         String rendered = Objects.requireNonNull(response.getBody()).toString();
-        assertThat(rendered).doesNotContain("hunter2");
+        assertThat(rendered).doesNotContain(password);
         assertThat(rendered).doesNotContain("jdbc:");
         assertThat(checksOf(response).get("postgres").get("reason"))
                 .isEqualTo("IllegalStateException");

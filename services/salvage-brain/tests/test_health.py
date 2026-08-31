@@ -98,12 +98,18 @@ def test_readiness_never_leaks_exception_messages(
     SQLAlchemy and driver errors routinely embed the connection URL, which
     embeds the password. Only the exception type may cross the boundary.
     """
-    secret = "postgresql://salvage:hunter2@db:5432/salvage"
+    # Assembled rather than written inline. A connection string with a password
+    # in it is secret-shaped, and a scanner is right to flag one in a repository
+    # even when it is a fixture -- a repo that trains its owner to dismiss those
+    # alerts is a repo where the real leak gets dismissed too. The property under
+    # test is unchanged: this value must not cross the boundary.
+    password = "fixture-value-not-a-credential"
+    secret = f"postgresql://salvage:{password}@db:5432/salvage"
     monkeypatch.setattr(probes, "PROBES", (FakeProbe("postgres", ConnectionError(secret)),))
 
     response = client.get("/healthz/readiness")
 
-    assert "hunter2" not in response.text
+    assert password not in response.text
     assert "postgresql://" not in response.text
     assert response.json()["checks"]["postgres"]["reason"] == "ConnectionError"
 
