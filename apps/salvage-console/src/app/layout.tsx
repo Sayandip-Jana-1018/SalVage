@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { Sidebar } from "@/components/Sidebar";
+import { AmbientLight } from "@/components/AmbientLight";
+import { CommandPalette } from "@/components/CommandPalette";
+import { Navigation } from "@/components/Navigation";
 import { TopBar } from "@/components/TopBar";
 import "./globals.css";
 
 /**
- * The application shell: a fixed top bar, a fixed nav rail, and a scrolling
- * content column.
+ * The application shell: a centred column under a floating header and nav.
  *
- * Two faces, both doing a job. Inter for the interface; JetBrains Mono for
- * every identifier, hash and figure, because a column of amounts has to line
- * up digit for digit. The display serif that used to be here (Playfair) was
- * setting a magazine tone on an operations screen.
+ * Centred rather than a fixed left rail. A rail is the right shape for a
+ * console somebody lives in all day with twenty screens; this has five, and a
+ * centred column gives the glass room to be seen against the background, which
+ * is most of what makes it read as depth rather than as a grey box.
+ *
+ * Inter for the interface, JetBrains Mono for every identifier, hash and
+ * figure — a column of amounts has to line up digit for digit.
  */
 
 const inter = Inter({
@@ -42,28 +46,26 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body className="min-h-screen bg-ink-0 text-fg antialiased">
         <div className="atmosphere" aria-hidden />
+        <AmbientLight />
 
-        <div className="relative z-10 flex min-h-screen flex-col">
+        {/* Renders nothing until opened with the keyboard. */}
+        <CommandPalette />
+
+        <div className="relative z-10 flex min-h-screen flex-col gap-5 pb-16">
           <TopBar />
+          <Navigation />
 
-          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-            <Sidebar />
+          <main className="mx-auto w-full max-w-6xl px-4">{children}</main>
 
-            <main className="min-w-0 flex-1">
-              <div className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
-                {children}
-              </div>
-
-              <footer className="mt-6 border-t border-line px-4 py-5 sm:px-6 lg:px-8">
-                <p className="max-w-3xl text-[11px] leading-relaxed text-fg-faint">
-                  Figures on these screens are counted by <span className="font-mono">salvage-core</span>{" "}
-                  and <span className="font-mono">salvage-brain</span> and are never rendered from a
-                  fixture. Evaluation results are simulated and say so; no number here describes
-                  production payment traffic, because this system has not run against any.
-                </p>
-              </footer>
-            </main>
-          </div>
+          <footer className="mx-auto w-full max-w-6xl px-4 pt-6">
+            <p className="text-center text-[11px] leading-relaxed text-fg-faint">
+              Figures on these screens are counted by{" "}
+              <span className="font-mono">salvage-core</span> and{" "}
+              <span className="font-mono">salvage-brain</span> and are never rendered from a
+              fixture. Evaluation results are simulated and say so; no number here describes
+              production payment traffic, because this system has not run against any.
+            </p>
+          </footer>
         </div>
       </body>
     </html>

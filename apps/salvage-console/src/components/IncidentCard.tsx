@@ -35,7 +35,7 @@ export function IncidentCard(): React.ReactElement {
 
   if (phase !== "ready" && !data) {
     return (
-      <Panel>
+      <Panel index={0}>
         <PanelHeader eyebrow="Sensing" title="Open incidents" />
         <StateNotice phase={phase} error={error} emptyTitle="No sensing data" />
       </Panel>
@@ -44,7 +44,7 @@ export function IncidentCard(): React.ReactElement {
 
   if (incidents.length === 0) {
     return (
-      <Panel>
+      <Panel index={0}>
         <PanelHeader
           eyebrow="Sensing"
           title="No rails unhealthy"
@@ -60,7 +60,7 @@ export function IncidentCard(): React.ReactElement {
   }
 
   return (
-    <Panel>
+    <Panel index={0}>
       <PanelHeader
         eyebrow="Sensing"
         title={`${incidents.length} rail${incidents.length === 1 ? "" : "s"} unhealthy`}

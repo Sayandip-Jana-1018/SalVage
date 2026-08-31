@@ -68,7 +68,7 @@ export function ActionRankingTable({
               return (
                 <tr
                   key={valuation.action}
-                  className={chosen ? "bg-iris/[0.07]" : "transition-colors hover:bg-ink-2/70"}
+                  className={chosen ? "bg-iris/[0.07]" : "transition-colors hover:bg-white/[0.035]"}
                 >
                   <Td className="font-mono text-fg">
                     <span className="inline-flex items-center gap-1.5">

@@ -38,7 +38,7 @@ export function LiveDecisionStream(): React.ReactElement {
   );
 
   return (
-    <Panel>
+    <Panel index={3}>
       <PanelHeader
         eyebrow="Append-only"
         title="Ledger stream"
@@ -94,7 +94,7 @@ export function LiveDecisionStream(): React.ReactElement {
               }
             >
               {data?.entries.map((entry) => (
-                <tr key={entry.entry_hash} className="transition-colors hover:bg-ink-2/70">
+                <tr key={entry.entry_hash} className="transition-colors hover:bg-white/[0.035]">
                   <Td align="right" className="num font-mono text-fg-faint">
                     {entry.entry_index}
                   </Td>

@@ -216,6 +216,84 @@ export interface Narration {
   generated_at: string;
 }
 
+/* ---------------------------------------------------------------------------
+ * The off-policy evaluation, as `make eval` writes it.
+ *
+ * Transcribed from `docs/evaluation-results.json`, which the harness produces
+ * alongside EVALUATION.md from the same summary objects. The console reads the
+ * file rather than recomputing anything, so it cannot disagree with the
+ * committed report or show a result no run produced.
+ *
+ * Money here is a **mean** over episodes and is therefore fractional. It is
+ * rendered by `formatMeanPaise`, never `formatPaise`: the latter takes an
+ * integer because an amount of money is an integer count of paise, and a mean
+ * is a statistic rather than an amount.
+ * ------------------------------------------------------------------------- */
+
+export interface EstimatorResult {
+  estimator_name: string;
+  estimated_value: number;
+  ci_lower: number;
+  ci_upper: number;
+  standard_error: number;
+  effective_sample_size: number;
+  is_identifiable: boolean;
+  diagnostics_warning: string | null;
+}
+
+export interface CalibrationDecile {
+  decile: number;
+  bin_lower: number;
+  bin_upper: number;
+  predicted_mean: number;
+  observed_mean: number;
+  /** Episodes in this bin. Zero means "no measurement", not "observed zero". */
+  count: number;
+}
+
+export interface Calibration {
+  brier_score: number;
+  deciles: CalibrationDecile[];
+}
+
+export interface PolicySummary {
+  policy_name: string;
+  ground_truth_value: number;
+  ground_truth_recovery_rate: number;
+  ips: EstimatorResult;
+  snips: EstimatorResult;
+  direct_method: EstimatorResult;
+  doubly_robust: EstimatorResult;
+  calibration?: Calibration;
+}
+
+/** A paired bootstrap: one resample, both policies scored on it. */
+export interface PairedComparison {
+  challenger: string;
+  champion: string;
+  mean_difference_paise: number;
+  ci_lower_paise: number;
+  ci_upper_paise: number;
+  distinguishable_from_zero: boolean;
+  /** Share of episodes where the two chose different actions. */
+  disagreement_rate: number;
+}
+
+export interface EvaluationResults {
+  generated_at: string;
+  episodes: number;
+  bootstraps: number;
+  seed: number;
+  framing: string;
+  simulated_days?: number;
+  simulated_merchants?: number;
+  train_episodes?: number;
+  unscorable_action_rate?: number;
+  policies: PolicySummary[];
+  policy_vs_best_baseline?: PairedComparison;
+  shadow_comparison?: PairedComparison;
+}
+
 /** The envelope every console API route returns. */
 export type ApiResult<T> =
   | { ok: true; data: T }

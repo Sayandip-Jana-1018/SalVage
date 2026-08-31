@@ -4,6 +4,7 @@ import { ArrowRight, Check, Loader2, Zap } from "lucide-react";
 import Link from "next/link";
 import Script from "next/script";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
 import { Mono } from "@/components/ui/Primitives";
 import { formatPaise, formatPercent } from "@/lib/formatters";
@@ -172,8 +173,9 @@ export default function CheckoutPage(): React.ReactElement {
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
-      <div className="enter space-y-4">
-        <Panel>
+      <div className="space-y-5">
+        <ConnectionBanner />
+        <Panel index={0}>
           <PanelHeader
             eyebrow="Real event, real pipeline"
             title="Publish a failure and follow it"
@@ -199,7 +201,7 @@ export default function CheckoutPage(): React.ReactElement {
                     className={`rounded-xl border p-3 text-left transition-colors ${
                       selected
                         ? "border-iris/45 bg-iris/[0.08]"
-                        : "border-line bg-ink-2 hover:border-line-strong"
+                        : "border-white/[0.07] bg-white/[0.035] hover:border-white/12"
                     }`}
                   >
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-fg">
@@ -221,7 +223,7 @@ export default function CheckoutPage(): React.ReactElement {
                   value={amountRupees}
                   onChange={(event) => setAmountRupees(event.target.value)}
                   inputMode="decimal"
-                  className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
+                  className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
                 />
               </label>
 
@@ -241,7 +243,7 @@ export default function CheckoutPage(): React.ReactElement {
               <button
                 onClick={openRazorpay}
                 title="Opens Razorpay test-mode checkout, if a key is configured"
-                className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-ink-3 px-4 py-2 font-mono text-xs text-fg transition-colors hover:border-fg-faint"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-4 py-2 font-mono text-xs text-fg transition-colors hover:border-fg-faint"
               >
                 Razorpay test checkout
               </button>
@@ -279,7 +281,7 @@ function PipelineResult({
   const { attempt, diagnosis, decision, ledger_entries: ledger } = autopsy;
 
   return (
-    <Panel>
+    <Panel index={1}>
       <PanelHeader
         eyebrow="Round trip complete"
         title="Ingested and processed"
@@ -348,12 +350,12 @@ function Step({
   return (
     <div
       className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 ${
-        muted ? "border-line bg-ink-2" : "border-healthy/25 bg-healthy/[0.05]"
+        muted ? "border-white/[0.07] bg-white/[0.035]" : "border-healthy/25 bg-healthy/[0.05]"
       }`}
     >
       <span
         className={`grid h-5 w-5 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold ${
-          muted ? "bg-ink-4 text-fg-faint" : "bg-healthy/20 text-healthy"
+          muted ? "bg-white/[0.08] text-fg-faint" : "bg-healthy/20 text-healthy"
         }`}
       >
         {index}

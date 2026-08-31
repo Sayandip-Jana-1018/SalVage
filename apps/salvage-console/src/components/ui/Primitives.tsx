@@ -59,7 +59,7 @@ export function Chip({
   const accent =
     tone === "accent"
       ? "border-iris/35 bg-iris/10 text-iris"
-      : "border-line-strong bg-ink-3 text-fg-muted";
+      : "border-white/12 bg-white/[0.06] text-fg-muted";
   return (
     <span
       title={title}
@@ -126,9 +126,9 @@ export function DataTable({
     <div className="w-full overflow-x-auto">
       <table className="w-full min-w-[42rem] border-collapse text-left">
         <thead>
-          <tr className="border-b border-line">{head}</tr>
+          <tr className="border-b border-white/[0.07]">{head}</tr>
         </thead>
-        <tbody className="divide-y divide-line/70">{children}</tbody>
+        <tbody className="divide-y divide-white/[0.05]">{children}</tbody>
       </table>
     </div>
   );
@@ -173,7 +173,7 @@ export function Td({
 
 /** The one loading affordance: a hairline that sweeps while a request is open. */
 export function LoadingBar(): React.ReactElement {
-  return <div className="sweep relative h-px w-full overflow-hidden bg-line" aria-hidden />;
+  return <div className="sweep relative h-px w-full overflow-hidden bg-white/10" aria-hidden />;
 }
 
 /** A monospace identifier, truncated with the full value on hover. */

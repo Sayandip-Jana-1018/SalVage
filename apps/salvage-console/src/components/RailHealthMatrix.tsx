@@ -32,7 +32,7 @@ export function RailHealthMatrix(): React.ReactElement {
   const methods = [...new Set(rails.map((rail) => splitRail(rail.rail_id).method))].sort();
 
   return (
-    <Panel>
+    <Panel index={2}>
       <PanelHeader
         eyebrow="Five-minute sliding window"
         title="Rail sensing matrix"
@@ -70,7 +70,7 @@ export function RailHealthMatrix(): React.ReactElement {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
+          <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.07] px-5 py-3">
             {(["HEALTHY", "DEGRADED", "DOWN"] as const).map((state) => (
               <span
                 key={state}
@@ -85,8 +85,8 @@ export function RailHealthMatrix(): React.ReactElement {
           <div className="w-full overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-line">
-                  <th className="eyebrow sticky left-0 z-10 bg-ink-1 px-5 py-2.5 text-left">
+                <tr className="border-b border-white/[0.07]">
+                  <th className="eyebrow sticky left-0 z-10 bg-[#0d101b] px-5 py-2.5 text-left">
                     Issuer
                   </th>
                   {methods.map((method) => (
@@ -96,10 +96,10 @@ export function RailHealthMatrix(): React.ReactElement {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line/70">
+              <tbody className="divide-y divide-white/[0.05]">
                 {issuers.map((issuer) => (
                   <tr key={issuer}>
-                    <td className="sticky left-0 z-10 bg-ink-1 px-5 py-2 font-mono text-xs text-fg">
+                    <td className="sticky left-0 z-10 bg-[#0d101b] px-5 py-2 font-mono text-xs text-fg">
                       {issuer}
                     </td>
                     {methods.map((method) => {

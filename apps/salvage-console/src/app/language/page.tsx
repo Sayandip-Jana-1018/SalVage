@@ -16,8 +16,8 @@ import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
  */
 export default function LanguagePage(): React.ReactElement {
   return (
-    <div className="enter space-y-4">
-      <Panel>
+    <div className="space-y-5">
+      <Panel index={0}>
         <PanelHeader
           eyebrow="Phase 11 · ADR-0008"
           title="Language models are used where language is the problem, and never where money is"
@@ -68,7 +68,7 @@ export default function LanguagePage(): React.ReactElement {
       <TriagePanel />
       <NudgePanel />
 
-      <Panel>
+      <Panel index={1}>
         <PanelHeader
           eyebrow="The other two"
           title="Narration and operational questions live elsewhere"
@@ -116,7 +116,7 @@ function Boundary({
   return (
     <div
       className={`rounded-xl border p-4 ${
-        allowed ? "border-iris/25 bg-iris/[0.05]" : "border-line bg-ink-2"
+        allowed ? "border-iris/25 bg-iris/[0.05]" : "border-white/[0.07] bg-white/[0.035]"
       }`}
     >
       <p className={`eyebrow mb-2.5 ${allowed ? "text-iris" : "text-fg-faint"}`}>{title}</p>

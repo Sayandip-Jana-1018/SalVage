@@ -34,7 +34,7 @@ export function PipelineStrip(): React.ReactElement {
   );
 
   return (
-    <Panel>
+    <Panel index={1}>
       <PanelHeader
         eyebrow="Last 24 hours"
         title="Recovery pipeline"
@@ -91,7 +91,7 @@ export function PipelineStrip(): React.ReactElement {
             />
           </div>
 
-          <div className="border-t border-line pt-4">
+          <div className="border-t border-white/[0.07] pt-4">
             <Stat
               label="Expected net value of permitted decisions"
               value={data ? formatRupeesWhole(data.expected_net_value_paise_permitted) : "—"}
@@ -101,7 +101,7 @@ export function PipelineStrip(): React.ReactElement {
           </div>
 
           {data ? (
-            <div className="grid gap-5 border-t border-line pt-4 sm:grid-cols-2">
+            <div className="grid gap-5 border-t border-white/[0.07] pt-4 sm:grid-cols-2">
               <Breakdown title="By cause" counts={data.taxonomy_breakdown} />
               <Breakdown title="By chosen action" counts={data.action_breakdown} />
             </div>
@@ -168,7 +168,7 @@ function Breakdown({
               <span className="w-40 shrink-0 truncate font-mono text-[11px] text-fg-muted" title={key}>
                 {key}
               </span>
-              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-3">
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
                 <span
                   className="block h-full rounded-full bg-iris/70"
                   style={{ width: largest > 0 ? `${Math.max(2, (count / largest) * 100)}%` : "0%" }}

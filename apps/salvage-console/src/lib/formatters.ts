@@ -120,3 +120,43 @@ export function stateClass(state: string): string {
       return "state-unobserved";
   }
 }
+
+/**
+ * A *mean* number of paise, rendered in paise and labelled as such.
+ *
+ * Deliberately not rupees, and deliberately not `formatPaise`. Three reasons,
+ * and they are the same reason:
+ *
+ * A mean is a statistic, not an amount. `31401.47` paise per failure is a real
+ * number about a distribution; it is not a sum anybody can pay, and rendering it
+ * as `₹314.01` invites a reader to treat it as one. `formatPaise` would be worse
+ * still -- it takes an integer because money is an integer count of paise, and
+ * handing it a mean would silently truncate the part that makes it a mean.
+ *
+ * It is also the unit this project already uses for exactly this figure.
+ * EVALUATION.md and the handoff both say "paise per failure", so the console
+ * saying the same thing means a reader comparing two screens is comparing the
+ * same number rather than converting between them.
+ */
+export function formatMeanPaise(paise: number): string {
+  const sign = paise < 0 ? "-" : "";
+  const magnitude = Math.abs(paise);
+  const whole = Math.floor(magnitude);
+  const fraction = (magnitude - whole).toFixed(2).slice(1); // ".47"
+  return `${sign}${groupIndian(whole)}${fraction} paise`;
+}
+
+/** A signed mean, for a difference where the sign carries the finding. */
+export function formatSignedMeanPaise(paise: number): string {
+  return paise > 0 ? `+${formatMeanPaise(paise)}` : formatMeanPaise(paise);
+}
+
+/**
+ * Approximate rupees, for a chart axis tick and nothing else.
+ *
+ * An axis label is a position on a scale, not a claim about a value, so losing
+ * the paise is fine here and is not fine anywhere a figure is read as a figure.
+ */
+export function formatAxisRupees(paise: number): string {
+  return formatRupeesWhole(Math.round(paise));
+}

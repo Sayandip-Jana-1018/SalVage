@@ -36,7 +36,7 @@ export default function AutopsyDetailPage(): React.ReactElement {
   );
 
   return (
-    <div className="enter space-y-4">
+    <div className="space-y-5">
       <Link
         href="/autopsy"
         className="inline-flex items-center gap-1.5 font-mono text-[11px] text-fg-muted transition-colors hover:text-iris"
@@ -46,7 +46,7 @@ export default function AutopsyDetailPage(): React.ReactElement {
       </Link>
 
       {phase !== "ready" || !data ? (
-        <Panel>
+        <Panel index={0}>
           <PanelHeader eyebrow="Per attempt" title={attemptId} />
           <StateNotice
             phase={phase === "ready" ? "missing" : phase}
@@ -65,7 +65,7 @@ export default function AutopsyDetailPage(): React.ReactElement {
               chosenAction={data.decision.chosen_action}
             />
           ) : (
-            <Panel>
+            <Panel index={1}>
               <PanelHeader eyebrow="Expected net value" title="Action ranking" />
               <StateNotice
                 phase="missing"
@@ -91,7 +91,7 @@ function IngestPanel({
 }): React.ReactElement {
   const { attempt } = view;
   return (
-    <Panel>
+    <Panel index={2}>
       <PanelHeader
         eyebrow="Ingested"
         title={<span className="font-mono">{attempt.payment_attempt_id}</span>}
@@ -114,7 +114,7 @@ function IngestPanel({
           <Field label="Recurring" value={attempt.is_recurring ? "yes" : "no"} />
         </dl>
 
-        <div className="border-t border-line pt-3.5">
+        <div className="border-t border-white/[0.07] pt-3.5">
           <p className="eyebrow mb-2">Failures recorded ({attempt.failures.length})</p>
           {attempt.failures.length === 0 ? (
             <p className="text-xs text-fg-muted">No failure events on this attempt.</p>
@@ -123,7 +123,7 @@ function IngestPanel({
               {attempt.failures.map((failure) => (
                 <li
                   key={failure.event_id}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-ink-2 px-3 py-2"
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.035] px-3 py-2"
                 >
                   <span className="state-down state-chip rounded-md px-2 py-0.5 font-mono text-[10px]">
                     {failure.provider_error_code}
@@ -148,7 +148,7 @@ function IngestPanel({
 function DiagnosisPanel({ view }: { view: AutopsyView }): React.ReactElement {
   if (!view.diagnosis) {
     return (
-      <Panel>
+      <Panel index={3}>
         <PanelHeader eyebrow="Sense and diagnose" title="Diagnosis" />
         <StateNotice
           phase="missing"
@@ -163,7 +163,7 @@ function DiagnosisPanel({ view }: { view: AutopsyView }): React.ReactElement {
   const unknown = diagnosis.taxonomy_code === "UNKNOWN";
 
   return (
-    <Panel>
+    <Panel index={4}>
       <PanelHeader
         eyebrow="Sense and diagnose"
         title="Diagnosis"
@@ -179,7 +179,7 @@ function DiagnosisPanel({ view }: { view: AutopsyView }): React.ReactElement {
         </dl>
 
         {diagnosis.explainability_tokens.length > 0 ? (
-          <div className="border-t border-line pt-3.5">
+          <div className="border-t border-white/[0.07] pt-3.5">
             <p className="eyebrow mb-2">Why</p>
             <div className="flex flex-wrap gap-1.5">
               {diagnosis.explainability_tokens.map((token) => (

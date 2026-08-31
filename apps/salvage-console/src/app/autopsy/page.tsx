@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { StaleBanner, StateNotice } from "@/components/StateNotice";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
 import { Chip, DataTable, Mono, Td, Th } from "@/components/ui/Primitives";
 import { formatAge, formatCount, formatPaise } from "@/lib/formatters";
@@ -38,8 +39,9 @@ export default function AutopsyIndexPage(): React.ReactElement {
     router.push(`/autopsy/${encodeURIComponent(id)}?merchant=${encodeURIComponent(merchantId)}`);
 
   return (
-    <div className="enter space-y-4">
-      <Panel>
+    <div className="space-y-5">
+        <ConnectionBanner />
+      <Panel index={0}>
         <PanelHeader
           eyebrow="Per attempt"
           title="Decision autopsy"
@@ -59,7 +61,7 @@ export default function AutopsyIndexPage(): React.ReactElement {
               <input
                 value={merchantId}
                 onChange={(event) => setMerchantId(event.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
+                className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
               />
             </label>
 
@@ -71,7 +73,7 @@ export default function AutopsyIndexPage(): React.ReactElement {
                   value={attemptId}
                   onChange={(event) => setAttemptId(event.target.value)}
                   placeholder="pay_…"
-                  className="w-full rounded-lg border border-line-strong bg-ink-2 py-2 pl-9 pr-3 font-mono text-xs text-fg placeholder:text-fg-faint/70 outline-none transition-colors focus:border-iris/60"
+                  className="w-full rounded-lg border border-white/12 bg-white/[0.035] py-2 pl-9 pr-3 font-mono text-xs text-fg placeholder:text-fg-faint/70 outline-none transition-colors focus:border-iris/60"
                 />
               </span>
             </label>
@@ -88,7 +90,7 @@ export default function AutopsyIndexPage(): React.ReactElement {
         </PanelBody>
       </Panel>
 
-      <Panel>
+      <Panel index={1}>
         <PanelHeader
           eyebrow={`Newest first · up to ${LIMIT}`}
           title="Recent attempts"
@@ -144,7 +146,7 @@ export default function AutopsyIndexPage(): React.ReactElement {
               {data?.attempts.map((attempt) => (
                 <tr
                   key={attempt.payment_attempt_id}
-                  className="cursor-pointer transition-colors hover:bg-ink-2/70"
+                  className="cursor-pointer transition-colors hover:bg-white/[0.035]"
                   onClick={() => open(attempt.payment_attempt_id)}
                 >
                   <Td>

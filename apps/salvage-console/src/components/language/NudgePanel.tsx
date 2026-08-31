@@ -92,7 +92,7 @@ export function NudgePanel(): React.ReactElement {
                 <input
                   value={merchantName}
                   onChange={(event) => setMerchantName(event.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 text-xs text-fg outline-none transition-colors focus:border-iris/60"
+                  className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 text-xs text-fg outline-none transition-colors focus:border-iris/60"
                 />
               </label>
 
@@ -102,7 +102,7 @@ export function NudgePanel(): React.ReactElement {
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   inputMode="decimal"
-                  className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
+                  className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
                 />
               </label>
 
@@ -166,7 +166,7 @@ export function NudgePanel(): React.ReactElement {
 function Copy({ copy }: { copy: NudgeCopy }): React.ReactElement {
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-line bg-ink-2 p-4">
+      <div className="rounded-xl border border-white/[0.07] bg-white/[0.035] p-4">
         <p className="eyebrow mb-2">What the model wrote — no digits anywhere</p>
         <p className="font-mono text-[12px] leading-relaxed text-fg-muted">{copy.template}</p>
       </div>
@@ -208,7 +208,7 @@ function Select({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
+        className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
       >
         {children}
       </select>

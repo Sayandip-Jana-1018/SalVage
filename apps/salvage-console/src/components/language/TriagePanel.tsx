@@ -70,7 +70,7 @@ export function TriagePanel(): React.ReactElement {
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
                   placeholder="ZZ42"
-                  className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 font-mono text-xs text-fg placeholder:text-fg-faint/70 outline-none transition-colors focus:border-iris/60"
+                  className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 font-mono text-xs text-fg placeholder:text-fg-faint/70 outline-none transition-colors focus:border-iris/60"
                 />
               </label>
               <label className="block flex-1">
@@ -79,7 +79,7 @@ export function TriagePanel(): React.ReactElement {
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="whatever text the gateway sent alongside it"
-                  className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 text-xs text-fg placeholder:text-fg-faint/70 outline-none transition-colors focus:border-iris/60"
+                  className="mt-1.5 w-full rounded-lg border border-white/12 bg-white/[0.035] px-3 py-2 text-xs text-fg placeholder:text-fg-faint/70 outline-none transition-colors focus:border-iris/60"
                 />
               </label>
               <button
@@ -111,8 +111,8 @@ export function TriagePanel(): React.ReactElement {
 function Proposal({ response }: { response: TriageResponse }): React.ReactElement {
   const { proposal } = response;
   return (
-    <div className="rounded-xl border border-line bg-ink-2 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.035] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] pb-3">
         <span className="state-degraded state-chip rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider">
           proposal · pending human review
         </span>

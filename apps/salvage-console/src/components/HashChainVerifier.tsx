@@ -58,7 +58,7 @@ export function HashChainVerifier({
             type="button"
             onClick={refresh}
             disabled={verifying}
-            className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-ink-3 px-3 py-1.5 font-mono text-[11px] text-fg transition-colors hover:border-iris/40 hover:text-iris disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-1.5 font-mono text-[11px] text-fg transition-colors hover:border-iris/40 hover:text-iris disabled:opacity-50"
           >
             <RefreshCw className={`h-3 w-3 ${verifying ? "animate-spin" : ""}`} />
             {verifying ? "walking chain" : "verify now"}
@@ -132,7 +132,7 @@ export function HashChainVerifier({
                   <li
                     key={entry.entry_hash}
                     className={`rounded-lg border px-3 py-2 ${
-                      related ? "border-iris/40 bg-iris/[0.07]" : "border-line bg-ink-2"
+                      related ? "border-iris/40 bg-iris/[0.07]" : "border-white/[0.07] bg-white/[0.035]"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
