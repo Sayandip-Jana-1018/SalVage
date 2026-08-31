@@ -14,6 +14,7 @@ from salvage_brain.config import settings
 from salvage_brain.database import engine
 from salvage_brain.diagnosis.routes import router as diagnosis_router
 from salvage_brain.health import router as health_router
+from salvage_brain.language.routes import router as language_router
 from salvage_brain.policy.routes import router as policy_router
 from salvage_brain.sensing.routes import router as sensing_router
 
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(attempts_router)
     app.include_router(diagnosis_router)
+    app.include_router(language_router)
     app.include_router(policy_router)
     app.include_router(sensing_router)
     return app

@@ -69,6 +69,29 @@ class Settings(BaseSettings):
     brain_port: int = 8000
     log_level: str = "INFO"
 
+    # ---- language layer (Phase 11) -----------------------------------------
+    # Off by default, and a present key is not consent to switch it on: this is
+    # the only part of Salvage that makes an outbound call to a third party,
+    # and someone who clones this repository has not agreed to that by cloning
+    # it. Nothing in the diagnosis, policy or taxonomy path reads any of these
+    # values; see salvage_brain/language/__init__.py.
+    salvage_language_enabled: bool = False
+    gemini_api_key: SecretStr | None = None
+    # No default model id is asserted to exist. Run scripts/gemini_e2e.sh to
+    # list what the configured key can actually reach rather than guessing.
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    language_timeout_seconds: float = 20.0
+    # Where accepted triage proposals are appended for human review. Unset means
+    # proposals are returned to the caller and not persisted, which the response
+    # states rather than implies.
+    triage_queue_path: Path | None = None
+
+    @property
+    def language_enabled(self) -> bool:
+        """Read by the language layer. Named for the env var operators set."""
+        return self.salvage_language_enabled
+
     @property
     def postgres_dsn(self) -> str:
         """SQLAlchemy URL.

@@ -55,6 +55,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
+  /v1/attempts/{merchant_id}:
+    get:
+      operationId: listAttempts
+      summary: List the most recent payment attempts for one tenant
+      description: |
+        Bounded and tenant-scoped, like every other read here. There is no
+        cross-tenant listing and no unbounded one. An out-of-range limit is
+        rejected rather than clamped: clamping answers a different question
+        than the caller asked and labels the result with the limit they
+        requested.
+      tags: [attempts]
+      parameters:
+        - name: merchant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: A page of attempts, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptPage"
+        "422":
+          description: limit out of range
+
   /v1/attempts/{merchant_id}/{payment_attempt_id}:
     get:
       operationId: getAttempt
@@ -157,6 +192,125 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RailHealthMatrix"
+
+  /v1/language/status:
+    get:
+      operationId: getLanguageStatus
+      summary: Whether the language layer is switched on, and against which model
+      description: |
+        Answers 200 even when the layer is disabled. "Switched off" and
+        "broken" are different facts and a console has to render them
+        differently; an endpoint that 503s for both makes them
+        indistinguishable. Carries no credential.
+      tags: [language]
+      responses:
+        "200":
+          description: The configured state of the language layer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageStatus"
+
+  /v1/language/triage:
+    post:
+      operationId: triageUnknownDeclineCode
+      summary: Propose a taxonomy mapping for an unrecognised provider error code
+      description: |
+        For codes the deterministic mapper cannot resolve. The result is a
+        **proposal for human review**; it is never applied. `applied` is a
+        literal false on the response schema, and no code in this repository
+        writes to the mapper table.
+
+        A code the mapper already resolves is refused with 409 rather than
+        re-examined: consulting a model about an answer you already have is how
+        a verified mapping gets quietly overwritten by a plausible one.
+      tags: [language]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TriageRequest"
+      responses:
+        "200":
+          description: A proposal, pending human review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriageResponse"
+        "409":
+          description: The deterministic mapper already resolves this code
+        "422":
+          description: Malformed request payload
+        "502":
+          description: The model answered with something that failed validation
+        "503":
+          description: The language layer is disabled or the provider did not answer
+
+  /v1/language/nudge-copy:
+    post:
+      operationId: writeNudgeCopy
+      summary: Write customer nudge copy for an action the policy engine chose
+      description: |
+        The policy decides whether to contact a customer; this writes the
+        sentence. The model may not write a digit -- it produces a template
+        containing `{amount}` and `{merchant}`, and the service substitutes
+        them, formatting the amount from integer paise. Generating copy does
+        not send it; nothing in salvage-brain has an outbound channel to a
+        customer.
+      tags: [language]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NudgeRequest"
+      responses:
+        "200":
+          description: The generated template and the message it renders to
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NudgeCopy"
+        "422":
+          description: Malformed request payload, or a language outside the supported set
+        "502":
+          description: The generated copy failed validation and was refused
+        "503":
+          description: The language layer is disabled or the provider did not answer
+
+  /v1/language/narrate:
+    post:
+      operationId: narrateDecisionChain
+      summary: Narrate one decision chain in English for an operator
+      description: |
+        Read-only, over facts this service fetches itself from its own read
+        path rather than accepting from the caller. Every number in the
+        narration must already appear in those facts; a narration that
+        introduces one is rejected with 502.
+      tags: [language]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NarrationRequest"
+      responses:
+        "200":
+          description: The narration, with the model and prompt digest that produced it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narration"
+        "404":
+          description: No such attempt for this merchant
+        "422":
+          description: Malformed request payload
+        "502":
+          description: The narration failed validation and was refused
+        "503":
+          description: The language layer is disabled or the provider did not answer
+
 
 components:
   schemas:
@@ -454,3 +608,262 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RailHealthView"
+
+    AttemptSummary:
+      type: object
+      required:
+        - merchant_id
+        - payment_attempt_id
+        - order_id
+        - amount_paise
+        - currency
+        - payment_method
+        - issuer
+        - created_at
+        - failure_count
+      properties:
+        merchant_id:
+          type: string
+        payment_attempt_id:
+          type: string
+        order_id:
+          type: string
+        amount_paise:
+          type: integer
+          description: Money is an integer count of paise everywhere in this system.
+        currency:
+          type: string
+        payment_method:
+          type: string
+        issuer:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        failure_count:
+          type: integer
+
+    AttemptPage:
+      type: object
+      required: [merchant_id, limit, attempts]
+      properties:
+        merchant_id:
+          type: string
+        limit:
+          type: integer
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttemptSummary"
+
+    LanguageStatus:
+      type: object
+      required: [enabled, model, review_queue_configured, money_path]
+      properties:
+        enabled:
+          type: boolean
+          description: False on a fresh clone. A key on its own does not switch it on.
+        model:
+          type: string
+        review_queue_configured:
+          type: boolean
+        money_path:
+          type: string
+          description: |
+            A standing statement that no route in this service executes a
+            recovery action. On the wire so a client cannot imply otherwise by
+            omission.
+
+    TriageRequest:
+      type: object
+      required: [provider_error_code]
+      properties:
+        provider_error_code:
+          type: string
+          maxLength: 64
+        provider_error_description:
+          type: [string, "null"]
+          maxLength: 500
+
+    TriageProposal:
+      type: object
+      required:
+        - proposed_taxonomy_code
+        - is_retryable_same_rail
+        - is_retryable_alternative_rail
+        - rationale
+        - specification_to_check
+      properties:
+        proposed_taxonomy_code:
+          type: string
+          enum:
+            - INSUFFICIENT_FUNDS
+            - ISSUER_OUTAGE
+            - NETWORK_TIMEOUT
+            - MANDATE_INVALID
+            - CARD_EXPIRED
+            - RISK_DECLINE
+            - CUSTOMER_ABANDONED
+        is_retryable_same_rail:
+          type: boolean
+        is_retryable_alternative_rail:
+          type: boolean
+        rationale:
+          type: string
+          maxLength: 400
+          description: |
+            Refused if it contains a percentage or a decimal figure. A model
+            asked about decline codes volunteers failure rates unprompted, and
+            ADR-0006 kind three forbids writing those at all.
+        specification_to_check:
+          type: string
+          maxLength: 200
+          description: |
+            The document that would settle the question. No confidence value is
+            requested from the model; a human who checks the specification sets
+            one.
+
+    TriageResponse:
+      type: object
+      required:
+        - provider_error_code
+        - current_mapping
+        - proposal
+        - status
+        - applied
+        - model
+        - prompt_sha256
+        - generated_at
+      properties:
+        provider_error_code:
+          type: string
+        provider_error_description:
+          type: [string, "null"]
+        current_mapping:
+          type: string
+          description: What the deterministic mapper says today, always UNKNOWN here.
+        proposal:
+          $ref: "#/components/schemas/TriageProposal"
+        status:
+          type: string
+          const: PROPOSED_PENDING_HUMAN_REVIEW
+        applied:
+          const: false
+          description: |
+            A literal rather than a boolean. This field cannot serialise as
+            true, which is a stronger statement than a boolean that happens to
+            be false today.
+        model:
+          type: string
+        prompt_sha256:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        queued_to:
+          type: [string, "null"]
+
+    NudgeRequest:
+      type: object
+      required:
+        - merchant_display_name
+        - amount_paise
+        - language
+        - channel
+        - taxonomy_code
+      properties:
+        merchant_display_name:
+          type: string
+          maxLength: 80
+        amount_paise:
+          type: integer
+          minimum: 1
+        language:
+          type: string
+          enum: [en, hi, ta, bn, mr]
+        channel:
+          type: string
+          enum: [WHATSAPP, SMS, EMAIL]
+        taxonomy_code:
+          type: string
+          maxLength: 40
+        include_payment_link:
+          type: boolean
+          default: false
+      description: |
+        There is deliberately no field for a customer name, phone number, email
+        or id. This is the only part of Salvage that sends text to a third
+        party, and who is being messaged is not needed to write a sentence.
+
+    NudgeCopy:
+      type: object
+      required:
+        - template
+        - rendered
+        - language
+        - channel
+        - amount_paise
+        - rendered_amount
+        - placeholders
+        - model
+        - prompt_sha256
+        - generated_at
+        - sent
+      properties:
+        template:
+          type: string
+          description: The model's output, containing placeholders and no digits.
+        rendered:
+          type: string
+          description: The template with the service's own values substituted.
+        language:
+          type: string
+        channel:
+          type: string
+        amount_paise:
+          type: integer
+        rendered_amount:
+          type: string
+        placeholders:
+          type: array
+          items:
+            type: string
+        model:
+          type: string
+        prompt_sha256:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        sent:
+          type: boolean
+          description: Always false. Generating copy is not sending it.
+
+    NarrationRequest:
+      type: object
+      required: [merchant_id, payment_attempt_id]
+      properties:
+        merchant_id:
+          type: string
+        payment_attempt_id:
+          type: string
+
+    Narration:
+      type: object
+      required: [payment_attempt_id, narration, model, prompt_sha256, generated_at]
+      properties:
+        payment_attempt_id:
+          type: string
+        narration:
+          type: string
+        model:
+          type: string
+        prompt_sha256:
+          type: string
+          description: |
+            SHA-256 of the exact prompt. Provenance rather than replay: a hosted
+            model cannot be rerun to the same output, so the artifact records
+            what it was asked instead of pretending it can.
+        generated_at:
+          type: string
+          format: date-time

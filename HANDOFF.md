@@ -239,6 +239,43 @@ link** — which is exactly why `CUSTOMER_NUDGE` is a first-class action.
 Anything claiming to silently retry a failed one-off payment against a real
 gateway is using a saved token, acting under a mandate, or lying.
 
+### Phase 11 — the language layer (69 -> 144 brain tests)
+
+`services/salvage-brain/src/salvage_brain/language/`. Three uses of Gemini,
+none of them in the money path, all off by default
+(`SALVAGE_LANGUAGE_ENABLED`; a present key does not switch it on).
+
+- **Triage** — a decline code the deterministic mapper cannot resolve is
+  described to the model, which *proposes* a taxonomy mapping into an
+  append-only JSONL review queue. Never applied: `applied` is
+  `Literal[False]` on the response type and nothing writes `_EXACT_CODE_MAP`.
+  A code that already maps is refused with 409. **No confidence value is
+  requested** — a number attached to "this code means X" is ADR-0006 kind
+  three, and it is the shape that gets pasted into the table.
+- **Nudge copy** — five languages, into a fixed template. **The model may not
+  write a digit.** It returns a sentence containing `{amount}` and
+  `{merchant}` and the service substitutes them, formatting from integer
+  paise. Also refused: URLs, unexpected placeholders, anything asking for a
+  credential, and copy over the channel's length cap after substitution.
+- **Narration** — a decision chain in English, over facts the service fetches
+  itself rather than accepting from the caller. **Every number in the output
+  must appear in the prompt**, checked as a set difference over numeric
+  tokens normalised for formatting only.
+
+The boundary is enforced by `tests/test_language_boundary.py`, which builds
+the import graph and fails if the transitive closure of `taxonomy`,
+`features`, `sensing`, `diagnosis` or `policy` contains
+`salvage_brain.language`. Modelled on the sim's no-leakage architecture test.
+
+**`GeminiLanguageModel` has never been run against Google from this
+repository.** Every test uses a scripted double, so they prove the validators
+and not the wire format. `make gemini-e2e` is the only thing that proves the
+wire format: it lists the models the key can reach, then round-trips one
+completion. Keep that distinction accurate — it is the same one
+`RazorpayTestProvider` makes.
+
+See `docs/adr/0008-language-model-boundary.md` for the argument.
+
 ### Phase 10 — fitted model and shadow mode
 - `FittedRecoverabilityModel` — hierarchical shrinkage over (action → cause →
   pre-payday), each cell smoothed toward its parent by a pseudo-count of 20.
@@ -281,40 +318,6 @@ Calibration: Brier `0.274`, ECE `0.290`.
 ---
 
 ## 6. What is NOT built — your work queue
-
-### Phase 11 — the language layer (Gemini), highest value remaining
-
-**Read this framing before writing a line.** The user has asked more than once
-for "more LLMs, more Gemini power". The correct answer, which was given and
-accepted, is: **not in the money path.** Every other hackathon team will
-submit "webhook arrives → prompt an LLM 'should I retry?' → retry." That demos
-for ninety seconds and collapses under one question from anyone in payments:
-*it is non-deterministic, so how do you replay a decision to explain a
-customer's double charge six weeks later, and how do you prove it cannot retry
-eleven times?* You cannot bound a model's action space in a prompt. You can
-bound it in code. That is the `BoundsEngine`, and it is worth more than a
-prompt.
-
-The line to lead with: **"We use language models where language is the
-problem, and never where money is the problem."**
-
-Four places an LLM genuinely belongs, all outside the money path:
-
-1. **Unknown decline-code triage.** Gateways return messy free-text errors.
-   When the mapper meets a code it does not know, Gemini reads the raw
-   response and **proposes** a taxonomy mapping into a human review queue. It
-   never auto-applies. This directly attacks the top item in `OPEN_NUMBERS.md`.
-2. **Multilingual nudge copy.** The *policy* decides to nudge. Gemini writes
-   the words, in Hindi/Tamil/Bengali/Marathi, into a fixed template with a
-   bounded variable set. Enormously practical in India; not a money decision.
-3. **Incident narration.** Turn a ledger decision chain into English for an
-   ops person. Read-only, over data already computed.
-4. **Natural-language ops queries** through the existing MCP tools.
-
-Constraints: feature-flagged, off by default; `.env.example`'s LLM block
-currently says "deliberately empty" and explains why — update it honestly
-rather than reverting it; no LLM output may reach a `PaymentProvider` call;
-every generated artifact must be attributable and reviewable.
 
 ### Phase 12 — design overhaul
 
@@ -374,7 +377,7 @@ dashboard at night, not a landing page.
 ```bash
 # Full suites — expected counts at handoff
 cd services/salvage-core   && ./gradlew spotlessCheck test --rerun-tasks   # 104 passed
-cd services/salvage-brain  && uv run --frozen pytest -q                     #  69 passed
+cd services/salvage-brain  && uv run --frozen pytest -q                     # 144 passed
 cd packages/salvage-sim    && uv run --frozen pytest -q                     #  87 passed
 cd packages/salvage-eval   && uv run --frozen pytest -q                     #  34 passed (~3 min)
 cd services/salvage-mcp    && npm test                                      #  22 passed
@@ -386,6 +389,7 @@ make lint                            # spotless, ruff, mypy --strict, contracts
 make demo                            # real Kafka -> core -> Postgres -> brain round trip
 make eval                            # regenerates EVALUATION.md + docs/evaluation-results.json
 make razorpay-e2e                    # real Razorpay test API (needs rzp_test_ keys in .env)
+make gemini-e2e                      # real Gemini API (needs GEMINI_API_KEY in .env)
 ```
 
 `salvage-eval` takes ~3 minutes because it simulates a full month of traffic
@@ -446,8 +450,7 @@ with 21 counterfactuals per failure. That cost is deliberate — see §8.
 2. Run the verification suite in §7 and confirm the counts match. If they do
    not, find out why before building anything.
 3. Read `git log` to absorb the commit-message voice.
-4. Pick up the work queue in §6. Phase 11 and Phase 12 touch different
-   codebases and can proceed in parallel.
+4. Pick up the work queue in §6.
 5. After each phase: update `README.md` in the same commit, give the
    five-section report, commit, and push to `origin main`.
 

@@ -18,7 +18,7 @@ SHELL := /usr/bin/env bash
         test test-java test-python test-python-unit test-sim-slow \
         test-mcp test-console build-console \
         lint lint-java lint-python lint-node contracts-check \
-        format eval demo razorpay-e2e
+        format eval demo razorpay-e2e gemini-e2e
 
 COMPOSE   := docker compose
 CORE_DIR  := services/salvage-core
@@ -179,6 +179,12 @@ eval: ## Run the off-policy evaluation harness; writes EVALUATION.md and JSON
 
 demo: ## End-to-end round trip: Kafka -> core -> PostgreSQL -> brain -> HTTP
 	bash scripts/demo.sh
+
+gemini-e2e: ## Exercise the language layer against the real Gemini API (needs GEMINI_API_KEY)
+# The only target in this repository that makes a billable outbound call. The
+# language layer is off by default and nothing in the money path reads it; this
+# verifies the wire format the adapter was written against, which no test can.
+	@bash scripts/gemini_e2e.sh
 
 razorpay-e2e: ## Exercise the Razorpay test-mode adapter (needs rzp_test_ credentials)
 # Reads .env rather than taking credentials on the command line, so they do

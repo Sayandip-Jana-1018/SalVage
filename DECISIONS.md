@@ -22,6 +22,7 @@ reverses its own earlier position on Java code generation and says so.
 | [0005](docs/adr/0005-timescaledb-licensing.md) | TimescaleDB Licensing | Accepted |
 | [0006](docs/adr/0006-numbers-policy.md) | Numbers Policy | Accepted |
 | [0007](docs/adr/0007-cross-tenant-rail-intelligence.md) | Cross-Tenant Rail Intelligence | Accepted, not yet implemented (Phase 3) |
+| [0008](docs/adr/0008-language-model-boundary.md) | Where a Language Model Is Allowed | Accepted |
 
 **Status meanings.** *Accepted* means the decision is made and binding.
 *Not yet implemented* means the decision is recorded so that later phases do

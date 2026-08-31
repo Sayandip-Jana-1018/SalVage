@@ -3,7 +3,7 @@
 An autonomous system that diagnoses failed payments and recovers the money,
 with every decision bounded, explainable, and replayable.
 
-> **Status: Phases 0 through 10 are built. The system executes recovery actions.**
+> **Status: Phases 0 through 11 are built. The system executes recovery actions.**
 >
 > `salvage-core` has a `PaymentProvider` port with two adapters. The default
 > `SimulatedProvider` needs no credentials and no network, so the quickstart
@@ -35,6 +35,7 @@ with every decision bounded, explainable, and replayable.
 > - **Phase 8 — hardening**: Grafana dashboards as code, load and latency harness, multi-tenant isolation drill, SRE runbook.
 > - **Phase 9 — the effector**: `PaymentProvider` port, deterministic `SimulatedProvider`, `RazorpayTestProvider`, reconciliation guard, append-only provider-operation audit, signed webhook ingest.
 > - **Phase 10 — measurement**: recovery model fitted from logged outcomes with a held-out split, shadow mode with a paired bootstrap, and two measurement defects found and fixed.
+> - **Phase 11 — the language layer**: Gemini used for unknown decline-code triage, multilingual nudge copy and incident narration — all outside the money path, off by default, and structurally prevented from reaching a decision by a test on the import graph. See [ADR-0008](docs/adr/0008-language-model-boundary.md).
 
 ## The problem
 
@@ -239,6 +240,7 @@ salvage/
 - **Phase 10 (Fitted model & shadow mode)**: `FittedRecoverabilityModel` estimates P(recovery | context, action) by hierarchical shrinkage, fitted on a training split and scored on held-out episodes; it may only see what a production log contains, and two tests pin it away from the counterfactual answer key. **Shadow mode** compares a challenger against the champion with a *paired* bootstrap — one resample, both policies scored on it — which is the statistically correct test and materially more powerful than comparing two intervals for overlap. Against the strongest baseline the policy returns **+9,682.5 paise per failure, 95% CI [+5,707.9, +14,043.2]**, excluding zero; the unpaired overlap test on the same data calls that indistinguishable, and the report prints both (34 tests).
 - **Phase 9 (The effector)**: `PaymentProvider` port with `SimulatedProvider` (deterministic, credential-free, models the timeout-that-actually-captured case) and `RazorpayTestProvider` (verified against the live test API). `ReconciliationGuard` refuses every retry that is not backed by positive evidence no money moved — only `FAILED` and `NOT_FOUND` qualify; `UNKNOWN` blocks. Idempotency keys are derived, never generated, so a redelivery cannot charge twice. `provider_operations` records intent before the call and settles once, so a crash mid-payment leaves a discoverable row rather than nothing. Signed webhook ingest with constant-time HMAC-SHA256 verification (104 tests).
 - **Phase 8 (Hardening & Production Operations)**: declarative Grafana dashboards as code (`ops/grafana/`), a load and latency harness (`scripts/stress_test.py`) measuring schema validation in-process and the real `POST /v1/decide` endpoint over HTTP, a multi-tenant isolation drill running under Testcontainers (`MultiTenantIsolationTest`), and an SRE runbook (`docs/PRODUCTION_RUNBOOK.md`). **No performance figures are quoted**, here or in `docs/OPEN_NUMBERS.md` — the ones that used to be were measuring an `asyncio.sleep`, not this system. See [docs/PHASE_8_SUMMARY.md](docs/PHASE_8_SUMMARY.md).
+- **Phase 11 (The language layer)**: `salvage_brain.language` — three uses of Gemini where the problem is genuinely language, and none where it is money. **Triage**: a decline code the deterministic mapper cannot resolve is described to a model, which *proposes* a taxonomy mapping into a human review queue; it is never applied, no confidence value is asked for, and a code that already maps is refused rather than re-examined. **Nudge copy**: the policy engine decides to contact a customer, the model writes the sentence in one of five Indian languages, and it may not write a digit — it returns a template with `{amount}` and `{merchant}` and this service substitutes them from integer paise. **Narration**: a decision chain turned into English for an operator, where every number in the output must already appear in the input. Off by default (`SALVAGE_LANGUAGE_ENABLED`), and a present key does not switch it on. The boundary is enforced by `test_language_boundary.py`, which reads the import graph and fails if the decision path can reach the language layer at all (75 tests; 131 unit, 144 with integration).
 
 ## Documentation
 

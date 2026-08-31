@@ -17,6 +17,15 @@ This is the highest-priority open number in this file, because unlike the rows
 below it is not a gap in the writing -- it is a claim the code currently acts
 on.
 
+Phase 11 adds a tool that helps with the *next* unknown code rather than with
+the rows in this table: `POST /v1/language/triage` asks a language model to
+propose a mapping for a code the deterministic mapper cannot resolve, and files
+it for human review. **It does not close anything here.** A proposal is a
+suggestion to check against a specification, it is never applied, and no
+confidence value is requested from the model -- a number attached to "this code
+means X" is exactly what ADR-0006 kind three forbids. The rows below still need
+somebody to read NPCI and ISO 8583.
+
 | What needs verifying | Source that would settle it |
 |---|---|
 | NPCI UPI decline code meanings (U30, U16, U28, U66, U69, U96, U19, U29, U48, ZA, ZM, ZH, ZG, Z8, Z9, XB, XY) | NPCI UPI Procedural Guidelines / API specification |
