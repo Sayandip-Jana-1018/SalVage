@@ -52,6 +52,7 @@ policy wanted one. See :data:`EVALUABLE_ACTIONS`.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 from dataclasses import dataclass
 from typing import Any
 
@@ -292,7 +293,41 @@ def build_episodes(
             )
         )
 
-        if max_episodes is not None and len(episodes) >= max_episodes:
-            break
+    return _subsample(episodes, max_episodes)
 
-    return episodes
+
+def _subsample(episodes: list[LoggedEpisode], limit: int | None) -> list[LoggedEpisode]:
+    """Cap the dataset by sampling across the run, never by truncating it.
+
+    This used to ``break`` out of the generation loop once the cap was
+    reached, which sounds harmless and is not: the simulator emits in
+    chronological order, so a prefix is the *first few days* of the run and
+    nothing else. At twelve merchants a 5,000-episode cap was satisfied inside
+    four simulated days, so every dataset the harness ever produced contained
+    only days 1 to 4 of a month.
+
+    That silently deleted a feature. ``is_salary_cycle_pre_payday`` marks days
+    20 to 27; no episode ever fell in that window, so the salary-cycle
+    dynamics the simulator models -- and the payday-anchored scheduling rule
+    the policy relies on -- were never once exercised. Every fitted cell read
+    ``pre_payday=no`` and the whole mechanism was untested while appearing to
+    be covered.
+
+    Sampling by hash keeps the cap while spanning the run, and is
+    deterministic so two people get the same dataset.
+    """
+    if limit is None or len(episodes) <= limit:
+        return episodes
+
+    # Rank by hash, keep the lowest `limit`, then restore the original
+    # ordering. Downstream code reads these as a stream in the order the
+    # failures happened, so returning them in hash order would make any
+    # time-based reading nonsense.
+    ranked = sorted(enumerate(episodes), key=lambda pair: _sample_key(pair[1].episode_id))
+    kept = sorted(ranked[:limit], key=lambda pair: pair[0])
+    return [episode for _, episode in kept]
+
+
+def _sample_key(episode_id: str) -> str:
+    """A stable pseudo-random rank for an episode."""
+    return hashlib.sha256(f"subsample:{episode_id}".encode()).hexdigest()

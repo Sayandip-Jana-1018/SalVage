@@ -46,10 +46,32 @@ def observed_cause(context: dict[str, Any]) -> ObservedCause:
 
 
 def is_permanent(cause: ObservedCause) -> bool:
-    """Causes no retry and no rail switch can fix.
+    """Causes that no retry and no rail switch can fix.
 
-    A dead mandate or a dead instrument fails on every rail at every delay.
-    Spending money retrying one is pure loss, which is why the policies below
-    treat this as a hard stop rather than a low probability.
+    Only a dead mandate. The order is terminated; nothing collects on it.
+
+    **This used to include INSTRUMENT_DEAD, and that was wrong.** The fitted
+    model found it: over 25 held-out episodes, switching rails after an
+    expired-instrument failure recovered 72% of the time, while this function
+    was forcing every policy's estimate for that case to 0.0 -- so no policy
+    ever switched, and all of that money was left on the table. The simulator
+    says so explicitly too, in ``FailureCause.is_permanent``: "the card is
+    dead, but the customer is not, and another method will work."
+
+    A hand-written assumption, contradicted by measurement, corrected. That is
+    what the fitted model is for.
     """
-    return cause in (ObservedCause.MANDATE_DEAD, ObservedCause.INSTRUMENT_DEAD)
+    return cause is ObservedCause.MANDATE_DEAD
+
+
+def is_instrument_bound(cause: ObservedCause) -> bool:
+    """Causes tied to the instrument rather than to the payer or the rail.
+
+    An expired card will not start working because it was asked twice, so
+    retrying the same rail is futile. Moving the payment to a different method
+    is precisely the fix -- the customer still has money and still wants to
+    pay. Retry and switch therefore need opposite treatment here, which is why
+    this is a separate question from :func:`is_permanent` rather than another
+    entry in it.
+    """
+    return cause is ObservedCause.INSTRUMENT_DEAD

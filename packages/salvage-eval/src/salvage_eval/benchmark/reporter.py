@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+from salvage_eval.benchmark.shadow import ShadowComparison
 from salvage_eval.types import PolicyEvaluationSummary
 
 
@@ -12,6 +15,7 @@ class EvaluationReporter:
     def _headline(
         summaries: list[PolicyEvaluationSummary],
         salvage: PolicyEvaluationSummary,
+        paired: ShadowComparison | None = None,
     ) -> list[str]:
         """State the comparison a reader would otherwise have to compute.
 
@@ -23,7 +27,17 @@ class EvaluationReporter:
         Everything below is computed from the summaries. Whether the intervals
         overlap is a fact about the numbers, not a judgement about them.
         """
-        rivals = [s for s in summaries if s is not salvage and "Unconstrained" not in s.policy_name]
+        # Baselines only. The unconstrained bandit is the same policy with the
+        # bounds switched off, and the fitted policy is the challenger that
+        # section 3 compares properly -- neither is a "simple alternative", and
+        # calling one that here would answer a different question.
+        rivals = [
+            s
+            for s in summaries
+            if s is not salvage
+            and "Unconstrained" not in s.policy_name
+            and "Fitted" not in s.policy_name
+        ]
         if not rivals:
             return []
 
@@ -48,7 +62,7 @@ class EvaluationReporter:
             )
         )
 
-        return [
+        lines = [
             "### Headline",
             "",
             (
@@ -59,18 +73,160 @@ class EvaluationReporter:
                 f"({rate_margin:+.1%}) and returns {margin:+,.1f} paise per failure."
             ),
             "",
+        ]
+
+        if paired is not None:
+            # The test that actually settles it. Both policies scored on the
+            # same episodes, so the shared variance cancels.
+            lines.extend(
+                [
+                    (
+                        f"**Paired test:** {paired.mean_difference_paise:+,.1f} paise per "
+                        f"failure, 95% CI [{paired.ci_lower_paise:+,.1f}, "
+                        f"{paired.ci_upper_paise:+,.1f}] — {paired.verdict()}. "
+                        f"They chose different actions on "
+                        f"{paired.disagreement_rate:.1%} of episodes."
+                    ),
+                    "",
+                ]
+            )
+
+        lines.extend(
+            [
+                "The unpaired view, for comparison:",
+                "",
+                (
+                    f"- {salvage.policy_name}: DR "
+                    f"`{ours.estimated_value:,.1f}` [{ours.ci_lower:,.1f}, {ours.ci_upper:,.1f}]"
+                ),
+                (
+                    f"- {best.policy_name}: DR "
+                    f"`{theirs.estimated_value:,.1f}` "
+                    f"[{theirs.ci_lower:,.1f}, {theirs.ci_upper:,.1f}]"
+                ),
+                "",
+                verdict,
+                "",
+                (
+                    "> Where the paired test and the overlap test disagree, the paired "
+                    "one is right. See section 3."
+                ),
+                "",
+            ]
+        )
+        return lines
+
+    @staticmethod
+    def _shadow(shadow: ShadowComparison) -> list[str]:
+        """The paired comparison, which is the statistically correct one.
+
+        The headline above compares two independent confidence intervals and
+        checks whether they overlap. That test is under-powered here: both
+        policies are scored on the same episodes, so most of the variance in
+        each estimate is shared and an overlap test throws it away. This
+        section resamples once and computes both policies on the same
+        resample, so the shared variance cancels.
+        """
+        arrow = "ahead" if shadow.mean_difference_paise >= 0 else "behind"
+        lines = [
+            "## 3. Shadow mode: challenger against champion",
+            "",
             (
-                f"- {salvage.policy_name}: DR "
-                f"`{ours.estimated_value:,.1f}` [{ours.ci_lower:,.1f}, {ours.ci_upper:,.1f}]"
-            ),
-            (
-                f"- {best.policy_name}: DR "
-                f"`{theirs.estimated_value:,.1f}` [{theirs.ci_lower:,.1f}, {theirs.ci_upper:,.1f}]"
+                "How a merchant would actually decide whether to switch policies. "
+                f"**{shadow.challenger_name}** decided on the same "
+                f"{shadow.n_episodes:,} held-out failures as "
+                f"**{shadow.champion_name}**, took no action, and the two are "
+                "compared on the outcomes."
             ),
             "",
-            verdict,
+            (
+                f"- They chose **different actions on {shadow.disagreement_rate:.1%}** "
+                "of episodes."
+            ),
+            (
+                f"- Challenger: `{shadow.challenger_value_paise:,.1f}` paise per "
+                f"failure. Champion: `{shadow.champion_value_paise:,.1f}`."
+            ),
+            (
+                f"- Paired difference: **{shadow.mean_difference_paise:+,.1f} paise** "
+                f"per failure, 95% CI "
+                f"[{shadow.ci_lower_paise:+,.1f}, {shadow.ci_upper_paise:+,.1f}]."
+            ),
+            (
+                f"- The challenger came out {arrow} in "
+                f"{shadow.challenger_better_fraction:.1%} of bootstrap resamples."
+            ),
+            "",
+            f"**Verdict: {shadow.verdict()}.**",
             "",
         ]
+
+        if shadow.disagreement_rate < 0.02:
+            lines.extend(
+                [
+                    (
+                        "> The two policies agree on almost every episode, so this "
+                        "comparison is measuring very little regardless of how tight "
+                        "the interval looks. A difference in probabilities that never "
+                        "changes a decision cannot change an outcome."
+                    ),
+                    "",
+                ]
+            )
+
+        lines.extend(
+            [
+                (
+                    "> This is a **paired** bootstrap: one resample of episodes, both "
+                    "policies scored on it, and the mean of the per-episode difference "
+                    "bootstrapped. Comparing two separate intervals and checking for "
+                    "overlap -- which section 2 does -- discards the variance the two "
+                    "policies share and is badly under-powered. Two policies can have "
+                    "heavily overlapping intervals while one beats the other almost "
+                    "everywhere."
+                ),
+                "",
+            ]
+        )
+        return lines
+
+    @staticmethod
+    def _fitted_cells(cells: list[dict[str, Any]]) -> list[str]:
+        """Print what the fitted model learned, cell by cell.
+
+        A model an operator cannot interrogate is one they cannot overrule.
+        Every row here can be recomputed by hand from the trial count and the
+        observed rate, which is the point of using shrinkage over something
+        with more capacity and less to say for itself.
+        """
+        lines = [
+            "## 6. What the fitted model learned",
+            "",
+            (
+                "Estimated from the **training** episodes only, and only from what a "
+                "production log contains: the action taken and whether it worked. The "
+                "counterfactual outcomes of the actions *not* taken are the answer key "
+                "and the fitter never sees them."
+            ),
+            "",
+            (
+                "`fitted` is the observed rate shrunk toward the coarser "
+                "(action, cause) estimate by a pseudo-count of 20, so a sparse cell "
+                "falls back rather than asserting a confident 0.0 or 1.0 from three "
+                "observations."
+            ),
+            "",
+            "| Action | Observed cause | Pre-payday | Trials | Observed rate | Fitted |",
+            "|---|---|---|---|---|---|",
+        ]
+        for cell in cells:
+            lines.append(
+                f"| {cell['action']} | {cell['observed_cause']} | "
+                f"{'yes' if cell['pre_payday'] else 'no'} | {cell['trials']:,} | "
+                f"{cell['observed_rate']:.3f} | {cell['fitted_probability']:.3f} |"
+            )
+        lines.append("")
+        return lines
 
     @classmethod
     def render_markdown(
@@ -79,6 +235,10 @@ class EvaluationReporter:
         num_episodes: int,
         random_seed: int,
         unscorable_action_rate: dict[str, float] | None = None,
+        shadow: ShadowComparison | None = None,
+        shadow_vs_baseline: ShadowComparison | None = None,
+        fitted_cells: list[dict[str, Any]] | None = None,
+        train_episodes: int | None = None,
     ) -> str:
         """Format the tables, estimator comparison, calibration and regret accounting."""
         unscorable = unscorable_action_rate or {}
@@ -87,7 +247,15 @@ class EvaluationReporter:
             "",
             "> **Automatically generated by `salvage-eval`. Do not edit by hand.**",
             ">",
-            f"> {num_episodes:,} logged episodes, simulator seed `{random_seed}`.",
+            (
+                f"> {num_episodes:,} **held-out** episodes, simulator seed "
+                f"`{random_seed}`."
+                + (
+                    f" Models were fitted on a disjoint {train_episodes:,} episodes."
+                    if train_episodes
+                    else ""
+                )
+            ),
             "",
             "## Framing",
             "",
@@ -202,11 +370,13 @@ class EvaluationReporter:
             (s for s in summaries if "Constrained" in s.policy_name), summaries[-1]
         )
 
-        md.extend(cls._headline(summaries, salvage_summary))
+        md.extend(cls._headline(summaries, salvage_summary, shadow_vs_baseline))
+        if shadow is not None:
+            md.extend(cls._shadow(shadow))
 
         md.extend(
             [
-                "## 3. Off-Policy Estimator Comparison",
+                "## 4. Off-Policy Estimator Comparison",
                 "",
                 (
                     "Four estimators against known ground truth, for "
@@ -237,7 +407,7 @@ class EvaluationReporter:
             )
         md.append("")
 
-        md.extend(["## 4. Calibration & Reliability", ""])
+        md.extend(["## 5. Calibration & Reliability", ""])
         if salvage_summary.calibration:
             cal = salvage_summary.calibration
             md.extend(
@@ -286,7 +456,7 @@ class EvaluationReporter:
                 ]
             )
 
-        md.extend(["## 5. Regret Accounting", ""])
+        md.extend(["## 6. Regret Accounting", ""])
         if salvage_summary.regret:
             reg = salvage_summary.regret
             md.extend(
@@ -311,9 +481,12 @@ class EvaluationReporter:
                 ]
             )
 
+        if fitted_cells:
+            md.extend(cls._fitted_cells(fitted_cells))
+
         md.extend(
             [
-                "## 6. Limitations",
+                "## 7. Limitations",
                 "",
                 (
                     "1. **Simulation, not production.** These figures measure the "

@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from salvage_eval.baselines.base import AbstractPolicy
-from salvage_eval.baselines.observable import ObservedCause, is_permanent, observed_cause
+from salvage_eval.baselines.observable import (
+    ObservedCause,
+    is_instrument_bound,
+    is_permanent,
+    observed_cause,
+)
 from salvage_eval.types import EvaluatedAction
 
 
@@ -31,6 +36,9 @@ class RulesBaselinePolicy(AbstractPolicy):
 
         if is_permanent(cause):
             desired = EvaluatedAction.NO_ACTION
+        elif is_instrument_bound(cause):
+            # The card is dead; the customer is not. Another method works.
+            desired = EvaluatedAction.SWITCH_RAIL
         elif cause is ObservedCause.ISSUER_TROUBLE:
             desired = EvaluatedAction.SWITCH_RAIL
         elif cause is ObservedCause.INSUFFICIENT_FUNDS:

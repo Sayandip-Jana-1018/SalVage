@@ -21,9 +21,20 @@ from salvage_eval.dataset.from_simulator import (
     SimulatorDataset,
     build_episodes,
 )
-from salvage_eval.types import EvaluatedAction
+from salvage_eval.types import EvaluatedAction, LoggedEpisode
 from salvage_sim.calibration import load_calibration
 from salvage_sim.simulator import RunConfig, Simulation
+
+
+@pytest.fixture(scope="module")
+def shared_episodes() -> list[LoggedEpisode]:
+    """One episode set shared by the tests that only need *some* episodes.
+
+    Building a fresh run per test costs more than every assertion in this file
+    put together. Tests where the seed itself is the point -- reproducibility,
+    and the natural-recovery check that needs a full month -- build their own.
+    """
+    return build_episodes(seed=23, days=35.0, merchants=1, max_episodes=600)
 
 
 @pytest.fixture(scope="module")
@@ -108,12 +119,11 @@ def test_the_true_cause_never_appears_in_the_context(sample: list[tuple[dict, ob
     )
 
 
-def test_customer_nudge_is_never_scored() -> None:
+def test_customer_nudge_is_never_scored(shared_episodes: list[LoggedEpisode]) -> None:
     """No ground truth exists for a nudge, so no episode may claim one."""
     assert EvaluatedAction.CUSTOMER_NUDGE not in EVALUABLE_ACTIONS
 
-    episodes = build_episodes(seed=5, days=3.0, merchants=3, max_episodes=100)
-    for episode in episodes:
+    for episode in shared_episodes:
         assert EvaluatedAction.CUSTOMER_NUDGE not in episode.feasible_actions
         assert EvaluatedAction.CUSTOMER_NUDGE.value not in episode.counterfactual_rewards
         assert EvaluatedAction.CUSTOMER_NUDGE.value not in episode.counterfactual_recoveries
@@ -126,7 +136,7 @@ def test_doing_nothing_can_still_recover() -> None:
     every other action with recoveries that would have happened anyway and
     inflated every reported lift.
     """
-    episodes = build_episodes(seed=3, days=21.0, merchants=8, max_episodes=2000)
+    episodes = build_episodes(seed=3, days=35.0, merchants=1, max_episodes=600)
     natural = [
         e.counterfactual_recoveries[EvaluatedAction.NO_ACTION.value]
         for e in episodes
@@ -143,24 +153,28 @@ def test_doing_nothing_can_still_recover() -> None:
 
 def test_episodes_are_reproducible_for_a_seed() -> None:
     """Same seed, same episodes -- including the logged action."""
-    first = build_episodes(seed=17, days=3.0, merchants=3, max_episodes=80)
-    second = build_episodes(seed=17, days=3.0, merchants=3, max_episodes=80)
+    first = build_episodes(seed=17, days=2.0, merchants=1, max_episodes=60)
+    second = build_episodes(seed=17, days=2.0, merchants=1, max_episodes=60)
 
     assert [e.episode_id for e in first] == [e.episode_id for e in second]
     assert [e.action for e in first] == [e.action for e in second]
     assert [e.reward_paise for e in first] == [e.reward_paise for e in second]
 
 
-def test_propensities_are_exact_and_sum_over_the_feasible_set() -> None:
+def test_propensities_are_exact_and_sum_over_the_feasible_set(
+    shared_episodes: list[LoggedEpisode],
+) -> None:
     """We chose the logging policy, so propensities are known, not estimated."""
-    for episode in build_episodes(seed=23, days=3.0, merchants=3, max_episodes=100):
+    for episode in shared_episodes:
         assert episode.action in episode.feasible_actions
         assert episode.propensity == pytest.approx(1.0 / len(episode.feasible_actions), abs=1e-6)
 
 
-def test_the_observed_reward_matches_the_logged_actions_counterfactual() -> None:
+def test_the_observed_reward_matches_the_logged_actions_counterfactual(
+    shared_episodes: list[LoggedEpisode],
+) -> None:
     """The revealed outcome is the counterfactual of the action actually taken."""
-    for episode in build_episodes(seed=29, days=3.0, merchants=3, max_episodes=100):
+    for episode in shared_episodes:
         assert episode.reward_paise == episode.counterfactual_rewards[episode.action.value]
         assert episode.is_recovered == episode.counterfactual_recoveries[episode.action.value]
 

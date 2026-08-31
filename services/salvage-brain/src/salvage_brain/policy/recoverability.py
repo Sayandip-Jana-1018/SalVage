@@ -61,8 +61,22 @@ class RecoverabilityModel:
                 return 0.85
             if tax == TaxonomyCode.INSUFFICIENT_FUNDS:
                 return 0.08
-            if tax in (TaxonomyCode.MANDATE_INVALID, TaxonomyCode.CARD_EXPIRED):
+            if tax == TaxonomyCode.MANDATE_INVALID:
+                # The mandate is terminated. Nothing collects on this order,
+                # on any rail, at any delay.
                 return 0.00
+            if tax == TaxonomyCode.CARD_EXPIRED:
+                # The card is dead; the customer is not. Moving the payment to
+                # another method is exactly the fix, and this is the one
+                # taxonomy code where switching rails is the *whole* answer.
+                #
+                # This returned 0.00 until the evaluation harness measured it.
+                # Over held-out episodes a rail switch after an expired-card
+                # failure recovered around 72% of the time, while this line
+                # was telling the optimiser it never worked -- so the policy
+                # never switched, and all of that was left uncollected. See
+                # EVALUATION.md, "What the fitted model learned".
+                return 0.72
             return 0.30
 
         if action == RecoveryActionType.CUSTOMER_NUDGE:

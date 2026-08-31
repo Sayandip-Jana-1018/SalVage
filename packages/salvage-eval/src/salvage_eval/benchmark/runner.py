@@ -29,8 +29,8 @@ class BenchmarkRunner:
     def generate_dataset(
         cls,
         seed: int = 42,
-        days: float = 14.0,
-        merchants: int = 12,
+        days: float = 35.0,
+        merchants: int = 3,
         max_episodes: int | None = 5000,
     ) -> list[LoggedEpisode]:
         """Simulate a world and log one episode per observed failure."""

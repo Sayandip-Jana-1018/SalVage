@@ -133,7 +133,8 @@ def test_decide_endpoint_returns_optimal_action(client: TestClient, postgres_url
                      provider_error_code, provider_error_desc, rail_id, event_timestamp)
                 VALUES
                     (:id, :m_id, :evt_id, :att_uuid,
-                     'TIMED_OUT', 'Gateway timeout on NPCI switch', 'issuer_alpha|UPI|RAZORPAY', :ts)
+                     'TIMED_OUT', 'Gateway timeout on NPCI switch',
+                     'issuer_alpha|UPI|RAZORPAY', :ts)
                 """
             ),
             {
@@ -157,8 +158,21 @@ def test_decide_endpoint_returns_optimal_action(client: TestClient, postgres_url
     assert decision["chosen_action"] in ("RETRY_IMMEDIATE", "RETRY_SCHEDULED", "SWITCH_RAIL")
     assert decision["recovery_probability"] >= 0.70
     assert decision["expected_net_value_paise"] > 0
-    assert len(decision["candidate_valuations"]) == 5
     assert len(decision["reasoning_tokens"]) > 0
+
+    # Four candidates, not five. This fixture ingests traffic on one rail
+    # only, so the sensing tracker has observed no healthy alternative and
+    # SWITCH_RAIL is not an available action -- it is absent from the ranking
+    # rather than listed at zero, because it was never a candidate the
+    # optimiser compared. The reasoning tokens say so.
+    actions = {valuation["action"] for valuation in decision["candidate_valuations"]}
+    assert actions == {
+        "RETRY_IMMEDIATE",
+        "RETRY_SCHEDULED",
+        "CUSTOMER_NUDGE",
+        "NO_ACTION",
+    }
+    assert "SWITCH_RAIL_UNAVAILABLE_NO_HEALTHY_ALTERNATIVE" in decision["reasoning_tokens"]
 
 
 def test_decide_unknown_attempt_returns_404(client: TestClient) -> None:

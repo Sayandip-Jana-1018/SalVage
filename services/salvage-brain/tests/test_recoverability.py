@@ -147,3 +147,50 @@ def test_mandate_invalid_has_zero_recovery_across_automated_retries() -> None:
     assert p_imm == 0.0
     assert p_sched == 0.0
     assert p_switch == 0.0
+
+
+def test_an_expired_card_is_recoverable_by_switching_rails() -> None:
+    """The card is dead; the customer is not.
+
+    This returned 0.00 for every action until the evaluation harness measured
+    it against ground truth: a rail switch after an expired-card failure
+    recovers most of the time, because the customer still has money and still
+    wants to pay. Treating the whole taxonomy code as permanent cost every one
+    of those recoveries.
+
+    Retrying the *same* rail stays at zero -- asking a dead card twice does
+    not revive it -- which is the distinction the old code collapsed.
+    """
+    features = _dummy_features()
+    snapshot = _dummy_snapshot(RailState.HEALTHY)
+    diag = _dummy_diag(TaxonomyCode.CARD_EXPIRED)
+
+    switch = RecoverabilityModel.estimate_probability(
+        RecoveryActionType.SWITCH_RAIL, features, snapshot, diag
+    )
+    retry_now = RecoverabilityModel.estimate_probability(
+        RecoveryActionType.RETRY_IMMEDIATE, features, snapshot, diag
+    )
+    retry_later = RecoverabilityModel.estimate_probability(
+        RecoveryActionType.RETRY_SCHEDULED, features, snapshot, diag
+    )
+
+    assert switch > 0.5
+    assert retry_now == 0.0
+    assert retry_later == 0.0
+
+
+def test_an_invalid_mandate_is_recoverable_by_nothing() -> None:
+    """A terminated mandate collects on no rail at any delay."""
+    features = _dummy_features()
+    snapshot = _dummy_snapshot(RailState.HEALTHY)
+    diag = _dummy_diag(TaxonomyCode.MANDATE_INVALID)
+
+    for action in (
+        RecoveryActionType.RETRY_IMMEDIATE,
+        RecoveryActionType.RETRY_SCHEDULED,
+        RecoveryActionType.SWITCH_RAIL,
+    ):
+        assert (
+            RecoverabilityModel.estimate_probability(action, features, snapshot, diag) == 0.0
+        ), f"{action} must be hopeless for a dead mandate"

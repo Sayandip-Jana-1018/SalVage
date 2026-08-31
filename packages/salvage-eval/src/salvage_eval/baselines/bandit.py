@@ -7,7 +7,12 @@ from typing import Any
 import numpy as np
 
 from salvage_eval.baselines.base import AbstractPolicy
-from salvage_eval.baselines.observable import ObservedCause, is_permanent, observed_cause
+from salvage_eval.baselines.observable import (
+    ObservedCause,
+    is_instrument_bound,
+    is_permanent,
+    observed_cause,
+)
 from salvage_eval.types import EvaluatedAction
 
 # Action costs in paise, mirroring recovery_actions.cost_paise in
@@ -67,6 +72,14 @@ class ContextualBanditPolicy(AbstractPolicy):
         cause = observed_cause(context)
         if is_permanent(cause):
             return 0.0
+
+        if is_instrument_bound(cause):
+            # An expired card does not start working because it was asked
+            # twice, but the customer still has money and still wants to pay,
+            # so moving the payment to another method is the fix. Retry and
+            # switch get opposite treatment here rather than both being
+            # written off as permanent.
+            return 0.80 if action is EvaluatedAction.SWITCH_RAIL else 0.0
 
         pre_payday = bool(context.get("is_salary_cycle_pre_payday", False))
 
