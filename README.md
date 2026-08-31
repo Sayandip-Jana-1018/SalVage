@@ -119,6 +119,31 @@ make lint          # spotless, ruff, mypy --strict, contract drift gate
 make help          # all targets
 ```
 
+#### On Windows, in PowerShell
+
+**There is no `make` on Windows**, and `make demo` fails with
+`The term 'make' is not recognized`. Two things stand in for it.
+
+`.\start.ps1` above replaces `make up`, and needs nothing but Docker. For the
+rest, PowerShell's `bash` is **WSL's** bash, not Git Bash, so a `make` target
+that runs a shell script has to be handed to WSL explicitly:
+
+```powershell
+wsl -e bash -lc "cd /mnt/c/path/to/salvage && bash scripts/demo.sh"
+```
+
+That is `make demo`, and it works from `/mnt/c` because the script only talks to
+containers. **`make test` does not** — Gradle's file hasher fails on the 9p
+driver with `java.io.IOException: Input/output error`, so tests need the
+repository inside the WSL filesystem. See §8 of `HANDOFF.md`.
+
+`make eval` needs no shell at all, because `uv` runs natively on Windows:
+
+```powershell
+cd packages\salvage-eval
+uv run --frozen salvage-eval report --output ..\..\EVALUATION.md --json ..\..\docs\evaluation-results.json
+```
+
 ### Running the tests
 
 `make demo` is Docker-only. `make test` additionally needs:
