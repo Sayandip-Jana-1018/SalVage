@@ -3,7 +3,7 @@
 An autonomous system that diagnoses failed payments and recovers the money,
 with every decision bounded, explainable, and replayable.
 
-> **Status: Phases 0 through 11 are built. The system executes recovery actions.**
+> **Status: Phases 0 through 12 are built. The system executes recovery actions.**
 >
 > `salvage-core` has a `PaymentProvider` port with two adapters. The default
 > `SimulatedProvider` needs no credentials and no network, so the quickstart
@@ -36,6 +36,7 @@ with every decision bounded, explainable, and replayable.
 > - **Phase 9 — the effector**: `PaymentProvider` port, deterministic `SimulatedProvider`, `RazorpayTestProvider`, reconciliation guard, append-only provider-operation audit, signed webhook ingest.
 > - **Phase 10 — measurement**: recovery model fitted from logged outcomes with a held-out split, shadow mode with a paired bootstrap, and two measurement defects found and fixed.
 > - **Phase 11 — the language layer**: Gemini used for unknown decline-code triage, multilingual nudge copy and incident narration — all outside the money path, off by default, and structurally prevented from reaching a decision by a test on the import graph. See [ADR-0008](docs/adr/0008-language-model-boundary.md).
+> - **Phase 12 — the console, rebuilt**: dark instrument panel, colour reserved for state, money typeset from integer paise, motion only on state change. The scroll-linked hero animation and its 1.8 MB of unlicensed frames are deleted.
 
 ## The problem
 
@@ -241,6 +242,7 @@ salvage/
 - **Phase 9 (The effector)**: `PaymentProvider` port with `SimulatedProvider` (deterministic, credential-free, models the timeout-that-actually-captured case) and `RazorpayTestProvider` (verified against the live test API). `ReconciliationGuard` refuses every retry that is not backed by positive evidence no money moved — only `FAILED` and `NOT_FOUND` qualify; `UNKNOWN` blocks. Idempotency keys are derived, never generated, so a redelivery cannot charge twice. `provider_operations` records intent before the call and settles once, so a crash mid-payment leaves a discoverable row rather than nothing. Signed webhook ingest with constant-time HMAC-SHA256 verification (104 tests).
 - **Phase 8 (Hardening & Production Operations)**: declarative Grafana dashboards as code (`ops/grafana/`), a load and latency harness (`scripts/stress_test.py`) measuring schema validation in-process and the real `POST /v1/decide` endpoint over HTTP, a multi-tenant isolation drill running under Testcontainers (`MultiTenantIsolationTest`), and an SRE runbook (`docs/PRODUCTION_RUNBOOK.md`). **No performance figures are quoted**, here or in `docs/OPEN_NUMBERS.md` — the ones that used to be were measuring an `asyncio.sleep`, not this system. See [docs/PHASE_8_SUMMARY.md](docs/PHASE_8_SUMMARY.md).
 - **Phase 11 (The language layer)**: `salvage_brain.language` — three uses of Gemini where the problem is genuinely language, and none where it is money. **Triage**: a decline code the deterministic mapper cannot resolve is described to a model, which *proposes* a taxonomy mapping into a human review queue; it is never applied, no confidence value is asked for, and a code that already maps is refused rather than re-examined. **Nudge copy**: the policy engine decides to contact a customer, the model writes the sentence in one of five Indian languages, and it may not write a digit — it returns a template with `{amount}` and `{merchant}` and this service substitutes them from integer paise. **Narration**: a decision chain turned into English for an operator, where every number in the output must already appear in the input. Off by default (`SALVAGE_LANGUAGE_ENABLED`), and a present key does not switch it on. The boundary is enforced by `test_language_boundary.py`, which reads the import graph and fails if the decision path can reach the language layer at all (75 tests; 131 unit, 144 with integration).
+- **Phase 12 (The console, rebuilt)**: dark, dense instrument panel — a fixed rail and top bar rather than a centred landing-page stack. **Colour means state**: emerald healthy, amber degraded, rose down, slate not-observed, and one accent (iris) deliberately outside that palette. **Money is typeset from integer paise** with tabular numerals; nothing divides by 100 into a float. **Motion marks state change** and stops under `prefers-reduced-motion`. `ScrollFrameSequence.tsx` and `public/rabit/` — 409 lines and 1.8 MB of frames with no recorded provenance — are deleted, which closes the unlicensed-asset problem outright. The autopsy page now lists attempts through `GET /v1/attempts/{merchant_id}` instead of demanding an id, and a new `/language` screen carries the Phase 11 tools and the argument for where their edges are (12 tests).
 
 ## Documentation
 

@@ -1,124 +1,289 @@
 @import "tailwindcss";
 
+/*
+ * Salvage console — instrument panel.
+ *
+ * The console this replaces was light-mode glassmorphism: blurred white cards,
+ * a serif display face, emerald everywhere, and a 409-line scroll-linked canvas
+ * animation driving 50 JPEG frames of unrecorded provenance. It looked like a
+ * landing page for a product, which is the wrong thing for a screen somebody
+ * stares at during an outage.
+ *
+ * Three rules shape what is here instead.
+ *
+ * 1. COLOUR MEANS STATE. Emerald is healthy, amber is degraded, rose is down,
+ *    slate is "not observed". Nothing else in the interface is allowed to use
+ *    those hues, so a green cell on this screen always means the same thing.
+ *    The accent is iris — a cool blue-violet, deliberately outside the state
+ *    palette — and it is used for focus, the active nav item and links only.
+ *
+ * 2. MONEY IS TYPESET, NOT JUST PRINTED. Tabular numerals everywhere a figure
+ *    appears, so digits line up between rows and a change of magnitude is
+ *    visible as a change of width. Every amount is rendered from integer paise
+ *    (src/lib/formatters.ts); nothing divides by 100 into a float.
+ *
+ * 3. MOTION MARKS STATE CHANGE. There is no decorative animation — no float,
+ *    no breathe, no pulse on a healthy element. A rail that is DOWN pulses
+ *    because that is information. Everything else is still, and all of it
+ *    stops under prefers-reduced-motion.
+ */
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Surfaces, darkest first. Four steps is enough to build depth without the
+     interface becoming a stack of indistinguishable greys. */
+  --color-ink-0: #05070a;
+  --color-ink-1: #090c12;
+  --color-ink-2: #0d1118;
+  --color-ink-3: #12171f;
+  --color-ink-4: #171d27;
+
+  --color-line: #1a212c;
+  --color-line-strong: #26303d;
+
+  --color-fg: #e7ebf2;
+  --color-fg-muted: #98a2b3;
+  --color-fg-faint: #626d7d;
+
+  /* The one accent. Not green, not amber, not red — those carry meaning. */
+  --color-iris: #818cf8;
+  --color-iris-deep: #4f46e5;
+
+  /* State. These four are the only place these hues appear. */
+  --color-healthy: #34d399;
+  --color-degraded: #fbbf24;
+  --color-down: #fb7185;
+  --color-unobserved: #64748b;
+}
+
 @layer base {
-  :root {
-    --font-playfair: "Playfair Display", Georgia, serif;
-    --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  html {
+    color-scheme: dark;
   }
 
   body {
-    background-color: #f8fafc;
-    background-image: 
-      radial-gradient(circle at 50% -20%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
-      radial-gradient(circle at 90% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 40%),
-      radial-gradient(circle at 10% 60%, rgba(14, 165, 233, 0.04) 0%, transparent 40%);
-    background-attachment: fixed;
-    color: #0f172a;
+    background-color: var(--color-ink-0);
+    color: var(--color-fg);
     font-family: var(--font-sans);
-    overflow-x: hidden;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numerals line up column to column. On a screen full of money this is the
+     difference between a table you can scan and one you have to read. */
+  table,
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-iris) 35%, transparent);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-iris);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-ink-0);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border: 3px solid var(--color-ink-0);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #35404f;
   }
 }
 
-/* Typography Utility Classes */
-.font-serif {
-  font-family: var(--font-playfair);
+/* ---------------------------------------------------------------------------
+ * Atmosphere
+ *
+ * A single fixed layer, painted once, that never repaints on scroll: a cool
+ * wash at the top of the page and a fine grain over everything. The grain is
+ * an inline SVG turbulence, so it costs no request and no decode — the point
+ * of the old hero was texture, and this is the version of texture that does
+ * not cost 1.8 MB and a canvas draw per scroll frame.
+ * ------------------------------------------------------------------------ */
+
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(900px 420px at 50% -10%, rgba(129, 140, 248, 0.09), transparent 70%),
+    radial-gradient(700px 500px at 100% 0%, rgba(79, 70, 229, 0.05), transparent 70%);
 }
 
-.font-sans {
-  font-family: var(--font-sans);
+.atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
 }
 
-.font-mono {
-  font-family: var(--font-mono);
+/* ---------------------------------------------------------------------------
+ * Panels
+ *
+ * The inset top highlight is what stops a dark rectangle reading as a hole.
+ * One hairline of light along the upper edge, the way a machined surface
+ * catches it.
+ * ------------------------------------------------------------------------ */
+
+.panel {
+  background: linear-gradient(180deg, var(--color-ink-2) 0%, var(--color-ink-1) 100%);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 12px 32px -18px rgba(0, 0, 0, 0.9);
 }
 
-/* Luxury Light-Mode Liquid Glass System */
-.liquid-glass {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+.panel-flush {
+  background: var(--color-ink-1);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
 }
 
-.liquid-glass-glow {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.8) 100%);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 1);
+.hairline {
+  border-color: var(--color-line);
 }
 
-.liquid-glass-emerald {
-  background: linear-gradient(135deg, rgba(236, 253, 245, 0.9) 0%, rgba(209, 250, 229, 0.75) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+/* Small uppercase label above a value or a table. Sets the instrument tone
+   more than any other single rule here. */
+.eyebrow {
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-fg-faint);
+  font-weight: 600;
 }
 
-.liquid-glass-interactive {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+/* ---------------------------------------------------------------------------
+ * State
+ *
+ * One class per state, used by every component. A rail cell, an incident tile
+ * and a status dot all read the same colour for the same fact, which is the
+ * only reason colour is worth anything here.
+ * ------------------------------------------------------------------------ */
+
+.state-healthy {
+  --state: var(--color-healthy);
+}
+.state-degraded {
+  --state: var(--color-degraded);
+}
+.state-down {
+  --state: var(--color-down);
+}
+.state-unobserved {
+  --state: var(--color-unobserved);
 }
 
-.liquid-glass-interactive:hover {
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 14px 36px -10px rgba(16, 185, 129, 0.18), inset 0 1px 2px rgba(255, 255, 255, 1);
-  transform: translateY(-2px);
+.state-text {
+  color: var(--state);
 }
 
-/* Animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+.state-chip {
+  color: var(--state);
+  background: color-mix(in oklab, var(--state) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--state) 32%, transparent);
 }
 
-@keyframes pulse-slow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.05); }
+.state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--state);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--state) 18%, transparent);
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+.state-tile {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--state) 9%, var(--color-ink-2)) 0%,
+    var(--color-ink-1) 100%
+  );
+  border: 1px solid color-mix(in oklab, var(--state) 26%, transparent);
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 8s ease-in-out infinite;
+/* ---------------------------------------------------------------------------
+ * Motion — state change only
+ * ------------------------------------------------------------------------ */
+
+@keyframes salvage-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
-/* Custom Light Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+/* Applied only to a DOWN indicator. A healthy element never animates, so
+   movement on this screen always means something is wrong. */
+.alarm {
+  animation: salvage-breathe 1.8s ease-in-out infinite;
 }
 
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
+@keyframes salvage-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
 }
 
-/* Speech Bubble Entrance Animation */
-@keyframes bubble-in {
-  0% { opacity: 0; transform: translateX(20px) scale(0.92); }
-  100% { opacity: 1; transform: translateX(0) scale(1); }
+/* The only loading affordance: a thin bar that sweeps while a request is in
+   flight. It stops the moment data arrives. */
+.sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  background: linear-gradient(90deg, transparent, var(--color-iris), transparent);
+  animation: salvage-sweep 1.4s ease-in-out infinite;
 }
 
-@keyframes bubble-breathe {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-3px); }
+@keyframes salvage-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.animate-bubble-in {
-  animation: bubble-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-             bubble-breathe 4s ease-in-out 0.5s infinite;
+.enter {
+  animation: salvage-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

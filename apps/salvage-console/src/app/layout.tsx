@@ -1,30 +1,36 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
-import { Header } from "@/components/Header";
-import { Navigation } from "@/components/Navigation";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import { Sidebar } from "@/components/Sidebar";
+import { TopBar } from "@/components/TopBar";
 import "./globals.css";
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-});
+/**
+ * The application shell: a fixed top bar, a fixed nav rail, and a scrolling
+ * content column.
+ *
+ * Two faces, both doing a job. Inter for the interface; JetBrains Mono for
+ * every identifier, hash and figure, because a column of amounts has to line
+ * up digit for digit. The display serif that used to be here (Playfair) was
+ * setting a magazine tone on an operations screen.
+ */
 
-const sans = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-inter",
   display: "swap",
 });
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-jetbrains",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Salvage — Autonomous Payment Recovery Platform",
-  description: "FAANG-grade autonomous payment failure diagnosis and recovery platform",
+  title: "Salvage — payment recovery console",
+  description:
+    "Operator console for Salvage: live rail sensing, per-attempt decision autopsies, "
+    + "the tamper-evident ledger, and the measured off-policy evaluation.",
 };
 
 export default function RootLayout({
@@ -33,39 +39,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <html
-      lang="en"
-      className={`${playfair.variable} ${sans.variable} ${mono.variable}`}
-    >
-      <body className="min-h-screen bg-[#f8fafc] text-slate-900 antialiased flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
-        {/* Ambient subtle light gradient orbs */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/10 rounded-full blur-[140px] animate-pulse-slow" />
-          <div className="absolute top-1/3 -left-40 w-[500px] h-[500px] bg-indigo-500/05 rounded-full blur-[160px]" />
-          <div className="absolute top-2/3 -right-40 w-[600px] h-[600px] bg-sky-500/05 rounded-full blur-[160px]" />
-        </div>
+    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
+      <body className="min-h-screen bg-ink-0 text-fg antialiased">
+        <div className="atmosphere" aria-hidden />
 
-        {/* Global Floating Header & Centered Navigation */}
-        <div className="relative z-50 w-full flex flex-col items-center">
-          <Header />
-          <Navigation />
-        </div>
+        <div className="relative z-10 flex min-h-screen flex-col">
+          <TopBar />
 
-        {/* Center-Aligned Main Content Container */}
-        <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col items-center">
-          <div className="w-full">{children}</div>
-        </main>
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <Sidebar />
 
-        {/* Subtle Luxury Footer */}
-        <footer className="relative z-10 w-full border-t border-slate-200/80 bg-white/80 backdrop-blur-md py-6 text-center text-xs text-slate-500 font-mono">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span className="flex items-center gap-2 font-medium text-slate-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              SALVAGE RECOVERY ENGINE · REAL-TIME SHA-256 AUDITED
-            </span>
-            <span className="text-slate-500 font-medium">SUB-50ms SLA · DETERMINISTIC MONEY BOUNDS</span>
+            <main className="min-w-0 flex-1">
+              <div className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+                {children}
+              </div>
+
+              <footer className="mt-6 border-t border-line px-4 py-5 sm:px-6 lg:px-8">
+                <p className="max-w-3xl text-[11px] leading-relaxed text-fg-faint">
+                  Figures on these screens are counted by <span className="font-mono">salvage-core</span>{" "}
+                  and <span className="font-mono">salvage-brain</span> and are never rendered from a
+                  fixture. Evaluation results are simulated and say so; no number here describes
+                  production payment traffic, because this system has not run against any.
+                </p>
+              </footer>
+            </main>
           </div>
-        </footer>
+        </div>
       </body>
     </html>
   );

@@ -137,6 +137,85 @@ export interface AutopsyView {
   ledger_entries: LedgerEntryView[];
 }
 
+/** One attempt in the listing served by `GET /v1/attempts/{merchant_id}`. */
+export interface AttemptSummary {
+  merchant_id: string;
+  payment_attempt_id: string;
+  order_id: string;
+  amount_paise: number;
+  currency: string;
+  payment_method: string;
+  issuer: string;
+  created_at: string;
+  failure_count: number;
+}
+
+export interface AttemptPage {
+  merchant_id: string;
+  limit: number;
+  attempts: AttemptSummary[];
+}
+
+/* ---------------------------------------------------------------------------
+ * The language layer (Phase 11).
+ *
+ * Everything below describes generated text, and every one of these shapes
+ * carries the model id and a digest of the prompt that produced it. None of it
+ * reaches a money decision: see docs/adr/0008-language-model-boundary.md.
+ * ------------------------------------------------------------------------- */
+
+export interface LanguageStatus {
+  enabled: boolean;
+  model: string;
+  review_queue_configured: boolean;
+  money_path: string;
+}
+
+export interface TriageProposal {
+  proposed_taxonomy_code: string;
+  is_retryable_same_rail: boolean;
+  is_retryable_alternative_rail: boolean;
+  rationale: string;
+  specification_to_check: string;
+}
+
+export interface TriageResponse {
+  provider_error_code: string;
+  provider_error_description: string | null;
+  current_mapping: string;
+  proposal: TriageProposal;
+  status: "PROPOSED_PENDING_HUMAN_REVIEW";
+  /** Always false. The wire format cannot say otherwise. */
+  applied: false;
+  model: string;
+  prompt_sha256: string;
+  generated_at: string;
+  queued_to: string | null;
+}
+
+export interface NudgeCopy {
+  template: string;
+  rendered: string;
+  language: string;
+  channel: string;
+  amount_paise: number;
+  rendered_amount: string;
+  placeholders: string[];
+  model: string;
+  prompt_sha256: string;
+  generated_at: string;
+  /** Always false. Generating copy is not sending it. */
+  sent: boolean;
+}
+
+export interface Narration {
+  payment_attempt_id: string;
+  narration: string;
+  model: string;
+  prompt_sha256: string;
+  generated_at: string;
+}
+
 /** The envelope every console API route returns. */
 export type ApiResult<T> =
   | { ok: true; data: T }

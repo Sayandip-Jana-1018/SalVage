@@ -78,3 +78,11 @@ cd apps/salvage-console && npm test && npm run build
 - `public/rabit/*.jpg` (1.8 MB driving the hero animation) has no recorded
   provenance. See `apps/salvage-console/public/rabit/PROVENANCE.md`.
 - A design overhaul is outstanding.
+
+> **Since Phase 12:** the second and third are resolved. `ScrollFrameSequence`
+> and the whole `public/rabit/` directory are deleted, which closed the
+> provenance problem outright, and the console was rebuilt as a dark
+> instrument panel. The first is partly resolved: every screen has now been
+> checked in a browser, but with the stack down, so the `ready` state remains
+> unverified everywhere except `/sandbox`. This section is left as written —
+> a phase summary records what was true when the phase ended.

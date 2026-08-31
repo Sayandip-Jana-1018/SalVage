@@ -1,23 +1,25 @@
 "use client";
 
-import { Award, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import React from "react";
-import { formatPercent, formatRupeesDetailed } from "@/lib/formatters";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { DataTable, Td, Th } from "@/components/ui/Primitives";
+import { formatPaise, formatPercent } from "@/lib/formatters";
 import type { ActionValuation, RecoveryAction } from "@/types";
 
 /**
  * The candidate actions the policy engine valued, and the one it chose.
  *
  * Rendered straight from `candidate_valuations` on the decision response. The
- * previous version took a locally-defined shape carrying `friction_penalty_paise`,
- * `is_permitted_by_bounds` and `rejection_reason` -- fields the policy engine
- * does not return -- and displayed a hardcoded "Optimal Decision: SWITCH_RAIL"
- * badge regardless of what was actually chosen.
+ * version this replaces took a locally-defined shape carrying
+ * `friction_penalty_paise`, `is_permitted_by_bounds` and `rejection_reason` —
+ * fields the policy engine does not return — and displayed a hardcoded
+ * "Optimal Decision: SWITCH_RAIL" badge regardless of what was chosen.
  *
- * Bounds status is deliberately not shown here. The bounds engine runs in
- * salvage-core, after the policy engine has ranked actions, and its verdict is
- * recorded on the decision row rather than on a valuation. Showing a
- * per-action permitted/refused column would be inventing a verdict per row.
+ * Bounds status is deliberately absent. The bounds engine runs in salvage-core
+ * *after* the policy engine has ranked actions, and its verdict is recorded on
+ * the decision row rather than per valuation. A permitted/refused column here
+ * would be inventing a verdict per row.
  */
 export function ActionRankingTable({
   actions,
@@ -31,79 +33,72 @@ export function ActionRankingTable({
   );
 
   return (
-    <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 text-center flex flex-col items-center">
-      <div className="flex flex-col items-center justify-center mb-6 space-y-1">
-        <h3 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center justify-center gap-2">
-          <Award className="w-4 h-4 text-emerald-600" />
-          Expected Net Value by Action
-        </h3>
-        <p className="text-xs text-slate-500 max-w-lg font-sans">
-          net = P(recovery) × amount − cost. The policy engine ranks every action it is allowed
-          to take and picks the highest.
-        </p>
-        <div className="pt-2">
-          <span className="text-[11px] font-mono px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold shadow-sm inline-flex items-center gap-1.5">
-            <Check className="w-3 h-3 text-emerald-600" />
-            Chosen: {chosenAction}
+    <Panel>
+      <PanelHeader
+        eyebrow="Expected net value"
+        title="Action ranking"
+        note="net = P(recovery) × amount − cost. The engine ranks every action in its bounded action space and takes the highest. Doing nothing is one of them."
+        right={
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-iris/35 bg-iris/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-iris">
+            <Check className="h-3 w-3" />
+            {chosenAction}
           </span>
-        </div>
-      </div>
+        }
+      />
 
       {ranked.length === 0 ? (
-        <p className="text-xs text-slate-500 py-6">
-          The decision recorded no candidate valuations.
-        </p>
+        <PanelBody>
+          <p className="text-xs text-fg-muted">The decision recorded no candidate valuations.</p>
+        </PanelBody>
       ) : (
-        <div className="w-full overflow-x-auto">
-          <table className="w-full text-center border-collapse font-mono text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
-                <th className="pb-3 px-3 font-semibold text-center">Action</th>
-                <th className="pb-3 px-3 font-semibold text-center">P(recovery)</th>
-                <th className="pb-3 px-3 font-semibold text-center">Gross</th>
-                <th className="pb-3 px-3 font-semibold text-center">Cost</th>
-                <th className="pb-3 px-3 font-semibold text-center">Net</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {ranked.map((valuation) => {
-                const chosen = valuation.action === chosenAction;
-                return (
-                  <tr
-                    key={valuation.action}
-                    className={chosen ? "bg-emerald-50/60" : "hover:bg-slate-50/60"}
+        <PanelBody className="!px-2 !py-1">
+          <DataTable
+            head={
+              <>
+                <Th>Action</Th>
+                <Th align="right">P(recovery)</Th>
+                <Th align="right">Gross</Th>
+                <Th align="right">Cost</Th>
+                <Th align="right">Net</Th>
+              </>
+            }
+          >
+            {ranked.map((valuation) => {
+              const chosen = valuation.action === chosenAction;
+              return (
+                <tr
+                  key={valuation.action}
+                  className={chosen ? "bg-iris/[0.07]" : "transition-colors hover:bg-ink-2/70"}
+                >
+                  <Td className="font-mono text-fg">
+                    <span className="inline-flex items-center gap-1.5">
+                      {chosen ? <Check className="h-3 w-3 text-iris" /> : <span className="w-3" />}
+                      {valuation.action}
+                    </span>
+                  </Td>
+                  <Td align="right" className="num font-mono text-fg-muted">
+                    {formatPercent(valuation.recovery_probability)}
+                  </Td>
+                  <Td align="right" className="num font-mono text-fg-muted">
+                    {formatPaise(valuation.gross_expected_value_paise)}
+                  </Td>
+                  <Td align="right" className="num font-mono text-fg-muted">
+                    {formatPaise(valuation.estimated_cost_paise)}
+                  </Td>
+                  <Td
+                    align="right"
+                    className={`num font-mono font-semibold ${
+                      valuation.net_expected_value_paise >= 0 ? "text-healthy" : "text-down"
+                    }`}
                   >
-                    <td className="py-3 px-3 font-bold text-slate-800">
-                      <span className="inline-flex items-center gap-1.5">
-                        {chosen && <Check className="w-3 h-3 text-emerald-600" />}
-                        {valuation.action}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 tabular-nums text-slate-700">
-                      {formatPercent(valuation.recovery_probability)}
-                    </td>
-                    <td className="py-3 px-3 tabular-nums text-slate-600">
-                      {formatRupeesDetailed(valuation.gross_expected_value_paise)}
-                    </td>
-                    <td className="py-3 px-3 tabular-nums text-slate-600">
-                      {formatRupeesDetailed(valuation.estimated_cost_paise)}
-                    </td>
-                    <td
-                      className={`py-3 px-3 tabular-nums font-bold ${
-                        valuation.net_expected_value_paise >= 0
-                          ? "text-emerald-700"
-                          : "text-rose-700"
-                      }`}
-                    >
-                      {formatRupeesDetailed(valuation.net_expected_value_paise)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    {formatPaise(valuation.net_expected_value_paise)}
+                  </Td>
+                </tr>
+              );
+            })}
+          </DataTable>
+        </PanelBody>
       )}
-    </div>
+    </Panel>
   );
 }

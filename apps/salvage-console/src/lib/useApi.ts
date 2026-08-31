@@ -81,3 +81,68 @@ export function useApi<T>(url: string | null, pollMs?: number): ApiState<T> {
 
   return { phase, data, error, lastUpdated, refresh };
 }
+
+export interface PostState<T> {
+  phase: "idle" | "loading" | "ready" | "failed";
+  data: T | null;
+  error: string | null;
+  status: number | null;
+  run: (body: unknown) => Promise<void>;
+  reset: () => void;
+}
+
+/**
+ * POST a console API route once, on demand.
+ *
+ * Separate from {@link useApi} because these are actions rather than reads:
+ * nothing polls, nothing refreshes, and the caller decides when it happens. The
+ * HTTP status is kept alongside the message because the language routes use it
+ * to mean different things — 503 is "the layer is switched off", 502 is "the
+ * model answered with something that failed validation", 409 is "this code is
+ * already mapped" — and a page that collapses those into one red box throws
+ * away the most useful part of the refusal.
+ */
+export function usePostApi<T>(url: string): PostState<T> {
+  const [phase, setPhase] = useState<PostState<T>["phase"]>("idle");
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<number | null>(null);
+
+  const reset = useCallback(() => {
+    setPhase("idle");
+    setData(null);
+    setError(null);
+    setStatus(null);
+  }, []);
+
+  const run = useCallback(
+    async (body: unknown) => {
+      setPhase("loading");
+      setError(null);
+      setStatus(null);
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as ApiResult<T>;
+        setStatus(response.status);
+        if (payload.ok) {
+          setData(payload.data);
+          setPhase("ready");
+        } else {
+          setError(payload.error);
+          setPhase("failed");
+        }
+      } catch {
+        setError("The console could not reach its own API route.");
+        setPhase("failed");
+      }
+    },
+    [url],
+  );
+
+  return { phase, data, error, status, run, reset };
+}

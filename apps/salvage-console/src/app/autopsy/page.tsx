@@ -1,91 +1,192 @@
 "use client";
 
 import { ArrowRight, Search } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
+import { StaleBanner, StateNotice } from "@/components/StateNotice";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { Chip, DataTable, Mono, Td, Th } from "@/components/ui/Primitives";
+import { formatAge, formatCount, formatPaise } from "@/lib/formatters";
 import { useMerchant } from "@/lib/merchant";
+import { useApi } from "@/lib/useApi";
+import type { AttemptPage } from "@/types";
+
+const POLL_MS = 15000;
+const LIMIT = 50;
 
 /**
- * Look up one payment attempt.
+ * Pick an attempt, or look one up by id.
  *
- * A lookup, not a browse. The previous version listed attempts from a
- * checked-in fixture; there is no endpoint that lists attempts, because
- * neither service exposes one -- every read is by
- * (merchant_id, payment_attempt_id), which is what keeps tenant scoping
- * enforceable at the repository layer. Rather than invent a listing, this
- * asks for the id.
+ * This page used to be a lookup and nothing else — a form asking for an id —
+ * because no endpoint listed attempts and the honest response to a missing
+ * endpoint is to say so rather than to invent a table. salvage-brain now serves
+ * `GET /v1/attempts/{merchant_id}`, tenant-scoped and bounded, so the listing
+ * is real and the form stays for when somebody arrives with an id in hand.
  */
-export default function AutopsySearchPage(): React.ReactElement {
+export default function AutopsyIndexPage(): React.ReactElement {
   const router = useRouter();
-  const { merchantId, setMerchantId } = useMerchant();
+  const { merchantId, setMerchantId, ready } = useMerchant();
   const [attemptId, setAttemptId] = useState("");
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    const trimmed = attemptId.trim();
-    if (!trimmed) return;
-    router.push(
-      `/autopsy/${encodeURIComponent(trimmed)}?merchant=${encodeURIComponent(merchantId)}`,
-    );
-  };
+  const { phase, data, error } = useApi<AttemptPage>(
+    ready ? `/api/attempts/${encodeURIComponent(merchantId)}?limit=${LIMIT}` : null,
+    POLL_MS,
+  );
+
+  const open = (id: string) =>
+    router.push(`/autopsy/${encodeURIComponent(id)}?merchant=${encodeURIComponent(merchantId)}`);
 
   return (
-    <div className="w-full flex flex-col items-center space-y-8">
-      <div className="w-full rounded-2xl liquid-glass p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center text-center">
-        <h1 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">
-          Decision Autopsy
-        </h1>
-        <p className="text-xs text-slate-500 max-w-xl mt-1.5">
-          Reconstruct one payment attempt end to end: what was ingested, how it was classified,
-          what the policy engine valued, and what the ledger recorded.
-        </p>
-
-        <form onSubmit={submit} className="w-full max-w-2xl mt-6 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <label className="flex-1 text-left">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
-                Merchant id
-              </span>
+    <div className="enter space-y-4">
+      <Panel>
+        <PanelHeader
+          eyebrow="Per attempt"
+          title="Decision autopsy"
+          note="Reconstruct one payment attempt end to end: what was ingested, how it was classified, what the policy engine valued, and what the ledger recorded."
+        />
+        <PanelBody>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const trimmed = attemptId.trim();
+              if (trimmed) open(trimmed);
+            }}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
+            <label className="block sm:w-56">
+              <span className="eyebrow">Merchant id</span>
               <input
                 value={merchantId}
                 onChange={(event) => setMerchantId(event.target.value)}
-                className="w-full mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
+                className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
               />
             </label>
 
-            <label className="flex-[2] text-left">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
-                Payment attempt id
-              </span>
-              <div className="relative mt-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <label className="block flex-1">
+              <span className="eyebrow">Payment attempt id</span>
+              <span className="relative mt-1.5 block">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-faint" />
                 <input
-                  autoFocus
                   value={attemptId}
                   onChange={(event) => setAttemptId(event.target.value)}
-                  placeholder="pay_..."
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
+                  placeholder="pay_…"
+                  className="w-full rounded-lg border border-line-strong bg-ink-2 py-2 pl-9 pr-3 font-mono text-xs text-fg placeholder:text-fg-faint/70 outline-none transition-colors focus:border-iris/60"
                 />
-              </div>
+              </span>
             </label>
-          </div>
 
-          <button
-            type="submit"
-            disabled={!attemptId.trim()}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-mono font-semibold inline-flex items-center gap-2 transition-all shadow-sm"
-          >
-            Open autopsy
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={!attemptId.trim()}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-iris/40 bg-iris/10 px-4 py-2 font-mono text-xs font-semibold text-iris transition-colors hover:bg-iris/15 disabled:opacity-40"
+            >
+              Open
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </form>
+        </PanelBody>
+      </Panel>
 
-        <p className="text-[11px] text-slate-400 mt-5 max-w-xl font-mono">
-          Attempt ids come from the ingest stream. Run{" "}
-          <code className="px-1 py-0.5 rounded bg-slate-100">make demo</code> to publish one, or
-          take an id from the ledger stream on the war room.
-        </p>
-      </div>
+      <Panel>
+        <PanelHeader
+          eyebrow={`Newest first · up to ${LIMIT}`}
+          title="Recent attempts"
+          note={
+            <>
+              Served by <span className="font-mono text-fg-muted">GET /v1/attempts/{"{merchant_id}"}</span>,
+              scoped to this tenant. There is no cross-tenant listing, because reading across
+              tenants is not a query these services can express.
+            </>
+          }
+          right={
+            data ? (
+              <span className="num font-mono text-[11px] text-fg-muted">
+                {formatCount(data.attempts.length)} shown
+              </span>
+            ) : null
+          }
+        />
+
+        {phase !== "ready" && !data ? (
+          <StateNotice
+            phase={phase}
+            error={error}
+            emptyTitle="No attempts ingested"
+            emptyBody="Nothing has been ingested for this merchant. Run `make demo`, or publish one from the checkout page."
+          />
+        ) : data && data.attempts.length === 0 ? (
+          <StateNotice
+            phase="missing"
+            emptyTitle="No attempts for this merchant"
+            emptyBody="salvage-brain answered with an empty list. Either nothing has been ingested, or the merchant id above is not the one carrying traffic."
+          />
+        ) : (
+          <PanelBody className="!px-2 !py-1">
+            {phase === "unavailable" && error ? (
+              <div className="px-3 pt-3">
+                <StaleBanner error={error} />
+              </div>
+            ) : null}
+
+            <DataTable
+              head={
+                <>
+                  <Th>Attempt</Th>
+                  <Th align="right">Amount</Th>
+                  <Th>Rail</Th>
+                  <Th align="right">Failures</Th>
+                  <Th align="right">Ingested</Th>
+                  <Th>{""}</Th>
+                </>
+              }
+            >
+              {data?.attempts.map((attempt) => (
+                <tr
+                  key={attempt.payment_attempt_id}
+                  className="cursor-pointer transition-colors hover:bg-ink-2/70"
+                  onClick={() => open(attempt.payment_attempt_id)}
+                >
+                  <Td>
+                    <Mono value={attempt.payment_attempt_id} chars={26} className="text-fg" />
+                    <span className="mt-0.5 block font-mono text-[10px] text-fg-faint">
+                      {attempt.order_id}
+                    </span>
+                  </Td>
+                  <Td align="right" className="num font-mono text-fg">
+                    {formatPaise(attempt.amount_paise)}
+                  </Td>
+                  <Td>
+                    <span className="flex flex-wrap items-center gap-1">
+                      <Chip>{attempt.issuer}</Chip>
+                      <Chip>{attempt.payment_method.toUpperCase()}</Chip>
+                    </span>
+                  </Td>
+                  <Td
+                    align="right"
+                    className={`num font-mono ${attempt.failure_count > 0 ? "text-down" : "text-fg-faint"}`}
+                  >
+                    {formatCount(attempt.failure_count)}
+                  </Td>
+                  <Td align="right" className="num font-mono text-fg-faint">
+                    {formatAge(attempt.created_at)}
+                  </Td>
+                  <Td align="right">
+                    <Link
+                      href={`/autopsy/${encodeURIComponent(attempt.payment_attempt_id)}?merchant=${encodeURIComponent(merchantId)}`}
+                      className="text-iris"
+                      aria-label={`Open autopsy for ${attempt.payment_attempt_id}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Td>
+                </tr>
+              ))}
+            </DataTable>
+          </PanelBody>
+        )}
+      </Panel>
     </div>
   );
 }

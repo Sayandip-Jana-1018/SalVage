@@ -315,42 +315,57 @@ comparison; it is one of the most defensible things in the repository.**
 
 Calibration: Brier `0.274`, ECE `0.290`.
 
+### Phase 12 — the console, rebuilt
+
+`apps/salvage-console`. Dark instrument panel: a fixed nav rail and top bar
+rather than a centred stack of glass cards. Three rules, enforced in
+`globals.css` and worth keeping:
+
+- **Colour means state.** Emerald healthy, amber degraded, rose down, slate
+  not-observed, and *nothing else* uses those hues. The single accent is iris,
+  chosen because it sits outside the state palette — the old console used
+  emerald for both "healthy" and "primary button", which is how a colour stops
+  carrying information. Every component asks `stateClass()` rather than
+  choosing a colour, and an unrecognised state renders slate, never green.
+- **Money is typeset from integer paise.** `formatPaise` splits with
+  `abs - (abs % 100)` and integer division, so no amount is ever a float.
+  Tabular numerals everywhere.
+- **Motion marks state change.** A DOWN rail pulses; nothing else animates.
+  All of it stops under `prefers-reduced-motion`.
+
+`ScrollFrameSequence.tsx` and `public/rabit/` are **deleted** — 409 lines and
+1.8 MB of frames whose `PROVENANCE.md` recorded that nobody knew their source
+or licence. That closes the unlicensed-asset item outright.
+
+The autopsy index now lists attempts through
+`GET /v1/attempts/{merchant_id}` instead of demanding an id. A new
+`/language` screen carries the Phase 11 tools and states the boundary.
+
+**Verified in a browser**, which had never been done: every screen at 1440x900
+and at 375x812, no console errors, no hydration warnings. The stack was not
+running during that check, so what was exercised was the loading / missing /
+unavailable states — which is the half most likely to be wrong. The one `ready`
+screen that needs no backend is `/sandbox`, which reads
+`docs/evaluation-results.json`, and it was verified rendering the real measured
+table. **The war room's `ready` state has still never been seen in a browser.**
+
 ---
 
 ## 6. What is NOT built — your work queue
 
-### Phase 12 — design overhaul
-
-Current console is light-mode glassmorphism (`liquid-glass` classes in
-`globals.css`), Playfair Display + Plus Jakarta Sans, emerald accents.
-Competent, but it is the same look as every other Tailwind hackathon entry.
-
-Recommended direction: **dark, dense, instrument-panel.** Linear or a Stripe
-dashboard at night, not a landing page.
-
-- Layered near-black surfaces, one restrained accent; colour reserved for
-  state (healthy / degraded / down) so it *means* something.
-- **Tabular numerals wherever money appears**, rendered from integer paise,
-  never floats. This is the detail that signals "payments product" to anyone
-  who builds them.
-- Motion only on state change. No decorative float animations.
-- **Delete `ScrollFrameSequence.tsx`** (409 lines of decoration) — this also
-  disposes of the unlicensed-asset problem below.
-- Wire the new `GET /v1/attempts/{merchant_id}` listing endpoint into the
-  Autopsy index page, which currently asks for an id because no listing existed.
-
 ### Smaller open items, roughly by value
 
-1. **`apps/salvage-console/public/rabit/*.jpg`** — 1.8 MB of frames with no
-   recorded provenance, driving the hero animation. `PROVENANCE.md` in that
-   directory documents three ways to resolve it. **Do not ship a submission
-   with this unresolved.** Deleting `ScrollFrameSequence` resolves it.
-2. **`services/salvage-brain/src/salvage_brain/taxonomy/mapper.py`** asserts
+1. **`services/salvage-brain/src/salvage_brain/taxonomy/mapper.py`** asserts
    meanings for NPCI UPI and ISO-8583 decline codes that were written from
    memory, with at least one known internal contradiction (`U69`). Marked in
    the docstring and top of `OPEN_NUMBERS.md`. Needs checking against real
    specifications. **This is the only place the code acts on an unverified
    claim about the outside world.**
+2. **The Gemini adapter has never been run against Google from this
+   repository.** Every language-layer test uses a scripted double, which proves
+   the validators and not the wire format. `make gemini-e2e` closes that gap:
+   it lists the models the key can reach, then round-trips one completion.
+   **Rotate `GEMINI_API_KEY` first** — see §9.
 3. **`RAZORPAY_WEBHOOK_SECRET` is unset**, so `make razorpay-e2e` skips the
    signature check rather than asserting it passes. Get it from Razorpay
    Dashboard → Settings → Webhooks to close the loop.
@@ -358,8 +373,11 @@ dashboard at night, not a landing page.
    `POST /payments/{id}/refund`, and webhook verification against a signature
    Razorpay actually produced. Transcribed but unverified; the class docstring
    marks which is which. Keep that distinction accurate.
-5. **The console has never been visually verified in a browser** against a
-   live stack.
+5. **The console has never been seen rendering live data.** Phase 12 verified
+   every screen in a browser, but with the stack down — so the loading,
+   missing and unavailable states are checked and the `ready` state is not,
+   except on `/sandbox`, which reads a file. Run `make up && make demo` and
+   look at the war room.
 6. **Reconciliation sweep is not built.** `provider_operations` has an index
    (`idx_provider_operations_unresolved`) and a repository method
    (`findByMerchantIdAndOutcomeStateAndStartedAtLessThanOrderByStartedAtAsc`)
@@ -381,7 +399,7 @@ cd services/salvage-brain  && uv run --frozen pytest -q                     # 14
 cd packages/salvage-sim    && uv run --frozen pytest -q                     #  87 passed
 cd packages/salvage-eval   && uv run --frozen pytest -q                     #  34 passed (~3 min)
 cd services/salvage-mcp    && npm test                                      #  22 passed
-cd apps/salvage-console    && npm test && npm run build                     #   6 passed
+cd apps/salvage-console    && npm test && npm run build                     #  12 passed
 
 # Gates
 bash scripts/check-contracts.sh      # contract drift

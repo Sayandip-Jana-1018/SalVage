@@ -1,10 +1,12 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, Loader2, ShoppingBag, Zap } from "lucide-react";
+import { ArrowRight, Check, Loader2, Zap } from "lucide-react";
 import Link from "next/link";
 import Script from "next/script";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { formatRupeesDetailed } from "@/lib/formatters";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { Mono } from "@/components/ui/Primitives";
+import { formatPaise, formatPercent } from "@/lib/formatters";
 import { useMerchant } from "@/lib/merchant";
 import type { ApiResult, AutopsyView } from "@/types";
 
@@ -18,16 +20,16 @@ declare global {
  * Publish a real failure and watch the real system handle it.
  *
  * The page this replaces was a scripted animation. Pressing a button ran a
- * chain of `setTimeout` calls that printed lines like "Sensing Matrix:
- * Corroborated with 34 other merchants (SBI error rate = 88.4%)" and "Ledger
- * Commit: Appended sha256 hash block #48220". Nothing was contacted, no event
- * existed, and the ledger block number was a literal.
+ * chain of `setTimeout` calls printing lines like "Sensing Matrix: Corroborated
+ * with 34 other merchants (SBI error rate = 88.4%)" and "Ledger Commit:
+ * Appended sha256 hash block #48220". Nothing was contacted, no event existed,
+ * and the block number was a literal.
  *
  * What happens now: the button publishes a `payment_failed.v1` event to Kafka
  * through salvage-core, the ordinary consumer ingests it, and this page polls
- * the ordinary read path until the attempt appears -- then shows whatever the
+ * the ordinary read path until the attempt appears — then shows whatever the
  * diagnosis engine, the policy engine and the ledger actually produced. If the
- * pipeline is slow, the page waits. If a stage produces nothing, it says so.
+ * pipeline is slow the page waits; if a stage produces nothing it says so.
  */
 
 const SCENARIOS = [
@@ -62,7 +64,10 @@ export default function CheckoutPage(): React.ReactElement {
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [autopsy, setAutopsy] = useState<AutopsyView | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const timers = useRef<{ poll?: ReturnType<typeof setInterval>; stop?: ReturnType<typeof setTimeout> }>({});
+  const timers = useRef<{
+    poll?: ReturnType<typeof setInterval>;
+    stop?: ReturnType<typeof setTimeout>;
+  }>({});
 
   const clearTimers = useCallback(() => {
     if (timers.current.poll) clearInterval(timers.current.poll);
@@ -110,8 +115,8 @@ export default function CheckoutPage(): React.ReactElement {
     setStage("waiting");
 
     // Poll the ordinary read path. The event went through Kafka, so there is a
-    // genuine gap before the row exists -- that gap is the system working, not
-    // a loading spinner standing in for one.
+    // genuine gap before the row exists — that gap is the system working, not a
+    // loading spinner standing in for one.
     const url = `/api/autopsy/${encodeURIComponent(merchantId)}/${encodeURIComponent(published.payment_attempt_id)}`;
     timers.current.poll = setInterval(async () => {
       try {
@@ -151,111 +156,114 @@ export default function CheckoutPage(): React.ReactElement {
       setError("The Razorpay checkout script has not loaded yet.");
       return;
     }
-    const rzp = new window.Razorpay({
+    new window.Razorpay({
       key,
       amount: Math.round(Number(amountRupees) * 100),
       currency: "INR",
       name: "Salvage demo merchant",
       description: "Razorpay test-mode checkout",
-      theme: { color: "#0f172a" },
-    });
-    rzp.open();
+      theme: { color: "#05070a" },
+    }).open();
   };
+
+  const busy = stage === "publishing" || stage === "waiting";
 
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
-      <div className="w-full space-y-6 flex flex-col items-center text-center">
-        <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center">
-          <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-            <ShoppingBag className="w-4 h-4 text-emerald-600" />
-            Publish a failure, watch the pipeline
-          </h2>
-          <p className="text-xs text-slate-500 max-w-xl mt-1.5">
-            This publishes a real <code className="font-mono">payment_failed.v1</code> event to
-            Kafka for <span className="font-mono text-slate-700">{merchantId}</span>. The ordinary
-            consumer ingests it and this page polls the ordinary read path — nothing here is
-            simulated in the browser.
-          </p>
+      <div className="enter space-y-4">
+        <Panel>
+          <PanelHeader
+            eyebrow="Real event, real pipeline"
+            title="Publish a failure and follow it"
+            note={
+              <>
+                Publishes a real <span className="font-mono">payment_failed.v1</span> event to Kafka
+                for <span className="font-mono text-fg-muted">{merchantId}</span>. The ordinary
+                consumer ingests it and this page polls the ordinary read path — nothing here is
+                simulated in the browser.
+              </>
+            }
+          />
 
-          <div className="w-full max-w-2xl mt-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {SCENARIOS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setScenario(option.id)}
-                  className={`rounded-xl border p-3 text-left transition-all ${
-                    scenario === option.id
-                      ? "border-emerald-400 bg-emerald-50/70 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <span className="block text-xs font-bold text-slate-900">{option.label}</span>
-                  <span className="block text-[10px] text-slate-500 mt-1 leading-snug">
-                    {option.blurb}
-                  </span>
-                </button>
-              ))}
+          <PanelBody className="space-y-4">
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              {SCENARIOS.map((option) => {
+                const selected = scenario === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setScenario(option.id)}
+                    className={`rounded-xl border p-3 text-left transition-colors ${
+                      selected
+                        ? "border-iris/45 bg-iris/[0.08]"
+                        : "border-line bg-ink-2 hover:border-line-strong"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-fg">
+                      {selected ? <Check className="h-3 w-3 text-iris" /> : null}
+                      {option.label}
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-snug text-fg-muted">
+                      {option.blurb}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-end gap-3">
-              <label className="flex-1 text-left w-full">
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
-                  Amount (₹)
-                </span>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="block sm:w-40">
+                <span className="eyebrow">Amount (₹)</span>
                 <input
                   value={amountRupees}
                   onChange={(event) => setAmountRupees(event.target.value)}
                   inputMode="decimal"
-                  className="w-full mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-mono shadow-sm"
+                  className="mt-1.5 w-full rounded-lg border border-line-strong bg-ink-2 px-3 py-2 font-mono text-xs text-fg outline-none transition-colors focus:border-iris/60"
                 />
               </label>
 
               <button
                 onClick={run}
-                disabled={stage === "publishing" || stage === "waiting"}
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-mono font-semibold inline-flex items-center gap-2 transition-all shadow-sm shrink-0"
+                disabled={busy}
+                className="inline-flex items-center gap-2 rounded-lg border border-iris/40 bg-iris/10 px-4 py-2 font-mono text-xs font-semibold text-iris transition-colors hover:bg-iris/15 disabled:opacity-50"
               >
-                {stage === "publishing" || stage === "waiting" ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Zap className="w-3.5 h-3.5" />
-                )}
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
                 {stage === "publishing"
-                  ? "Publishing…"
+                  ? "publishing"
                   : stage === "waiting"
-                    ? "Waiting for ingest…"
-                    : "Publish failure event"}
+                    ? "waiting for ingest"
+                    : "publish failure event"}
               </button>
 
               <button
                 onClick={openRazorpay}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:border-slate-400 text-slate-800 text-xs font-mono font-semibold transition-all shrink-0"
                 title="Opens Razorpay test-mode checkout, if a key is configured"
+                className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-ink-3 px-4 py-2 font-mono text-xs text-fg transition-colors hover:border-fg-faint"
               >
                 Razorpay test checkout
               </button>
             </div>
-          </div>
 
-          {error && (
-            <p className="mt-4 text-[11px] font-mono text-rose-800 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 max-w-2xl">
-              {error}
-            </p>
-          )}
+            {attemptId ? (
+              <p className="font-mono text-[11px] text-fg-faint">
+                attempt <Mono value={attemptId} className="text-fg" />
+              </p>
+            ) : null}
 
-          {attemptId && (
-            <p className="mt-4 text-[11px] font-mono text-slate-500">
-              attempt <span className="text-slate-800">{attemptId}</span>
-            </p>
-          )}
-        </div>
+            {error ? (
+              <div className="state-down state-tile rounded-xl p-3.5">
+                <p className="font-mono text-[11px] leading-relaxed text-down">{error}</p>
+              </div>
+            ) : null}
+          </PanelBody>
+        </Panel>
 
-        {stage === "ready" && autopsy && (
+        {stage === "ready" && autopsy ? (
           <PipelineResult autopsy={autopsy} merchantId={merchantId} />
-        )}
+        ) : null}
       </div>
     </>
   );
@@ -271,24 +279,24 @@ function PipelineResult({
   const { attempt, diagnosis, decision, ledger_entries: ledger } = autopsy;
 
   return (
-    <div className="w-full rounded-2xl liquid-glass p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-slate-200/90 flex flex-col items-center">
-      <div className="flex items-center gap-2 mb-5">
-        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-        <h3 className="text-base font-serif font-bold text-slate-900">Ingested and processed</h3>
-      </div>
-
-      <div className="w-full max-w-3xl space-y-3 text-left">
+    <Panel>
+      <PanelHeader
+        eyebrow="Round trip complete"
+        title="Ingested and processed"
+        note="Each step below reports what a service actually produced. A step that produced nothing says so rather than being skipped."
+      />
+      <PanelBody className="space-y-2.5">
         <Step
           index={1}
           title="Ingested"
-          detail={`${formatRupeesDetailed(attempt.amount_paise)} on ${attempt.issuer}|${attempt.payment_method}, ${attempt.failures.length} failure event${attempt.failures.length === 1 ? "" : "s"} recorded.`}
+          detail={`${formatPaise(attempt.amount_paise)} on ${attempt.issuer}|${attempt.payment_method}, ${attempt.failures.length} failure event${attempt.failures.length === 1 ? "" : "s"} recorded.`}
         />
         <Step
           index={2}
           title="Diagnosed"
           detail={
             diagnosis
-              ? `${diagnosis.taxonomy_code} at ${(diagnosis.confidence * 100).toFixed(1)}% confidence — rail sensed ${diagnosis.rail_state}.`
+              ? `${diagnosis.taxonomy_code} at ${formatPercent(diagnosis.confidence)} confidence — rail sensed ${diagnosis.rail_state}.`
               : "The diagnosis engine returned nothing for this attempt."
           }
           muted={!diagnosis}
@@ -298,7 +306,7 @@ function PipelineResult({
           title="Decided"
           detail={
             decision
-              ? `${decision.chosen_action} — P(recovery) ${(decision.recovery_probability * 100).toFixed(1)}%, expected net ${formatRupeesDetailed(decision.expected_net_value_paise)}.`
+              ? `${decision.chosen_action} — P(recovery) ${formatPercent(decision.recovery_probability)}, expected net ${formatPaise(decision.expected_net_value_paise)}.`
               : "The policy engine returned no decision for this attempt."
           }
           muted={!decision}
@@ -313,16 +321,16 @@ function PipelineResult({
           }
           muted={ledger.length === 0}
         />
-      </div>
 
-      <Link
-        href={`/autopsy/${encodeURIComponent(attempt.payment_attempt_id)}?merchant=${encodeURIComponent(merchantId)}`}
-        className="mt-6 text-xs font-mono text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1.5"
-      >
-        Open the full autopsy
-        <ArrowRight className="w-3.5 h-3.5" />
-      </Link>
-    </div>
+        <Link
+          href={`/autopsy/${encodeURIComponent(attempt.payment_attempt_id)}?merchant=${encodeURIComponent(merchantId)}`}
+          className="inline-flex items-center gap-1.5 pt-1 font-mono text-[11px] text-iris transition-colors hover:underline"
+        >
+          open the full autopsy
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </PanelBody>
+    </Panel>
   );
 }
 
@@ -339,22 +347,20 @@ function Step({
 }): React.ReactElement {
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
-        muted ? "border-slate-200 bg-slate-50/60" : "border-emerald-200 bg-emerald-50/50"
+      className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 ${
+        muted ? "border-line bg-ink-2" : "border-healthy/25 bg-healthy/[0.05]"
       }`}
     >
       <span
-        className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-          muted ? "bg-slate-200 text-slate-600" : "bg-emerald-600 text-white"
+        className={`grid h-5 w-5 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold ${
+          muted ? "bg-ink-4 text-fg-faint" : "bg-healthy/20 text-healthy"
         }`}
       >
         {index}
       </span>
-      <div>
-        <span className="block text-xs font-bold text-slate-900">{title}</span>
-        <span className="block text-[11px] text-slate-600 font-mono mt-0.5 leading-relaxed">
-          {detail}
-        </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-fg">{title}</p>
+        <p className="num mt-0.5 font-mono text-[11px] leading-relaxed text-fg-muted">{detail}</p>
       </div>
     </div>
   );

@@ -20,6 +20,15 @@ export const CORE_BASE_URL = process.env.CORE_BASE_URL ?? "http://localhost:8081
 /** How long to wait on a backend before giving up. */
 const TIMEOUT_MS = 5000;
 
+/**
+ * Longer, for the language routes only.
+ *
+ * Those calls sit behind a hosted model and a generation genuinely takes
+ * seconds. Five seconds would time out on a working request and report the
+ * service as unreachable, which is a lie about what happened.
+ */
+const LANGUAGE_TIMEOUT_MS = 30000;
+
 export class BackendUnavailable extends Error {
   readonly service: string;
   readonly status?: number;
@@ -87,3 +96,75 @@ export const brain = {
 export const core = {
   get: <T>(path: string) => request<T>("salvage-core", CORE_BASE_URL, path),
 };
+
+/**
+ * A refusal the caller is meant to read.
+ *
+ * The generic path above deliberately never puts a backend's response body into
+ * an error, because a 500 can carry a stack trace or a connection string and
+ * that text reaches a browser. The language routes are the one place where the
+ * body is worth surfacing: 409, 422, 502 and 503 from `/v1/language/*` are
+ * raised by handlers in this repository with messages written to be shown to an
+ * operator -- "the message contains a digit", "the layer is disabled", "this
+ * code already maps to ISSUER_OUTAGE". Losing those and rendering "the backend
+ * returned HTTP 502" would turn a precise refusal into a shrug.
+ *
+ * Only those four statuses, only a string `detail`, and truncated. Anything
+ * else falls through to {@link BackendUnavailable}.
+ */
+export class Refused extends Error {
+  readonly status: number;
+
+  constructor(status: number, detail: string) {
+    super(detail);
+    this.name = "Refused";
+    this.status = status;
+  }
+}
+
+const READABLE_REFUSALS = new Set([409, 422, 502, 503]);
+const MAX_DETAIL_CHARS = 400;
+
+export async function brainPostReadingRefusals<T>(path: string, body: unknown): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${BRAIN_BASE_URL}${path}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(LANGUAGE_TIMEOUT_MS),
+      cache: "no-store",
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.name : "unknown error";
+    throw new BackendUnavailable("salvage-brain", `salvage-brain is unreachable (${reason})`);
+  }
+
+  if (response.ok) return (await response.json()) as T;
+
+  if (READABLE_REFUSALS.has(response.status)) {
+    const detail = await readDetail(response);
+    if (detail) throw new Refused(response.status, detail);
+  }
+  throw new BackendUnavailable(
+    "salvage-brain",
+    `salvage-brain returned HTTP ${response.status}`,
+    response.status,
+  );
+}
+
+async function readDetail(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json();
+    if (body && typeof body === "object" && "detail" in body) {
+      const detail = (body as { detail: unknown }).detail;
+      if (typeof detail === "string") return detail.slice(0, MAX_DETAIL_CHARS);
+      // FastAPI renders a 422 as a list of validation errors. Rendering the
+      // whole structure to an operator is noise; saying it was malformed is not.
+      if (Array.isArray(detail)) return "The console sent a request this endpoint rejected.";
+    }
+  } catch {
+    // A refusal whose body is not JSON is not worth guessing at.
+  }
+  return null;
+}

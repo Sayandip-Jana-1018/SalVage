@@ -1,9 +1,11 @@
 "use client";
 
-import { CheckCircle2, Clock, ShieldAlert } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import React from "react";
 import { StateNotice } from "@/components/StateNotice";
-import { formatPercent } from "@/lib/formatters";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { StateChip, StateDot } from "@/components/ui/Primitives";
+import { formatAge, formatPercent } from "@/lib/formatters";
 import { useApi } from "@/lib/useApi";
 import type { RailHealthMatrix, RailHealthView } from "@/types";
 
@@ -12,17 +14,15 @@ const POLL_MS = 5000;
 /**
  * Rails currently degraded or down, derived from live sensing.
  *
- * The previous version rendered a single hardcoded incident: a named bank, a
- * fixed "34 affected merchants", ₹3.4L at risk, "1,284 txns auto-rerouted",
+ * The version this replaces rendered a single hardcoded incident: a named bank,
+ * a fixed "34 affected merchants", ₹3.4L at risk, "1,284 txns auto-rerouted",
  * and a detection time of "14:02:11 IST (2m 14s ago)" that never changed. None
- * of it moved, none of it was measured, and it was the first thing on the
- * page.
+ * of it moved and none of it was measured.
  *
- * What replaces it reports only what the sensing service knows: which rails
- * are unhealthy and how unhealthy. It does not claim a blast radius, because
- * counting affected merchants means a cross-tenant aggregate that no endpoint
- * serves -- that is ADR-0007 work, and until it exists the number would be
- * invented.
+ * What is here reports only what the sensing service knows: which rails are
+ * unhealthy and how unhealthy. There is no blast radius, because counting
+ * affected merchants means a cross-tenant aggregate no endpoint serves — that
+ * is ADR-0007 work, and until it exists the number would be invented.
  */
 export function IncidentCard(): React.ReactElement {
   const { phase, data, error } = useApi<RailHealthMatrix>("/api/rails", POLL_MS);
@@ -30,101 +30,108 @@ export function IncidentCard(): React.ReactElement {
   const incidents = (data?.rails ?? []).filter(
     (rail) => rail.state === "DEGRADED" || rail.state === "DOWN",
   );
+  const worst = incidents.some((rail) => rail.state === "DOWN") ? "DOWN" : "DEGRADED";
+  const observed = data?.rails.length ?? 0;
 
   if (phase !== "ready" && !data) {
     return (
-      <div className="w-full rounded-2xl liquid-glass p-6 border border-slate-200/90">
+      <Panel>
+        <PanelHeader eyebrow="Sensing" title="Open incidents" />
         <StateNotice phase={phase} error={error} emptyTitle="No sensing data" />
-      </div>
+      </Panel>
     );
   }
 
   if (incidents.length === 0) {
     return (
-      <div className="w-full rounded-2xl bg-gradient-to-b from-emerald-50/70 via-white to-white p-6 shadow-[0_10px_30px_rgba(16,185,129,0.05)] border border-emerald-200/90 text-center flex flex-col items-center gap-2">
-        <div className="flex items-center justify-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <h3 className="text-sm font-serif font-bold text-slate-900 tracking-wide">
-            NO ACTIVE RAIL INCIDENTS
-          </h3>
-        </div>
-        <p className="text-xs text-slate-600 max-w-lg">
-          Every rail the sensing tracker has observed is healthy.
-          {data && data.rails.length === 0
-            ? " No rails have been observed yet, so this is an absence of data rather than an all-clear."
-            : ` ${data?.rails.length} rail${data?.rails.length === 1 ? "" : "s"} under observation.`}
-        </p>
-      </div>
+      <Panel>
+        <PanelHeader
+          eyebrow="Sensing"
+          title="No rails unhealthy"
+          note={
+            observed === 0
+              ? "No rails have been observed yet, so this is an absence of data rather than an all-clear."
+              : `All ${observed} observed rail${observed === 1 ? "" : "s"} are sensed healthy.`
+          }
+          right={<StateChip state={observed === 0 ? "UNOBSERVED" : "HEALTHY"} label={observed === 0 ? "no data" : "clear"} />}
+        />
+      </Panel>
     );
   }
 
-  const worst = incidents.some((incident) => incident.state === "DOWN") ? "DOWN" : "DEGRADED";
-
   return (
-    <div className="w-full rounded-2xl bg-gradient-to-b from-rose-50/80 via-white to-white p-6 shadow-[0_10px_30px_rgba(244,63,94,0.06)] border border-rose-200/90 relative overflow-hidden text-center flex flex-col items-center">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-2.5 pb-4 border-b border-rose-100 relative z-10">
-        <div className="flex items-center justify-center gap-2">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
-          </span>
-          <h3 className="text-sm font-serif font-bold text-slate-900 tracking-wide">
-            {incidents.length} RAIL{incidents.length === 1 ? "" : "S"} UNHEALTHY
-          </h3>
-          <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-bold">
-            {worst}
-          </span>
-        </div>
-
-        <span className="hidden sm:inline text-slate-300">·</span>
-
-        <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          <span>Sensed {data ? new Date(data.timestamp).toLocaleTimeString() : "—"}</span>
-        </div>
-      </div>
-
-      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 py-5 font-mono">
-        {incidents.map((incident) => (
-          <IncidentTile key={incident.rail_id} rail={incident} />
-        ))}
-      </div>
-
-      <div className="pt-1 w-full flex items-center justify-center gap-2 text-xs text-slate-600">
-        <ShieldAlert className="w-4 h-4 text-slate-400 shrink-0" />
-        <span className="font-sans">
-          Sensing reports rail state. Whether any individual payment is retried, rerouted, or
-          left alone is decided per attempt by the policy engine and gated by the bounds engine.
-        </span>
-      </div>
-    </div>
+    <Panel>
+      <PanelHeader
+        eyebrow="Sensing"
+        title={`${incidents.length} rail${incidents.length === 1 ? "" : "s"} unhealthy`}
+        note={
+          <>
+            Sensing reports rail state. Whether any individual payment is retried, rerouted or
+            left alone is decided per attempt by the policy engine and gated by the bounds engine.
+          </>
+        }
+        right={
+          <div className="flex items-center gap-2">
+            <StateChip state={worst} />
+            <span className="hidden font-mono text-[10px] text-fg-faint sm:inline">
+              {data ? formatAge(data.timestamp) : "—"}
+            </span>
+          </div>
+        }
+      />
+      <PanelBody>
+        <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {incidents.map((rail) => (
+            <IncidentTile key={rail.rail_id} rail={rail} />
+          ))}
+        </ul>
+        <p className="mt-4 flex items-start gap-2 text-[11px] leading-relaxed text-fg-faint">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          An unhealthy rail does not by itself authorise anything. The bounds engine in
+          salvage-core holds the attempt cap, quiet hours, contact budgets and the kill switch,
+          and it refuses independently of whatever proposed the action.
+        </p>
+      </PanelBody>
+    </Panel>
   );
 }
 
 function IncidentTile({ rail }: { rail: RailHealthView }): React.ReactElement {
-  const down = rail.state === "DOWN";
+  const [issuer, method] = splitRail(rail.rail_id);
   return (
-    <div
-      className={`rounded-xl border p-3.5 flex flex-col items-center gap-1 ${
-        down ? "bg-rose-50/70 border-rose-200" : "bg-amber-50/70 border-amber-200"
-      }`}
-    >
-      <span className="text-[11px] font-bold text-slate-900 truncate max-w-full">
-        {rail.rail_id}
-      </span>
-      <span
-        className={`text-[10px] font-bold uppercase ${down ? "text-rose-700" : "text-amber-700"}`}
-      >
-        {rail.state}
-      </span>
-      <span className="text-[11px] text-slate-700 tabular-nums">
-        5m success {formatPercent(rail.success_rate_5m)}
-      </span>
-      <span className="text-[10px] text-slate-500 tabular-nums">
-        failure velocity {rail.failure_velocity_5m.toFixed(2)}
-      </span>
-    </div>
+    <li className={`${rail.state === "DOWN" ? "state-down" : "state-degraded"} state-tile rounded-xl p-3`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <StateDot state={rail.state} />
+          <span className="truncate font-mono text-[11px] text-fg" title={rail.rail_id}>
+            {issuer}
+          </span>
+        </span>
+        <span className="state-text font-mono text-[10px] font-semibold uppercase tracking-wider">
+          {rail.state}
+        </span>
+      </div>
+      <dl className="mt-2.5 grid grid-cols-2 gap-2">
+        <div>
+          <dt className="eyebrow">{method}</dt>
+          <dd className="num mt-1 font-mono text-sm text-fg">{formatPercent(rail.success_rate_5m)}</dd>
+          <dd className="text-[10px] text-fg-faint">5m success</dd>
+        </div>
+        <div>
+          <dt className="eyebrow">velocity</dt>
+          <dd className="num mt-1 font-mono text-sm text-fg">
+            {rail.failure_velocity_5m.toFixed(2)}
+          </dd>
+          <dd className="text-[10px] text-fg-faint">failures/min</dd>
+        </div>
+      </dl>
+    </li>
   );
+}
+
+/** `issuer|method|provider`, matching `PaymentFailedEvent.railId()` in salvage-core. */
+function splitRail(railId: string): [string, string] {
+  const [issuer, method] = railId.split("|");
+  if (!issuer || !method) return [railId, "—"];
+  return [issuer, method.toUpperCase()];
 }

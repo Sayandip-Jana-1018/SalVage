@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BackendUnavailable, NotFound } from "@/lib/backend";
+import { BackendUnavailable, NotFound, Refused } from "@/lib/backend";
 import type { ApiResult } from "@/types";
 
 /**
@@ -22,6 +22,15 @@ export async function serve<T>(run: () => Promise<T>): Promise<NextResponse<ApiR
     if (error instanceof NotFound) {
       return NextResponse.json({ ok: false, error: error.message } as ApiResult<T>, {
         status: 404,
+      });
+    }
+    if (error instanceof Refused) {
+      // A refusal the backend authored for a human to read. Passed through with
+      // its own status so the UI can tell "the layer is switched off" (503)
+      // apart from "the model answered with something that failed validation"
+      // (502) apart from "this code is already mapped" (409).
+      return NextResponse.json({ ok: false, error: error.message } as ApiResult<T>, {
+        status: error.status,
       });
     }
     if (error instanceof BackendUnavailable) {
