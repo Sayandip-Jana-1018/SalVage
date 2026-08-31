@@ -1,4 +1,5 @@
 import axios from "axios";
+import { config } from "../config.js";
 
 /**
  * A backend call that did not succeed.
@@ -40,6 +41,19 @@ export function asBackendError(service: string, error: unknown): BackendError {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
     const target = error.config?.url ?? "unknown endpoint";
+    if (status === 401 || status === 403) {
+      // Distinguished because the fix is different and cheap. "The service is
+      // down" sends someone to check a database; "this server has no key"
+      // is one environment variable. An assistant relaying the first when the
+      // second is true wastes an operator's afternoon.
+      return new BackendError(
+        service,
+        config.apiKey
+          ? `${service} rejected this server's API key. Check SALVAGE_API_KEY against that service's SALVAGE_API_KEYS.`
+          : `${service} requires an API key and SALVAGE_API_KEY is not set for salvage-mcp. Generate one with scripts/generate_api_key.sh.`,
+        status,
+      );
+    }
     if (status !== undefined) {
       return new BackendError(
         service,

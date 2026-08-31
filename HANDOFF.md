@@ -349,6 +349,49 @@ screen that needs no backend is `/sandbox`, which reads
 `docs/evaluation-results.json`, and it was verified rendering the real measured
 table. **The war room's `ready` state has still never been seen in a browser.**
 
+### Phase 13 — the security boundary
+
+**The change that turned this from a demonstration into something deployable.**
+Until Phase 13 every HTTP route in both services served whoever could reach the
+port. The tenant was a path parameter and nothing checked entitlement, so
+reading another merchant's hash-chained ledger was a matter of editing a URL.
+
+`MultiTenantIsolationTest` passed throughout, and was never wrong: it proves
+the *repository layer* scopes its queries. That is a lock on an open door when
+the caller picks the merchant id.
+
+- **Two scopes.** `merchant` is bound to one tenant; reaching for another is
+  **404, not 403**, because a 403 confirms the other tenant exists. `operator`
+  addresses every tenant and is what the console runs as. The one cross-tenant
+  resource (`/v1/sensing/rails`) is **403** for a merchant key -- there is no
+  existence to conceal, so the refusal names the reason.
+- **Configuration holds SHA-256 hashes, never keys.**
+  `scripts/generate_api_key.sh` prints the key once. Same format in both
+  services, so one key works against each.
+- **Fail closed.** `SALVAGE_AUTH_REQUIRED` defaults true and a service with no
+  keys **refuses to start**. `docker-compose.yml` sets it false with a comment;
+  `docker-compose.prod.yml` does not set it at all.
+- **A test walks the mounted app** and fails on any route not behind the
+  authenticator, allowlisting exactly the two health probes. It found its own
+  vacuity on the first run -- this FastAPI version defers `include_router`, so
+  the top level held zero `APIRoute`s and the check passed by checking nothing.
+  The vacuity guard beside it caught that. Keep both.
+- **Exempt on purpose:** health probes (a load balancer holds no credential)
+  and `POST /api/v1/webhooks/payments` (a gateway holds no Salvage key; it
+  authenticates a constant-time HMAC over raw bytes, which is stronger).
+
+**A defect this surfaced:** `ApiExceptionHandler` caught `Exception.class` and
+turned every deliberate status into a 500, including the 404 from a tenant
+refusal. Access control was working and reporting itself as a server fault --
+the kind of thing that wakes someone to investigate a database that is fine.
+
+**Also shipped:** `docker-compose.prod.yml` (no secret has a default, nothing
+binds to 0.0.0.0, memory limits, log rotation), a console Dockerfile with
+`output: "standalone"`, `docs/DEPLOYMENT.md`, and `PRODUCT.md` -- what this is,
+who would buy it, what you hand them, and what is honestly not ready.
+
+See `docs/adr/0009-api-authentication.md`.
+
 ---
 
 ## 6. What is NOT built — your work queue
@@ -378,13 +421,21 @@ table. **The war room's `ready` state has still never been seen in a browser.**
    missing and unavailable states are checked and the `ready` state is not,
    except on `/sandbox`, which reads a file. Run `make up && make demo` and
    look at the war room.
-6. **Reconciliation sweep is not built.** `provider_operations` has an index
+6. **`docker-compose.prod.yml` has been validated, not run.** `docker compose
+   config` accepts it and refuses without secrets, which is what was checked.
+   Nobody has brought the production stack up end to end; `docs/DEPLOYMENT.md`
+   section 5 is the list to work through when they do.
+7. **Authentication has no expiry, no revocation list, and no read audit.**
+   Revoking a key is deleting its entry and restarting. Writes land in the
+   ledger; reads are not recorded, so "who looked at this tenant's data" is
+   unanswerable. Both are named in ADR-0009 rather than left to be discovered.
+8. **Reconciliation sweep is not built.** `provider_operations` has an index
    (`idx_provider_operations_unresolved`) and a repository method
    (`findByMerchantIdAndOutcomeStateAndStartedAtLessThanOrderByStartedAtAsc`)
    ready for it, but nothing runs periodically to resolve `UNKNOWN` rows. This
    is the natural next piece of Phase 9 and it matters: those rows are money
    whose fate the system does not know.
-7. **CI status unverified.** The repository is private and there is no `gh`
+9. **CI status unverified.** The repository is private and there is no `gh`
    CLI or token in the working environment, so GitHub Actions results have
    never been read. Check them.
 
@@ -394,12 +445,12 @@ table. **The war room's `ready` state has still never been seen in a browser.**
 
 ```bash
 # Full suites — expected counts at handoff
-cd services/salvage-core   && ./gradlew spotlessCheck test --rerun-tasks   # 104 passed
-cd services/salvage-brain  && uv run --frozen pytest -q                     # 144 passed
+cd services/salvage-core   && ./gradlew spotlessCheck test --rerun-tasks   # 127 passed
+cd services/salvage-brain  && uv run --frozen pytest -q                     # 173 passed
 cd packages/salvage-sim    && uv run --frozen pytest -q                     #  87 passed
 cd packages/salvage-eval   && uv run --frozen pytest -q                     #  34 passed (~3 min)
 cd services/salvage-mcp    && npm test                                      #  22 passed
-cd apps/salvage-console    && npm test && npm run build                     #  12 passed
+cd apps/salvage-console    && npm test && npm run build                     #  22 passed
 
 # Gates
 bash scripts/check-contracts.sh      # contract drift
@@ -408,6 +459,7 @@ make demo                            # real Kafka -> core -> Postgres -> brain r
 make eval                            # regenerates EVALUATION.md + docs/evaluation-results.json
 make razorpay-e2e                    # real Razorpay test API (needs rzp_test_ keys in .env)
 make gemini-e2e                      # real Gemini API (needs GEMINI_API_KEY in .env)
+./scripts/generate_api_key.sh operator   # an API key, and the entry to configure
 ```
 
 `salvage-eval` takes ~3 minutes because it simulates a full month of traffic

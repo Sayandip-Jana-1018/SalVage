@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from salvage_brain import __version__
 from salvage_brain.attempts import router as attempts_router
+from salvage_brain.auth import verify_startup_configuration
 from salvage_brain.config import settings
 from salvage_brain.database import engine
 from salvage_brain.diagnosis.routes import router as diagnosis_router
@@ -25,6 +26,21 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         level=settings.log_level,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+
+    # Before the first request is served, and here rather than in create_app()
+    # because refusing to *start* is the behaviour wanted -- refusing to be
+    # *constructed* also makes the module unimportable, which breaks every tool
+    # that reads the OpenAPI schema without intending to run anything.
+    #
+    # Raising here is what uvicorn turns into "Application startup failed.
+    # Exiting." A service whose key configuration is empty does not serve.
+    verify_startup_configuration()
+    if not settings.salvage_auth_required:
+        logging.getLogger(__name__).warning(
+            "SALVAGE_AUTH_REQUIRED is false: every endpoint on this service will answer "
+            "any caller, for any tenant. This is intended only for local development."
+        )
+
     yield
     # Returning connections to PostgreSQL on shutdown rather than leaving the
     # server to time them out keeps a rolling restart from exhausting

@@ -43,7 +43,13 @@ import com.salvage.core.repository.PaymentAttemptRepository;
  * context first the overrides were silently skipped and the "container" test
  * ran against whatever happened to be listening on localhost.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        // This class is about what the code below computes, not about the
+        // gate in front of it. Authentication has its own tests in
+        // com.salvage.core.api.auth; ApiAuthenticationTest is the one that
+        // turns it on and proves a merchant key cannot read another tenant.
+        properties = "salvage.auth.required=false")
 class PaymentIngestIntegrationTest extends SalvageInfrastructure {
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =

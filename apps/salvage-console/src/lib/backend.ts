@@ -17,6 +17,27 @@
 export const BRAIN_BASE_URL = process.env.BRAIN_BASE_URL ?? "http://localhost:8000";
 export const CORE_BASE_URL = process.env.CORE_BASE_URL ?? "http://localhost:8081";
 
+/**
+ * The console's own API key, read server-side only.
+ *
+ * Deliberately not `NEXT_PUBLIC_`: a `NEXT_PUBLIC_` variable is inlined into
+ * the JavaScript bundle and shipped to every visitor, which for a credential
+ * means publishing it. Route handlers run on the server, the browser talks only
+ * to those handlers, and the key never crosses that line.
+ *
+ * The console runs as an **operator** key because it has a merchant switcher.
+ * That is a real privilege and it is why this application belongs on an
+ * internal network behind your own sign-in, not on the public internet.
+ */
+const API_KEY = process.env.SALVAGE_API_KEY ?? "";
+
+function authHeaders(): Record<string, string> {
+  return API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {};
+}
+
+/** For the one route that builds its own request rather than going through `request`. */
+export const coreAuthHeaders = authHeaders;
+
 /** How long to wait on a backend before giving up. */
 const TIMEOUT_MS = 5000;
 
@@ -42,6 +63,24 @@ export class BackendUnavailable extends Error {
 }
 
 /** Thrown for a definite 404, which is an answer rather than a failure. */
+/**
+ * The backend rejected the console's own credential.
+ *
+ * A distinct type because it is a distinct fact and calls for a different
+ * response. "The service is down" is an incident; "this deployment's key is
+ * wrong or missing" is a five-minute configuration fix, and a UI that reports
+ * the second as the first sends somebody to check a database that is fine.
+ */
+export class Misconfigured extends Error {
+  readonly service: string;
+
+  constructor(service: string, message: string) {
+    super(message);
+    this.name = "Misconfigured";
+    this.service = service;
+  }
+}
+
 export class NotFound extends Error {
   constructor(what: string) {
     super(what);
@@ -64,13 +103,25 @@ async function request<T>(
       signal: AbortSignal.timeout(TIMEOUT_MS),
       // Operator dashboards must not be served from a build-time snapshot.
       cache: "no-store",
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+        ...(init?.headers ?? {}),
+      },
     });
   } catch (error) {
     const reason = error instanceof Error ? error.name : "unknown error";
     throw new BackendUnavailable(service, `${service} is unreachable (${reason})`);
   }
 
+  if (response.status === 401 || response.status === 403) {
+    throw new Misconfigured(
+      service,
+      API_KEY
+        ? `${service} rejected the console's API key. Check SALVAGE_API_KEY against that service's SALVAGE_API_KEYS.`
+        : `${service} requires an API key and SALVAGE_API_KEY is not set on the console. Generate one with scripts/generate_api_key.sh.`,
+    );
+  }
   if (response.status === 404) {
     throw new NotFound(`${service} has no record at ${path}`);
   }
@@ -123,6 +174,7 @@ export class Refused extends Error {
 }
 
 const READABLE_REFUSALS = new Set([409, 422, 502, 503]);
+const CREDENTIAL_REFUSALS = new Set([401, 403]);
 const MAX_DETAIL_CHARS = 400;
 
 export async function brainPostReadingRefusals<T>(path: string, body: unknown): Promise<T> {
@@ -131,7 +183,7 @@ export async function brainPostReadingRefusals<T>(path: string, body: unknown): 
     response = await fetch(`${BRAIN_BASE_URL}${path}`, {
       method: "POST",
       body: JSON.stringify(body),
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       signal: AbortSignal.timeout(LANGUAGE_TIMEOUT_MS),
       cache: "no-store",
     });
@@ -142,6 +194,12 @@ export async function brainPostReadingRefusals<T>(path: string, body: unknown): 
 
   if (response.ok) return (await response.json()) as T;
 
+  if (CREDENTIAL_REFUSALS.has(response.status)) {
+    throw new Misconfigured(
+      "salvage-brain",
+      "salvage-brain rejected the console's API key for this request.",
+    );
+  }
   if (READABLE_REFUSALS.has(response.status)) {
     const detail = await readDetail(response);
     if (detail) throw new Refused(response.status, detail);

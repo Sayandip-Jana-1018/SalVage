@@ -33,7 +33,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest
+@SpringBootTest(
+        // This class is about what the code below computes, not about the
+        // gate in front of it. Authentication has its own tests in
+        // com.salvage.core.api.auth; ApiAuthenticationTest is the one that
+        // turns it on and proves a merchant key cannot read another tenant.
+        properties = "salvage.auth.required=false")
 @TestPropertySource(
         properties = {
             // Pinned so the saga's terminal state is a property of the code

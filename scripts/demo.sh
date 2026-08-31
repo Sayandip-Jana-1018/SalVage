@@ -18,6 +18,9 @@
 
 set -euo pipefail
 
+# Empty unless a key is configured, in which case curl gets one -H.
+SALVAGE_AUTH_HEADER="${SALVAGE_API_KEY:+Authorization: Bearer ${SALVAGE_API_KEY}}"
+
 cd "$(dirname "$0")/.."
 
 COMPOSE="docker compose"
@@ -81,10 +84,14 @@ ok "published event_id=${EVENT_ID}"
 # ---------------------------------------------------------------------------
 step "Reading it back through salvage-brain"
 # curl runs inside the core container so the host needs no HTTP client.
+#
+# docker-compose.yml runs this stack with SALVAGE_AUTH_REQUIRED=false, so the
+# read below needs no key. Against a stack with authentication on, set
+# SALVAGE_API_KEY and the header is added.
 RESPONSE=""
 for _ in $(seq 1 45); do
   if RESPONSE=$($COMPOSE exec -T salvage-core \
-        curl -fsS "http://salvage-brain:8000/v1/attempts/${MERCHANT_ID}/${ATTEMPT_ID}" \
+        curl -fsS ${SALVAGE_AUTH_HEADER:+-H "$SALVAGE_AUTH_HEADER"} "http://salvage-brain:8000/v1/attempts/${MERCHANT_ID}/${ATTEMPT_ID}" \
         2>/dev/null); then
     break
   fi

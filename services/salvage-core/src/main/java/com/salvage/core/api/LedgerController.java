@@ -4,6 +4,7 @@ import com.salvage.core.ledger.model.LedgerEntry;
 import com.salvage.core.ledger.repository.LedgerEntryRepository;
 import com.salvage.core.ledger.service.LedgerVerificationService;
 import com.salvage.core.ledger.service.VerificationResult;
+import com.salvage.core.api.auth.ApiPrincipal;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.data.domain.Limit;
@@ -27,13 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
  * beneath it is tenant-scoped in the repository. There is no route that reads
  * across tenants.
  *
- * <p><strong>Authentication is not implemented.</strong> These routes are
- * readable by anyone who can reach the port, which is why the compose file
- * publishes core only to localhost and why this is called out in the runbook
- * rather than left for someone to discover. Ledger payloads contain decision
- * context, not card data or raw contact details -- but they are a tenant's
- * business records, and shipping this to a shared network without an
- * authenticating proxy in front of it would be wrong.
+ * <p><strong>Authentication.</strong> Every route below takes an
+ * {@link com.salvage.core.api.auth.ApiPrincipal} and calls
+ * {@code requireTenant}, so a key bound to one merchant reading another gets a
+ * 404 -- not a 403, which would confirm the other tenant exists. Until Phase 13
+ * these routes were readable by anyone who could reach the port. Ledger
+ * payloads carry decision context rather than card data, but they are a
+ * tenant's business records and serving them anonymously was indefensible.
  */
 @RestController
 @RequestMapping("/api/v1/ledger")
@@ -56,7 +57,9 @@ public class LedgerController {
     @Transactional(readOnly = true)
     public List<LedgerEntryView> entries(
             @PathVariable String merchantId,
+            ApiPrincipal principal,
             @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit) {
+        principal.requireTenant(merchantId);
         int effective = Math.clamp(limit, 1, MAX_LIMIT);
         return ledgerEntries
                 .findByMerchantIdOrderByEntryIndexDesc(merchantId, Limit.of(effective))
@@ -75,14 +78,17 @@ public class LedgerController {
      * one signal that most needs to reach a human.
      */
     @GetMapping("/merchants/{merchantId}/verify")
-    public ResponseEntity<ChainVerification> verify(@PathVariable String merchantId) {
+    public ResponseEntity<ChainVerification> verify(
+            @PathVariable String merchantId, ApiPrincipal principal) {
+        principal.requireTenant(merchantId);
         VerificationResult result = verification.verifyChain(merchantId);
         return ResponseEntity.ok(ChainVerification.from(merchantId, result));
     }
 
     @GetMapping("/merchants/{merchantId}/count")
     @Transactional(readOnly = true)
-    public long count(@PathVariable String merchantId) {
+    public long count(@PathVariable String merchantId, ApiPrincipal principal) {
+        principal.requireTenant(merchantId);
         return ledgerEntries.countByMerchantId(merchantId);
     }
 

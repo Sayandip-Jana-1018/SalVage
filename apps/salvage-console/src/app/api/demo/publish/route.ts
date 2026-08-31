@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { CORE_BASE_URL } from "@/lib/backend";
+import { CORE_BASE_URL, coreAuthHeaders } from "@/lib/backend";
 import type { ApiResult } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -110,7 +110,7 @@ export async function POST(request: Request): Promise<NextResponse<ApiResult<unk
   try {
     response = await fetch(`${CORE_BASE_URL}/api/v1/demo/payment-failed`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...coreAuthHeaders() },
       body: JSON.stringify(event),
       signal: AbortSignal.timeout(5000),
       cache: "no-store",
@@ -118,6 +118,17 @@ export async function POST(request: Request): Promise<NextResponse<ApiResult<unk
   } catch {
     return NextResponse.json(
       { ok: false, error: "salvage-core is unreachable. Start the stack with `make up`." },
+      { status: 502 },
+    );
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "salvage-core rejected the console's API key. Check SALVAGE_API_KEY against salvage-core's SALVAGE_API_KEYS.",
+      },
       { status: 502 },
     );
   }

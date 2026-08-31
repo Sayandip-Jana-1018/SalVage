@@ -62,6 +62,18 @@ ISSUERS = ("issuer_alpha", "issuer_beta", "issuer_gamma", "issuer_delta")
 METHODS = ("upi", "card", "netbanking")
 
 
+
+def _auth_headers() -> dict[str, str]:
+    """The key this harness authenticates with, if one is configured.
+
+    Both services require a bearer key on every route except the health probes.
+    A harness without one measures the latency of a 401, which is a real number
+    about nothing anyone cares about -- so an unauthenticated run stops with a
+    message rather than reporting it.
+    """
+    key = os.environ.get("SALVAGE_API_KEY", "")
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
 def generate_synthetic_event(idx: int, merchant_id: str) -> dict:
     """One schema-valid ``payment_failed.v1`` payload."""
     issuer = ISSUERS[idx % len(ISSUERS)]
@@ -145,7 +157,8 @@ def benchmark_decision_endpoint(
             }
         ).encode("utf-8")
         request = urllib.request.Request(
-            url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+            url, data=payload, headers={"Content-Type": "application/json", **_auth_headers()},
+            method="POST",
         )
         started = time.perf_counter()
         try:
@@ -156,6 +169,14 @@ def benchmark_decision_endpoint(
             if e.code == 404:
                 not_found += 1
                 continue
+            if e.code in (401, 403):
+                # Not a load result. Reporting a latency distribution over
+                # rejected requests would measure how fast the service says no.
+                raise SystemExit(
+                    f"salvage-brain refused this harness with HTTP {e.code}. Set SALVAGE_API_KEY "
+                    "to a key that may address this merchant, or run the stack with "
+                    "SALVAGE_AUTH_REQUIRED=false. See scripts/generate_api_key.sh."
+                ) from e
             raise
 
     return latencies_ms, not_found

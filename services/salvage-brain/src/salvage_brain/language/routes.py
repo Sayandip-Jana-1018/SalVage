@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from salvage_brain import attempts
+from salvage_brain.auth import Principal, authenticate, operator_scope, require_tenant
 from salvage_brain.config import settings
 from salvage_brain.diagnosis.engine import DiagnosisEngine
 from salvage_brain.features.extractor import FeatureExtractor
@@ -53,6 +54,23 @@ def language_model_dependency() -> LanguageModel:
 
 
 LanguageModelDep = Annotated[LanguageModel, Depends(language_model_dependency)]
+PrincipalDep = Annotated[Principal, Depends(authenticate)]
+
+
+def narration_tenant_gate(request: NarrationRequest, principal: PrincipalDep) -> None:
+    """Settle the tenant question before any other dependency runs.
+
+    A dependency rather than the first line of the handler, because a handler
+    body executes only after *every* dependency has resolved -- including the
+    language model, which answers 503 when the layer is switched off. That put
+    a caller reaching for a tenant that is not theirs in front of a message
+    about whether a feature was enabled, instead of a flat 404. A decorator
+    dependency resolves first, so the refusal comes first.
+
+    Reading the request body inside a dependency is what makes this possible;
+    FastAPI resolves the model here and reuses it for the handler.
+    """
+    require_tenant(request.merchant_id, principal)
 
 
 
@@ -84,7 +102,7 @@ class NarrationRequest(BaseModel):
 
 
 @router.get("/status", response_model=LanguageStatus)
-def language_status() -> LanguageStatus:
+def language_status(_: PrincipalDep) -> LanguageStatus:
     return LanguageStatus(
         enabled=settings.language_enabled,
         model=settings.gemini_model,
@@ -100,12 +118,18 @@ def language_status() -> LanguageStatus:
         502: {"description": "The model answered with something that failed validation"},
         503: {"description": "The language layer is disabled or the provider did not answer"},
     },
+    dependencies=[Depends(operator_scope("Decline-code triage"))],
 )
 def triage(request: TriageRequest, model: LanguageModelDep) -> TriageResponse:
     """Propose a taxonomy mapping for a code the deterministic mapper cannot resolve.
 
     The proposal is never applied. ``applied`` is a literal false on the
     response type, and no code in this repository writes to the mapper table.
+
+    Operator scope: the taxonomy table is shared by every tenant, and the
+    review queue it feeds is a single file. A merchant proposing mappings that
+    would change how another merchant's failures are classified is not a
+    permission anyone intended to grant.
     """
     try:
         return triage_unknown_code(
@@ -132,7 +156,9 @@ def triage(request: TriageRequest, model: LanguageModelDep) -> TriageResponse:
         503: {"description": "The language layer is disabled or the provider did not answer"},
     },
 )
-def nudge_copy(request: NudgeRequest, model: LanguageModelDep) -> NudgeCopy:
+def nudge_copy(
+    request: NudgeRequest, model: LanguageModelDep, _: PrincipalDep
+) -> NudgeCopy:
     """Write customer copy for a nudge the policy engine has already chosen.
 
     Generating copy does not send it. Nothing in salvage-brain has an outbound
@@ -156,10 +182,13 @@ def nudge_copy(request: NudgeRequest, model: LanguageModelDep) -> NudgeCopy:
         502: {"description": "The narration failed validation and was refused"},
         503: {"description": "The language layer is disabled or the provider did not answer"},
     },
+    dependencies=[Depends(narration_tenant_gate)],
 )
-def narrate(request: NarrationRequest, model: LanguageModelDep) -> Narration:
+def narrate(
+    request: NarrationRequest, principal: PrincipalDep, model: LanguageModelDep
+) -> Narration:
     """Narrate one decision chain, over facts this service fetched itself."""
-    attempt = attempts.get_attempt(request.merchant_id, request.payment_attempt_id)
+    attempt = attempts.get_attempt(request.merchant_id, request.payment_attempt_id, principal)
 
     features = FeatureExtractor.extract_features(
         merchant_id=request.merchant_id,

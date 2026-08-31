@@ -16,7 +16,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        // This class is about what the code below computes, not about the
+        // gate in front of it. Authentication has its own tests in
+        // com.salvage.core.api.auth; ApiAuthenticationTest is the one that
+        // turns it on and proves a merchant key cannot read another tenant.
+        properties = "salvage.auth.required=false")
 class CustomerLockChaosTest extends SalvageInfrastructure {
 
     @Autowired

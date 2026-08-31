@@ -1,5 +1,6 @@
 package com.salvage.core.api;
 
+import com.salvage.core.api.auth.ApiPrincipal;
 import java.util.Objects;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,7 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
  * Counted telemetry for one merchant.
  *
  * <p>See {@link MerchantStats} for what this deliberately does not report and
- * why. The same authentication caveat as {@link LedgerController} applies.
+ * why. Authenticated and tenant-bound the same way as {@link LedgerController}:
+ * a merchant key reaching for another tenant is answered 404.
  */
 @RestController
 @RequestMapping("/api/v1/telemetry")
@@ -28,7 +30,9 @@ public class TelemetryController {
     @GetMapping("/merchants/{merchantId}/stats")
     public MerchantStats stats(
             @PathVariable String merchantId,
+            ApiPrincipal principal,
             @RequestParam(name = "hours", defaultValue = "" + DEFAULT_WINDOW_HOURS) int hours) {
+        principal.requireTenant(merchantId);
         return telemetry.statsFor(merchantId, hours);
     }
 }

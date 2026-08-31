@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import datetime as dt
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from salvage_brain.auth import operator_scope
 from salvage_brain.sensing.models import RailState
 from salvage_brain.sensing.tracker import default_rail_tracker
 
@@ -35,10 +36,21 @@ class RailHealthMatrix(BaseModel):
     response_model=RailHealthMatrix,
     responses={
         200: {"description": "Active rail health matrix"},
+        403: {"description": "A merchant-scoped key cannot read a cross-tenant aggregate"},
     },
+    dependencies=[Depends(operator_scope("The rail health matrix"))],
 )
 def get_rail_health_matrix() -> RailHealthMatrix:
-    """Returns real-time health snapshots and degradation status across all active payment rails."""
+    """Real-time health across every active rail, aggregated over all tenants.
+
+    Operator scope only, and that is a real restriction rather than caution.
+    This matrix is built from every merchant's ingested traffic, so serving it
+    to a merchant key would hand one tenant a view of another's failure
+    patterns -- volume, issuer mix and timing -- which is competitive
+    information they did not consent to share. A per-tenant view is ADR-0007
+    work and does not exist, so the honest answer is to refuse rather than to
+    serve the aggregate and hope nobody reads it closely.
+    """
     now = dt.datetime.now(dt.UTC)
     snapshots = default_rail_tracker.get_all_snapshots(now)
     views = [

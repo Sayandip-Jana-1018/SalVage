@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.salvage.core.contract.EventContractValidator;
 import com.salvage.core.ingest.PaymentFailedConsumer;
 import com.salvage.core.repository.MerchantRepository;
+import com.salvage.core.api.auth.ApiPrincipal;
 import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -72,10 +73,19 @@ public class DemoIngestController {
     }
 
     @PostMapping("/payment-failed")
-    public ResponseEntity<?> publish(@RequestBody Map<String, Object> event) {
+    public ResponseEntity<?> publish(
+            @RequestBody Map<String, Object> event, ApiPrincipal principal) {
         if (!enabled) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiExceptionHandler.ApiError("demo_ingest_disabled", null));
+        }
+
+        // The event names the tenant it will be attributed to, and events
+        // published here cause decisions to be recorded against that tenant.
+        // A merchant key may publish for itself and for nobody else.
+        Object claimed = event.get("merchant_id");
+        if (claimed instanceof String merchantId) {
+            principal.requireTenant(merchantId);
         }
 
         String payload;

@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from "axios";
-import { config } from "../config.js";
+import { authHeaders, config } from "../config.js";
 import { asBackendError, isNotFound } from "./errors.js";
 import type {
   AttemptView,
@@ -36,7 +36,7 @@ export class BrainClient {
     this.client = axios.create({
       baseURL: baseUrl,
       timeout: 5000,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
     });
   }
 

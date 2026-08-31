@@ -18,6 +18,9 @@ from collections.abc import Iterator
 
 import pytest
 
+from salvage_brain.auth import reset_key_store
+from salvage_brain.config import settings
+
 
 @pytest.fixture(autouse=True)
 def reset_rail_tracker() -> Iterator[None]:
@@ -27,3 +30,21 @@ def reset_rail_tracker() -> Iterator[None]:
     default_rail_tracker._events.clear()
     yield
     default_rail_tracker._events.clear()
+
+
+@pytest.fixture(autouse=True)
+def unauthenticated_by_default(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Most tests are about what a route computes, not about the gate in front of it.
+
+    Switching authentication off here keeps those tests reading as statements
+    about the handler. What stops that from hiding a route somebody forgot to
+    protect is ``tests/test_auth.py::test_every_route_requires_authentication``,
+    which walks the mounted application and fails on any endpoint that does not
+    depend on ``authenticate`` and is not on an explicit allowlist. The tests
+    that are about the gate switch it back on themselves.
+    """
+    monkeypatch.setattr(settings, "salvage_auth_required", False)
+    monkeypatch.setattr(settings, "salvage_api_keys", "")
+    reset_key_store()
+    yield
+    reset_key_store()

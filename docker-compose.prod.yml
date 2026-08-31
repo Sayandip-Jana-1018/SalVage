@@ -1,0 +1,258 @@
+# Salvage, deployed.
+#
+# Four things separate this from docker-compose.yml, and each is a way the
+# development stack would be wrong in production:
+#
+#   1. NO SECRET HAS A DEFAULT. Every credential uses ${VAR:?...}, so compose
+#      refuses to start and names the variable rather than silently running on
+#      `salvage_local_dev_only` as a database password.
+#   2. AUTHENTICATION IS NOT DISABLED. Neither service sets
+#      SALVAGE_AUTH_REQUIRED, so both take their default of true and refuse to
+#      start with no keys configured. The development stack sets it false
+#      explicitly, which is the only reason `make demo` works without keys.
+#   3. NOTHING BINDS TO 0.0.0.0. Postgres, Redis and Redpanda publish no ports
+#      at all. The three application ports bind to 127.0.0.1, expecting a TLS
+#      terminator on the host. THIS FILE DOES NOT TERMINATE TLS. Exposing it
+#      directly would put API keys on the wire in the clear.
+#   4. Logs rotate and containers have memory limits, so one bad day does not
+#      fill the disk or take the host with it.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# docs/DEPLOYMENT.md walks the whole thing: key generation, the reverse proxy,
+# backups, and what to check before pointing traffic at it.
+
+name: salvage-prod
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "5"
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: [*restart, *logging]
+    image: timescale/timescaledb:2.29.2-pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD to something generated, not typed}
+      TZ: UTC
+    # No `ports:`. The database is reachable on the compose network and nowhere
+    # else. For psql, use `docker compose exec`.
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./ops/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  redis:
+    <<: [*restart, *logging]
+    image: redis:7.4.11-bookworm
+    # Redis holds idempotency cache entries and rate-limiter windows. Losing it
+    # must never affect correctness -- PostgreSQL is the source of truth for
+    # idempotency, see ADR-0004 -- but it is still on the money path, so it
+    # takes a password like everything else.
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+      - --appendonly
+      - "yes"
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  redpanda:
+    <<: [*restart, *logging]
+    image: redpandadata/redpanda:v25.3.17
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  redpanda-init:
+    image: redpandadata/redpanda:v25.3.17
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      "rpk topic create payment.failed.v1 --brokers redpanda:9092 -p 3 -r 1 || true;
+       rpk topic create recovery.outcome.v1 --brokers redpanda:9092 -p 3 -r 1 || true"
+    restart: "no"
+
+  salvage-core:
+    <<: [*restart, *logging]
+    build:
+      context: .
+      dockerfile: services/salvage-core/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      # Deliberately not set: SALVAGE_AUTH_REQUIRED. Its default is true, and
+      # with no keys configured this container will not start. That is intended.
+      SALVAGE_API_KEYS: ${SALVAGE_API_KEYS:?generate keys with scripts/generate_api_key.sh}
+      # The console's checkout page publishes real events. Off in production.
+      SALVAGE_DEMO_INGEST_ENABLED: "false"
+      # simulated | razorpay. Leave it simulated until you have read
+      # docs/adr/0003-payment-provider-abstraction.md and mean it.
+      SALVAGE_PAYMENT_PROVIDER: ${SALVAGE_PAYMENT_PROVIDER:-simulated}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      TZ: UTC
+    ports:
+      # Loopback only. Terminate TLS in front of this.
+      - "127.0.0.1:${CORE_HOST_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  salvage-brain:
+    <<: [*restart, *logging]
+    build:
+      context: .
+      dockerfile: services/salvage-brain/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SALVAGE_API_KEYS: ${SALVAGE_API_KEYS}
+      # The language layer makes outbound calls to a third party. Off unless
+      # switched on, and outside the money path either way. See ADR-0008.
+      SALVAGE_LANGUAGE_ENABLED: ${SALVAGE_LANGUAGE_ENABLED:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      TRIAGE_QUEUE_PATH: ${TRIAGE_QUEUE_PATH:-}
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${BRAIN_HOST_PORT:-8001}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz/readiness', timeout=3).status==200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  salvage-console:
+    <<: [*restart, *logging]
+    build:
+      context: .
+      dockerfile: apps/salvage-console/Dockerfile
+    depends_on:
+      salvage-core:
+        condition: service_healthy
+      salvage-brain:
+        condition: service_healthy
+    environment:
+      CORE_BASE_URL: http://salvage-core:8080
+      BRAIN_BASE_URL: http://salvage-brain:8000
+      # An OPERATOR key: the console has a merchant switcher, so it can address
+      # every tenant. That is why this belongs behind your own sign-in on an
+      # internal network, and never on the public internet.
+      SALVAGE_API_KEY: ${SALVAGE_CONSOLE_API_KEY:?generate one with scripts/generate_api_key.sh operator}
+      NEXT_PUBLIC_DEFAULT_MERCHANT_ID: ${NEXT_PUBLIC_DEFAULT_MERCHANT_ID:-merch_demo}
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${CONSOLE_HOST_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+volumes:
+  postgres-data:
+  redis-data:
+  redpanda-data:

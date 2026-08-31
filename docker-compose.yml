@@ -173,6 +173,11 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      # Development stack: unauthenticated on purpose, so `make demo` works for
+      # someone who has just cloned the repository. Both services refuse to
+      # start with this true and no keys configured, which is the production
+      # default. See docker-compose.prod.yml, which does not set this.
+      SALVAGE_AUTH_REQUIRED: "false"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:-salvage}
@@ -213,6 +218,11 @@ services:
       redpanda-init:
         condition: service_completed_successfully
     environment:
+      # Development stack: unauthenticated on purpose, so `make demo` works for
+      # someone who has just cloned the repository. Both services refuse to
+      # start with this true and no keys configured, which is the production
+      # default. See docker-compose.prod.yml, which does not set this.
+      SALVAGE_AUTH_REQUIRED: "false"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:-salvage}

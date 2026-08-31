@@ -12,12 +12,14 @@ that returns attempts across tenants.
 from __future__ import annotations
 
 import datetime as dt
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 import salvage_brain.database as database
+from salvage_brain.auth import Principal, authenticate, require_tenant
 
 router = APIRouter(prefix="/v1/attempts", tags=["attempts"])
 
@@ -119,7 +121,11 @@ MAX_LIST_LIMIT = 200
     response_model=AttemptPage,
     responses={422: {"description": "limit out of range"}},
 )
-def list_attempts(merchant_id: str, limit: int = 50) -> AttemptPage:
+def list_attempts(
+    merchant_id: str,
+    principal: Annotated[Principal, Depends(authenticate)],
+    limit: int = 50,
+) -> AttemptPage:
     """Most recent attempts for one tenant, newest first.
 
     Bounded and tenant-scoped, like every other read here. There is no
@@ -131,6 +137,7 @@ def list_attempts(merchant_id: str, limit: int = 50) -> AttemptPage:
     would answer a different question than the caller asked and label the
     result with the limit they requested.
     """
+    require_tenant(merchant_id, principal)
     if limit < 1 or limit > MAX_LIST_LIMIT:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -169,7 +176,12 @@ def list_attempts(merchant_id: str, limit: int = 50) -> AttemptPage:
     response_model=AttemptView,
     responses={404: {"description": "No such attempt for this merchant"}},
 )
-def get_attempt(merchant_id: str, payment_attempt_id: str) -> AttemptView:
+def get_attempt(
+    merchant_id: str,
+    payment_attempt_id: str,
+    principal: Annotated[Principal, Depends(authenticate)],
+) -> AttemptView:
+    require_tenant(merchant_id, principal)
     with database.engine.connect() as conn:
         row = (
             conn.execute(

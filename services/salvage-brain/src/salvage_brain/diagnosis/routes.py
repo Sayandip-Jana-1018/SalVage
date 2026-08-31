@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from salvage_brain.auth import Principal, authenticate, require_tenant
 from salvage_brain.diagnosis.engine import DiagnosisEngine
 from salvage_brain.diagnosis.models import DiagnosisRequest, DiagnosisResponse
 from salvage_brain.features.extractor import FeatureExtractor
@@ -20,8 +23,12 @@ router = APIRouter(prefix="/v1/diagnose", tags=["diagnosis"])
         422: {"description": "Malformed request payload"},
     },
 )
-def diagnose_payment_attempt(request: DiagnosisRequest) -> DiagnosisResponse:
+def diagnose_payment_attempt(
+    request: DiagnosisRequest,
+    principal: Annotated[Principal, Depends(authenticate)],
+) -> DiagnosisResponse:
     """Diagnoses a payment failure and infers calibrated root cause with explainability."""
+    require_tenant(request.merchant_id, principal)
     features = FeatureExtractor.extract_features(
         merchant_id=request.merchant_id,
         payment_attempt_id=request.payment_attempt_id,

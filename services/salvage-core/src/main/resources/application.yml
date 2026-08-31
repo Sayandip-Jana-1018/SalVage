@@ -101,6 +101,22 @@ management:
 
 # ---- salvage ---------------------------------------------------------------
 salvage:
+  auth:
+    # Fail closed. With this true and no keys configured the service refuses to
+    # start, because a process that exits is impossible to miss in a way that a
+    # log line is not. Until Phase 13 every API route here served whoever asked,
+    # with the tenant as a path parameter and nothing checking entitlement.
+    #
+    # Running open remains possible because the quickstart needs it, and it
+    # takes saying so out loud.
+    required: ${SALVAGE_AUTH_REQUIRED:true}
+
+    # `scope:merchantId:sha256` entries, comma or newline separated. Hashes,
+    # never keys: a leak of this value does not leak a usable credential.
+    # Generate entries with scripts/generate_api_key.sh. The format is shared
+    # with salvage-brain so one key works against both services.
+    api-keys: ${SALVAGE_API_KEYS:}
+
   demo-ingest:
     # Lets the operator console publish a real payment_failed.v1 event through
     # the ordinary Kafka path, so its checkout page drives the actual pipeline

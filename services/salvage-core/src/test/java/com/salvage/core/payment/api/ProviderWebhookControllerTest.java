@@ -28,7 +28,13 @@ import org.springframework.transaction.support.TransactionTemplate;
  * accepts an unsigned body lets anyone who learns the URL assert that a
  * payment succeeded.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        // This class is about what the code below computes, not about the
+        // gate in front of it. Authentication has its own tests in
+        // com.salvage.core.api.auth; ApiAuthenticationTest is the one that
+        // turns it on and proves a merchant key cannot read another tenant.
+        properties = "salvage.auth.required=false")
 class ProviderWebhookControllerTest extends SalvageInfrastructure {
 
     @LocalServerPort private int port;

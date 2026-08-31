@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BackendUnavailable, NotFound, Refused } from "@/lib/backend";
+import { BackendUnavailable, Misconfigured, NotFound, Refused } from "@/lib/backend";
 import type { ApiResult } from "@/types";
 
 /**
@@ -9,7 +9,8 @@ import type { ApiResult } from "@/types";
  *
  *   200 { ok: true }   the backend answered
  *   404 { ok: false }  the record genuinely does not exist
- *   502 { ok: false }  the backend could not be reached or failed
+ *   502 { ok: false }  the backend could not be reached, refused the console's
+ *                      API key, or failed
  *
  * The last two are separated on purpose. "This payment has no decision" and
  * "the decision service is down" look identical in a UI that collapses them,
@@ -23,6 +24,15 @@ export async function serve<T>(run: () => Promise<T>): Promise<NextResponse<ApiR
       return NextResponse.json({ ok: false, error: error.message } as ApiResult<T>, {
         status: 404,
       });
+    }
+    if (error instanceof Misconfigured) {
+      // 502 with the reason spelled out. This is not an outage and the message
+      // says so, because sending an operator to check a database that is fine
+      // is the expensive part of a misleading error.
+      return NextResponse.json(
+        { ok: false, error: error.message, service: error.service } as ApiResult<T>,
+        { status: 502 },
+      );
     }
     if (error instanceof Refused) {
       // A refusal the backend authored for a human to read. Passed through with

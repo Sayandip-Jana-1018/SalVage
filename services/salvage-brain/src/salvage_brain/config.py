@@ -69,6 +69,16 @@ class Settings(BaseSettings):
     brain_port: int = 8000
     log_level: str = "INFO"
 
+    # ---- authentication (Phase 13) -----------------------------------------
+    # Fail closed. A service that starts open because its key configuration was
+    # empty is the failure salvage_brain/auth.py exists to prevent, so an empty
+    # store with this flag on refuses to start rather than serving anyone.
+    salvage_auth_required: bool = True
+    # `scope:merchant_id:sha256` entries, comma or newline separated. Hashes,
+    # never keys: a leak of this value does not leak a credential. Generate
+    # entries with scripts/generate_api_key.sh.
+    salvage_api_keys: str = ""
+
     # ---- language layer (Phase 11) -----------------------------------------
     # Off by default, and a present key is not consent to switch it on: this is
     # the only part of Salvage that makes an outbound call to a third party,

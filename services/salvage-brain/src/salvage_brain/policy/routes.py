@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from salvage_brain.auth import Principal, authenticate, require_tenant
 from salvage_brain.diagnosis.engine import DiagnosisEngine
 from salvage_brain.features.extractor import FeatureExtractor
 from salvage_brain.policy.engine import PolicyEngine
@@ -21,8 +24,12 @@ router = APIRouter(prefix="/v1/decide", tags=["policy"])
         422: {"description": "Malformed request payload"},
     },
 )
-def decide_recovery_action(request: PolicyDecisionRequest) -> PolicyDecisionResponse:
+def decide_recovery_action(
+    request: PolicyDecisionRequest,
+    principal: Annotated[Principal, Depends(authenticate)],
+) -> PolicyDecisionResponse:
     """Computes the optimal recovery policy decision using expected net utility optimization."""
+    require_tenant(request.merchant_id, principal)
     features = FeatureExtractor.extract_features(
         merchant_id=request.merchant_id,
         payment_attempt_id=request.payment_attempt_id,

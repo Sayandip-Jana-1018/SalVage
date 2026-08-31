@@ -18,7 +18,7 @@ SHELL := /usr/bin/env bash
         test test-java test-python test-python-unit test-sim-slow \
         test-mcp test-console build-console \
         lint lint-java lint-python lint-node contracts-check \
-        format eval demo razorpay-e2e gemini-e2e
+        format eval demo razorpay-e2e gemini-e2e keygen
 
 COMPOSE   := docker compose
 CORE_DIR  := services/salvage-core
@@ -179,6 +179,11 @@ eval: ## Run the off-policy evaluation harness; writes EVALUATION.md and JSON
 
 demo: ## End-to-end round trip: Kafka -> core -> PostgreSQL -> brain -> HTTP
 	bash scripts/demo.sh
+
+keygen: ## Generate an API key and the configuration entry for it
+# SCOPE=operator, or SCOPE=merchant MERCHANT=merch_acme. The key is printed
+# once and stored nowhere; what goes into configuration is its SHA-256.
+	@bash scripts/generate_api_key.sh $${SCOPE:-operator} $${MERCHANT:-}
 
 gemini-e2e: ## Exercise the language layer against the real Gemini API (needs GEMINI_API_KEY)
 # The only target in this repository that makes a billable outbound call. The
