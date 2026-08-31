@@ -63,7 +63,7 @@ export function SandboxSimulator(): React.ReactElement {
           title="Off-policy evaluation"
           note="Four estimators against known ground truth. The comparison that matters is estimator versus truth — it measures whether the methodology recovers an answer we already have."
           right={
-            <div className="text-right font-mono text-[10px] leading-relaxed text-fg-faint">
+            <div className="text-center font-mono text-[10px] leading-relaxed text-fg-faint">
               <p className="num">{formatCount(data.episodes)} episodes</p>
               <p className="num">
                 seed {data.seed} · {formatCount(data.bootstraps)} bootstraps
@@ -119,7 +119,6 @@ export function SandboxSimulator(): React.ReactElement {
       <div className="grid gap-6 xl:grid-cols-[1fr_auto]">
         <Panel index={3}>
           <PanelHeader
-            align="left"
             eyebrow="Every policy, every column"
             title="Results table"
             note="Kish effective sample size is how many episodes the importance weights are really worth. A large gap between it and the episode count means the estimate rests on far fewer observations than it appears to."

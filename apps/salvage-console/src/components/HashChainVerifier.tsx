@@ -42,7 +42,6 @@ export function HashChainVerifier({
   return (
     <Panel>
       <PanelHeader
-        align="left"
         eyebrow="Tamper evidence"
         title="Hash chain verification"
         note={

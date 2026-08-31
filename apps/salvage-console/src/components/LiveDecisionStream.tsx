@@ -40,7 +40,6 @@ export function LiveDecisionStream(): React.ReactElement {
   return (
     <Panel index={3}>
       <PanelHeader
-        align="left"
         eyebrow="Append-only"
         title="Ledger stream"
         note={
@@ -50,7 +49,7 @@ export function LiveDecisionStream(): React.ReactElement {
           </>
         }
         right={
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-col items-center gap-1.5">
             {data ? <ChainBadge verification={data.verification} /> : null}
             {lastUpdated ? (
               <span className="num font-mono text-[10px] text-fg-faint">

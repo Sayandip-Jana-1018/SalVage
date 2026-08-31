@@ -94,7 +94,6 @@ export default function AutopsyIndexPage(): React.ReactElement {
 
       <Panel index={1}>
         <PanelHeader
-          align="left"
           eyebrow={`Newest first · up to ${LIMIT}`}
           title="Recent attempts"
           note={

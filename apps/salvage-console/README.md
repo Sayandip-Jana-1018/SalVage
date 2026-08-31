@@ -73,15 +73,16 @@ and they are the ones that were never about flatness:
    looping animation still means something is wrong. All of it stops under
    `prefers-reduced-motion`.
 
-Panel headers are **centred**, and their supporting note is held to a readable
-measure. The version before this pinned every header hard left and capped the
-note at `max-w-2xl` inside a panel three times that wide, so each one trailed
-off into a third of a panel of nothing — one panel like that is a choice, five
-stacked read as unfinished. Dense panels (tables, the rail matrix) opt out with
-`align="left"`, because a centred header floating above left-aligned rows reads
-as two unrelated blocks. Long prose is centred as a *block* and left-aligned as
-*text*: a ragged edge on both sides of a four-line paragraph is harder to read
-than the dead space it was meant to fix.
+Panel headers are **centred — every one of them** — and their supporting note is
+held to a readable measure. The version before this pinned every header hard
+left and capped the note at `max-w-2xl` inside a panel three times that wide, so
+each one trailed off into a third of a panel of nothing. A first pass at the fix
+kept the dense panels (tables, the rail matrix) left-aligned, on the theory that
+a centred header floats free of the left-aligned rows beneath it. On the page
+that was wrong: a column alternating between two header alignments reads as less
+deliberate than either one used consistently. Long prose is still centred as a
+*block* and left-aligned as *text* — a ragged edge on both sides of a four-line
+paragraph is harder to read than the dead space it was meant to fix.
 
 Performance: `backdrop-filter` is the expensive property here, so it is applied
 to a small number of large surfaces — panels, header, nav — never to chips or
