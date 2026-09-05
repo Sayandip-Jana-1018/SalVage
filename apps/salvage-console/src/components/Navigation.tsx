@@ -5,26 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
-/**
- * A centred glass pill, with the active marker sliding between items.
- *
- * The slide is the detail worth the code. Colouring the active tab is a state
- * change with no continuity; moving one lit surface from where it was to where
- * it now is tells the eye that these are positions in one row, and it is the
- * single cheapest thing that makes an interface feel considered.
- *
- * The marker is measured from the DOM rather than computed from an index,
- * because the items have different widths — a fixed 1/5th step would drift.
- * Measurement runs on route change and on resize, and never inside a scroll or
- * pointer handler.
- */
-
 const TABS = [
-  { href: "/war-room", name: "War room", icon: Activity },
-  { href: "/autopsy", name: "Autopsy", icon: Stethoscope },
-  { href: "/checkout", name: "Checkout", icon: CreditCard },
-  { href: "/sandbox", name: "Evaluation", icon: FlaskConical },
-  { href: "/language", name: "Language", icon: Languages },
+  { href: "/war-room", name: "War Room", icon: Activity, tint: "text-rose-400" },
+  { href: "/autopsy", name: "Autopsy", icon: Stethoscope, tint: "text-cyber-cyan" },
+  { href: "/checkout", name: "Checkout & Live Demo", icon: CreditCard, tint: "text-emerald-400" },
+  { href: "/sandbox", name: "Evaluation & Benchmarks", icon: FlaskConical, tint: "text-amber-400" },
+  { href: "/language", name: "AI Operator Explanations", icon: Languages, tint: "text-iris" },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
@@ -48,8 +34,6 @@ export function Navigation(): React.ReactElement {
 
     measure();
     window.addEventListener("resize", measure);
-    // Webfonts land after first paint and change the item widths under the
-    // marker, so re-measure once they are ready rather than sitting misaligned.
     document.fonts?.ready.then(measure).catch(() => {});
     return () => window.removeEventListener("resize", measure);
   }, [pathname]);
@@ -58,14 +42,14 @@ export function Navigation(): React.ReactElement {
     <nav className="flex justify-center px-4 sm:px-6">
       <div
         ref={listRef}
-        className="glass relative flex max-w-full items-center gap-1 overflow-x-auto p-2"
+        className="glass-pill relative flex max-w-full items-center gap-1.5 overflow-x-auto p-2 rounded-2xl"
         role="tablist"
         aria-label="Console sections"
       >
         {marker ? (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-2 rounded-[15px] border border-white/10 bg-white/[0.07] transition-[left,width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            className="pointer-events-none absolute inset-y-2 rounded-xl border border-iris/40 bg-gradient-to-r from-iris/20 to-cyber-cyan/15 shadow-[0_0_20px_rgba(99,102,241,0.25)] transition-[left,width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ left: marker.left, width: marker.width }}
           />
         ) : null}
@@ -79,16 +63,18 @@ export function Navigation(): React.ReactElement {
               href={tab.href}
               data-active={active}
               aria-current={active ? "page" : undefined}
-              className={`relative z-10 flex shrink-0 items-center gap-2 rounded-[15px] px-4 py-2.5 text-[13px] font-medium transition-colors duration-300 ${
-                active ? "text-fg" : "text-fg-muted hover:text-fg"
+              className={`relative z-10 flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-[12.5px] font-semibold transition-all duration-300 ${
+                active
+                  ? "text-white shadow-sm"
+                  : "text-fg-muted hover:text-white hover:bg-white/[0.04]"
               }`}
             >
               <Icon
-                className={`h-4 w-4 transition-colors duration-300 ${
-                  active ? "text-iris" : "text-fg-faint"
+                className={`h-4 w-4 transition-all duration-300 ${
+                  active ? `${tab.tint} scale-110 drop-shadow-[0_0_8px_currentColor]` : "text-fg-faint"
                 }`}
               />
-              {tab.name}
+              <span>{tab.name}</span>
             </Link>
           );
         })}

@@ -1,65 +1,39 @@
 @import "tailwindcss";
 
 /*
- * Salvage console — dark liquid glass.
- *
- * The design brief this replaces asked for a dense left-aligned instrument
- * panel, and that is a defensible thing to build, but it reads as austere on a
- * screen that is mostly empty until the stack is running. This is the other
- * defensible thing: centred, generous, layered, with real depth and real
- * motion.
- *
- * Glass is not the same as the light-mode glassmorphism that was here before
- * Phase 12. That version failed for reasons that had nothing to do with
- * translucency — it used emerald as decoration so colour meant nothing, set a
- * magazine serif on an operations screen, and drove a scroll-linked canvas over
- * fifty JPEGs. What survives from that deletion is the discipline, not the
- * flatness:
- *
- * 1. COLOUR MEANS STATE. Emerald healthy, amber degraded, rose down, slate
- *    not-observed. Nothing else uses those hues. The accent is iris, chosen to
- *    sit outside the state palette so that a green thing on this screen always
- *    means one thing.
- * 2. MONEY IS TYPESET. Tabular numerals, rendered from integer paise.
- * 3. MOTION HAS A JOB. Entrance and transition are choreography and are
- *    allowed. A pulsing element still means something is wrong. Nothing loops
- *    forever for decoration, and all of it stops under prefers-reduced-motion.
- *
- * PERFORMANCE. backdrop-filter is the expensive property on this page, so it is
- * applied to a small number of large surfaces — panels, the header, the nav —
- * and never to chips, rows or table cells, and never animated. The ambient
- * light is one fixed layer that never repaints on scroll.
+ * Salvage Console — Ultra-Premium Dark Liquid Glass Design System
+ * Engineered for state-of-the-art fintech operations with luminous depth,
+ * multi-layered aurora atmosphere, and crisp typography.
  */
 
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* Ground. Near-black with a blue-violet cast so the glass has something with
-     colour in it to refract. */
-  --color-ink-0: #06070d;
-  --color-ink-1: #0a0c16;
-  --color-ink-2: #10131f;
-  --color-ink-3: #171b2b;
-  --color-ink-4: #1e2337;
+  /* Deep Space Liquid Obsidian Palette */
+  --color-ink-0: #04060d;
+  --color-ink-1: #080c18;
+  --color-ink-2: #0f1527;
+  --color-ink-3: #161e36;
+  --color-ink-4: #1e294b;
 
-  --color-line: #232a3f;
-  --color-line-strong: #333c57;
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.16);
 
-  --color-fg: #eef1f8;
-  --color-fg-muted: #a2abc4;
-  --color-fg-faint: #6b7593;
+  --color-fg: #f8fafc;
+  --color-fg-muted: #94a3b8;
+  --color-fg-faint: #64748b;
 
-  --color-iris: #8b93ff;
-  --color-iris-deep: #5b5ce6;
+  /* Luminous Accent Tokens */
+  --color-iris: #818cf8;
+  --color-iris-deep: #6366f1;
+  --color-cyber-cyan: #06b6d4;
 
-  --color-healthy: #35d9a4;
-  --color-degraded: #ffc14d;
-  --color-down: #ff6b8a;
-  --color-unobserved: #6b7593;
+  --color-healthy: #10b981;
+  --color-degraded: #f59e0b;
+  --color-down: #f43f5e;
+  --color-unobserved: #64748b;
 
-  /* One easing curve for the whole interface. A single deceleration shape is
-     most of what makes motion feel considered rather than assorted. */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
@@ -87,43 +61,37 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--color-iris) 40%, transparent);
-    color: #fff;
+    background: rgba(99, 102, 241, 0.35);
+    color: #ffffff;
   }
 
   :focus-visible {
     outline: 2px solid var(--color-iris);
     outline-offset: 3px;
-    border-radius: 8px;
+    border-radius: 10px;
   }
 
   ::-webkit-scrollbar {
-    width: 11px;
-    height: 11px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(4, 6, 13, 0.6);
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-line-strong);
-    border: 3px solid transparent;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid transparent;
     background-clip: content-box;
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #46527a;
+    background: rgba(129, 140, 248, 0.5);
     background-clip: content-box;
   }
 }
 
 /* ---------------------------------------------------------------------------
- * Atmosphere
- *
- * One fixed layer, painted once. Three slow aurora fields give the glass
- * something to pick up, and a cursor-following highlight adds parallax without
- * any element moving: `--mx`/`--my` are written by a rAF-throttled listener, so
- * the only work per frame is a gradient position on a layer that is already
- * composited.
+ * Multi-Layered Luminous Aurora Atmosphere
  * ------------------------------------------------------------------------ */
 
 .atmosphere {
@@ -133,60 +101,53 @@
   z-index: 0;
   background:
     radial-gradient(
-      42rem 42rem at calc(var(--mx, 50%) * 1px) calc(var(--my, 20%) * 1px),
-      rgba(139, 147, 255, 0.07),
+      50rem 50rem at calc(var(--mx, 50%) * 1px) calc(var(--my, 15%) * 1px),
+      rgba(99, 102, 241, 0.12),
       transparent 60%
     ),
-    radial-gradient(60rem 34rem at 50% -8%, rgba(91, 92, 230, 0.16), transparent 65%),
-    radial-gradient(46rem 40rem at 8% 42%, rgba(53, 217, 164, 0.05), transparent 60%),
-    radial-gradient(46rem 40rem at 96% 78%, rgba(139, 147, 255, 0.06), transparent 60%);
+    radial-gradient(70rem 40rem at 50% -10%, rgba(99, 102, 241, 0.22), transparent 70%),
+    radial-gradient(50rem 45rem at 5% 35%, rgba(16, 185, 129, 0.08), transparent 60%),
+    radial-gradient(55rem 45rem at 95% 45%, rgba(6, 182, 212, 0.09), transparent 60%),
+    radial-gradient(60rem 50rem at 50% 90%, rgba(139, 92, 246, 0.08), transparent 65%);
 }
 
-/* Fine grain. Inline SVG turbulence, so it costs no request and no decode, and
-   it is what keeps large dark areas from banding. */
+/* Starfield / Subtle Tech Mesh Matrix */
 .atmosphere::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.42;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.25;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at 50% 40%, black 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 40%, black 40%, transparent 80%);
 }
 
 /* ---------------------------------------------------------------------------
- * Glass
- *
- * Three things separate this from a translucent rectangle, and all three are
- * what the eye reads as "real":
- *
- *   saturate()     light through glass carries colour, so the backdrop is
- *                  saturated as well as blurred. Blur alone looks like fog.
- *   inset top      one hairline of light along the upper edge, where a real
- *                  surface catches it. Without this a dark panel reads as a
- *                  hole rather than a pane.
- *   gradient rim   the border is brighter at the top than the bottom, because
- *                  the light in this scene comes from above.
+ * State-of-the-Art Liquid Glass Components
  * ------------------------------------------------------------------------ */
 
 .glass {
   position: relative;
   background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.055) 0%,
-    rgba(255, 255, 255, 0.022) 42%,
+    135deg,
+    rgba(255, 255, 255, 0.065) 0%,
+    rgba(255, 255, 255, 0.025) 50%,
     rgba(255, 255, 255, 0.012) 100%
   );
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  border-radius: 22px;
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.02),
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 16px 48px -24px rgba(0, 0, 0, 0.9);
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.3),
+    0 4px 20px -4px rgba(0, 0, 0, 0.5),
+    0 24px 60px -20px rgba(0, 0, 0, 0.85);
 }
 
-/* The rim, as a masked gradient border. A plain 1px border cannot fade from
-   one edge to another, and a uniform rim is the tell that a surface is a div. */
 .glass::before {
   content: "";
   position: absolute;
@@ -194,9 +155,9 @@
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.22),
-    rgba(255, 255, 255, 0.06) 38%,
+    135deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.1) 40%,
     rgba(255, 255, 255, 0.03) 100%
   );
   -webkit-mask:
@@ -207,51 +168,79 @@
   pointer-events: none;
 }
 
-/* A quieter pane, for nested surfaces that must not compete with their parent.
-   No backdrop-filter: blurring what is already blurred buys nothing and costs
-   a second pass. */
-.glass-inset {
-  background: rgba(255, 255, 255, 0.028);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.glass-card-interactive {
+  transition: all 0.4s var(--ease-out-expo);
 }
 
-.glass-interactive {
-  transition:
-    transform 0.4s var(--ease-out-expo),
-    box-shadow 0.4s var(--ease-out-expo);
-}
-
-.glass-interactive:hover {
-  transform: translateY(-2px);
+.glass-card-interactive:hover {
+  transform: translateY(-4px) scale(1.005);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.09) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border-color: rgba(129, 140, 248, 0.4);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.13),
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 24px 60px -28px rgba(0, 0, 0, 1);
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35),
+    0 12px 36px -8px rgba(99, 102, 241, 0.3),
+    0 30px 70px -20px rgba(0, 0, 0, 0.95);
 }
 
-/* Small uppercase label. Sets the tone more than any other single rule. */
+.glass-inset {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+ * Typography & Metallic Display Utilities
+ * ------------------------------------------------------------------------ */
+
 .eyebrow {
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.16em;
+  font-size: 10.5px;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-fg-faint);
-  font-weight: 600;
+  color: var(--color-iris);
+  font-weight: 700;
 }
 
-/* A heading that catches the light, rather than a flat white one. */
 .display {
-  background: linear-gradient(180deg, #ffffff 0%, #b9c0da 130%);
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, #94a3b8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   letter-spacing: -0.025em;
 }
 
+.display-emerald {
+  background: linear-gradient(135deg, #ffffff 0%, #a7f3d0 40%, #10b981 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.display-iris {
+  background: linear-gradient(135deg, #ffffff 0%, #c7d2fe 40%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* ---------------------------------------------------------------------------
- * State
+ * State Badges & Indicators with Glowing Halos
  * ------------------------------------------------------------------------ */
 
 .state-healthy {
@@ -273,42 +262,41 @@
 
 .state-chip {
   color: var(--state);
-  background: color-mix(in oklab, var(--state) 14%, transparent);
-  border: 1px solid color-mix(in oklab, var(--state) 34%, transparent);
+  background: color-mix(in oklab, var(--state) 15%, transparent);
+  border: 1px solid color-mix(in oklab, var(--state) 40%, transparent);
+  box-shadow: 0 0 16px -3px color-mix(in oklab, var(--state) 30%, transparent);
 }
 
 .state-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: var(--state);
   box-shadow:
-    0 0 0 3px color-mix(in oklab, var(--state) 16%, transparent),
-    0 0 12px color-mix(in oklab, var(--state) 55%, transparent);
+    0 0 0 3px color-mix(in oklab, var(--state) 20%, transparent),
+    0 0 14px 2px color-mix(in oklab, var(--state) 70%, transparent);
 }
 
 .state-tile {
   background: linear-gradient(
-    160deg,
-    color-mix(in oklab, var(--state) 12%, transparent) 0%,
+    135deg,
+    color-mix(in oklab, var(--state) 14%, transparent) 0%,
     rgba(255, 255, 255, 0.02) 100%
   );
-  border: 1px solid color-mix(in oklab, var(--state) 26%, transparent);
-  border-radius: 16px;
+  border: 1px solid color-mix(in oklab, var(--state) 35%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px -10px color-mix(in oklab, var(--state) 20%, transparent);
 }
 
 /* ---------------------------------------------------------------------------
- * Motion
- *
- * Entrance is choreography and is allowed. Looping motion is reserved for
- * something being wrong, so that movement on this screen still carries meaning.
+ * Fluid Animations & Micro-Interactions
  * ------------------------------------------------------------------------ */
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translate3d(0, 18px, 0) scale(0.985);
-    filter: blur(6px);
+    transform: translate3d(0, 24px, 0) scale(0.98);
+    filter: blur(8px);
   }
   to {
     opacity: 1;
@@ -317,60 +305,64 @@
   }
 }
 
-/* `--i` is set inline per child, so a column of panels arrives in sequence
-   rather than all at once. 55ms is long enough to read as deliberate and short
-   enough that the last one is not still arriving when the eye reaches it. */
 .rise {
-  animation: rise 0.72s var(--ease-out-expo) both;
-  animation-delay: calc(var(--i, 0) * 55ms);
+  animation: rise 0.75s var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 65ms);
 }
 
-@keyframes breathe {
-  0%,
-  100% {
-    opacity: 1;
+@keyframes pulse-halo {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
   }
   50% {
-    opacity: 0.32;
+    transform: scale(1.18);
+    opacity: 0.4;
   }
 }
 
-/* DOWN only. */
 .alarm {
-  animation: breathe 1.9s ease-in-out infinite;
+  animation: pulse-halo 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes sweep {
-  from {
+@keyframes radar-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+}
+
+@keyframes shimmer-sweep {
+  0% {
     transform: translateX(-100%);
   }
-  to {
-    transform: translateX(320%);
+  100% {
+    transform: translateX(300%);
   }
 }
 
-.sweep::after {
+.shimmer-bar::after {
   content: "";
   position: absolute;
   inset: 0;
-  width: 32%;
-  background: linear-gradient(90deg, transparent, var(--color-iris), transparent);
-  animation: sweep 1.5s var(--ease-out-expo) infinite;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer-sweep 2s var(--ease-out-expo) infinite;
 }
 
-@keyframes pop {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 10px, 0) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
 }
 
-.pop {
-  animation: pop 0.34s var(--ease-spring) both;
+.animate-float {
+  animation: float-gentle 5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

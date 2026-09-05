@@ -38,10 +38,10 @@ export function StateChip({
 }): React.ReactElement {
   return (
     <span
-      className={`${stateClass(state)} state-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wider uppercase`}
+      className={`${stateClass(state)} state-chip inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] font-bold tracking-wider uppercase backdrop-blur-md`}
     >
       <StateDot state={state} />
-      {label ?? state}
+      <span>{label ?? state}</span>
     </span>
   );
 }
@@ -54,16 +54,20 @@ export function Chip({
 }: {
   children: React.ReactNode;
   title?: string;
-  tone?: "neutral" | "accent";
+  tone?: "neutral" | "accent" | "healthy" | "degraded" | "down";
 }): React.ReactElement {
-  const accent =
-    tone === "accent"
-      ? "border-iris/35 bg-iris/10 text-iris"
-      : "border-white/12 bg-white/[0.06] text-fg-muted";
+  const accent = {
+    neutral: "border-white/12 bg-white/[0.05] text-fg-muted",
+    accent: "border-iris/40 bg-iris/15 text-iris shadow-[0_0_12px_rgba(99,102,241,0.25)] font-semibold",
+    healthy: "border-healthy/40 bg-healthy/15 text-healthy shadow-[0_0_12px_rgba(16,185,129,0.25)] font-semibold",
+    degraded: "border-degraded/40 bg-degraded/15 text-degraded shadow-[0_0_12px_rgba(245,158,11,0.25)] font-semibold",
+    down: "border-down/40 bg-down/15 text-down shadow-[0_0_12px_rgba(244,63,94,0.25)] font-semibold",
+  }[tone];
+
   return (
     <span
       title={title}
-      className={`inline-flex items-center rounded-md border px-2 py-0.5 font-mono text-[10px] tracking-wide ${accent}`}
+      className={`inline-flex items-center rounded-lg border px-2.5 py-0.5 font-mono text-[10.5px] tracking-wide ${accent}`}
     >
       {children}
     </span>
@@ -91,19 +95,19 @@ export function Stat({
 }): React.ReactElement {
   const colour = {
     default: "text-fg",
-    healthy: "text-healthy",
-    degraded: "text-degraded",
-    down: "text-down",
-    accent: "text-iris",
+    healthy: "text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]",
+    degraded: "text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]",
+    down: "text-rose-400 drop-shadow-[0_0_12px_rgba(244,63,94,0.4)]",
+    accent: "text-iris drop-shadow-[0_0_12px_rgba(129,140,248,0.4)]",
   }[tone];
 
   return (
     <div className="min-w-0">
       <p className="eyebrow">{label}</p>
-      <p className={`num mt-1.5 font-mono text-xl font-semibold tracking-[-0.02em] ${colour}`}>
+      <p className={`num mt-2 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight ${colour}`}>
         {value}
       </p>
-      {hint ? <p className="mt-1 text-[11px] leading-snug text-fg-faint">{hint}</p> : null}
+      {hint ? <p className="mt-1.5 text-[11.5px] leading-relaxed text-fg-muted font-normal">{hint}</p> : null}
     </div>
   );
 }
@@ -123,12 +127,12 @@ export function DataTable({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full overflow-x-auto rounded-2xl border border-white/[0.08] bg-black/20 backdrop-blur-md">
       <table className="w-full min-w-[42rem] border-collapse text-left">
         <thead>
-          <tr className="border-b border-white/[0.07]">{head}</tr>
+          <tr className="border-b border-white/[0.08] bg-white/[0.02]">{head}</tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.05]">{children}</tbody>
+        <tbody className="divide-y divide-white/[0.04]">{children}</tbody>
       </table>
     </div>
   );
@@ -143,7 +147,7 @@ export function Th({
 }): React.ReactElement {
   return (
     <th
-      className={`eyebrow px-3 pb-2.5 pt-1 font-semibold ${align === "right" ? "text-right" : "text-left"}`}
+      className={`eyebrow px-4 py-3 font-bold ${align === "right" ? "text-right" : "text-left"}`}
     >
       {children}
     </th>
@@ -164,7 +168,7 @@ export function Td({
   return (
     <td
       title={title}
-      className={`px-3 py-2.5 text-xs ${align === "right" ? "text-right" : "text-left"} ${className}`}
+      className={`px-4 py-3.5 text-[12.5px] ${align === "right" ? "text-right" : "text-left"} ${className}`}
     >
       {children}
     </td>
@@ -173,10 +177,13 @@ export function Td({
 
 /** The one loading affordance: a hairline that sweeps while a request is open. */
 export function LoadingBar(): React.ReactElement {
-  return <div className="sweep relative h-px w-full overflow-hidden bg-white/10" aria-hidden />;
+  return (
+    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="absolute inset-y-0 w-1/3 rounded-full bg-gradient-to-r from-iris to-cyber-cyan shadow-[0_0_12px_rgba(99,102,241,0.8)] sweep" />
+    </div>
+  );
 }
 
-/** A monospace identifier, truncated with the full value on hover. */
 export function Mono({
   value,
   chars,
@@ -188,8 +195,11 @@ export function Mono({
 }): React.ReactElement {
   const shown = chars && value.length > chars ? `${value.slice(0, chars)}…` : value;
   return (
-    <span title={value} className={`font-mono text-fg-muted ${className}`}>
+    <code
+      title={value}
+      className={`rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-fg tracking-wide ${className}`}
+    >
       {shown}
-    </span>
+    </code>
   );
 }

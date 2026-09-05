@@ -1,17 +1,5 @@
 import React from "react";
 
-/**
- * The glass container every screen is built from.
- *
- * Extracted because the same surface appeared, hand-rolled and slightly
- * different each time, in seven components. The differences were not intent —
- * they were the residue of copying a className and adjusting it — and that is
- * exactly what makes an interface feel assembled rather than designed.
- *
- * `index` drives the entrance stagger. A column of panels that arrives in
- * sequence reads as one page composing itself; the same panels arriving
- * together read as a flash.
- */
 export function Panel({
   children,
   className = "",
@@ -25,7 +13,7 @@ export function Panel({
 }): React.ReactElement {
   return (
     <section
-      className={`glass rise ${interactive ? "glass-interactive" : ""} overflow-hidden ${className}`}
+      className={`glass rise ${interactive ? "glass-card-interactive cursor-pointer" : ""} overflow-hidden ${className}`}
       style={{ "--i": index } as React.CSSProperties}
     >
       {children}
@@ -33,24 +21,6 @@ export function Panel({
   );
 }
 
-/**
- * A panel's header: an eyebrow, a title, an optional line of explanation, and a
- * slot for controls or a live badge.
- *
- * The eyebrow carries what kind of thing this is, the title what it is, and the
- * note the caveat. Splitting them means the caveat is always present and never
- * has to be crammed into the title.
- *
- * **Centred, every one of them.** The version this replaces pinned every header
- * hard left and capped the note at `max-w-2xl` inside a panel three times that
- * wide, so each trailed off into a third of a panel of nothing. An earlier pass
- * at this kept the dense panels -- tables, the rail matrix -- left-aligned on
- * the theory that a centred header floats free of left-aligned rows beneath it.
- * On the page that was the wrong call: a column of panels alternating between
- * two header alignments reads as less deliberate than either one used
- * consistently, and consistency is the thing doing the work here. The `right`
- * slot goes centred beneath the note rather than out at the rim.
- */
 export function PanelHeader({
   eyebrow,
   title,
@@ -63,15 +33,26 @@ export function PanelHeader({
   right?: React.ReactNode;
 }): React.ReactElement {
   return (
-    <header className="border-b border-white/[0.06] px-6 py-7 text-center sm:px-8 sm:py-8">
-      {eyebrow ? <p className="eyebrow mb-3">{eyebrow}</p> : null}
-      <h2 className="display mx-auto max-w-3xl text-[19px] font-semibold sm:text-[21px]">
+    <header className="border-b border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-transparent px-6 py-6 text-center sm:px-8 sm:py-7">
+      {eyebrow ? (
+        <div className="flex justify-center mb-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-iris/30 bg-iris/10 px-3 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-iris shadow-[0_0_12px_rgba(99,102,241,0.2)]">
+            {eyebrow}
+          </span>
+        </div>
+      ) : null}
+      
+      <h2 className="display mx-auto max-w-3xl text-[20px] font-extrabold sm:text-[23px] tracking-tight">
         {title}
       </h2>
+      
       {note ? (
-        <p className="mx-auto mt-3 max-w-2xl text-[12.5px] leading-relaxed text-fg-muted">{note}</p>
+        <p className="mx-auto mt-2.5 max-w-2xl text-[13px] leading-relaxed text-fg-muted font-normal">
+          {note}
+        </p>
       ) : null}
-      {right ? <div className="mt-4 flex justify-center">{right}</div> : null}
+      
+      {right ? <div className="mt-3.5 flex justify-center">{right}</div> : null}
     </header>
   );
 }
@@ -86,15 +67,6 @@ export function PanelBody({
   return <div className={`px-6 py-6 sm:px-8 sm:py-7 ${className}`}>{children}</div>;
 }
 
-/**
- * A centred column inside a panel body.
- *
- * Long prose is set left-aligned inside it rather than centred: a centred
- * ragged edge on both sides of a four-line paragraph is harder to read than the
- * dead space it was meant to fix. What was wrong with the old layout was the
- * *block* sitting against the left rim of a much wider panel, not the text
- * alignment, so this centres the block and leaves the text alone.
- */
 export function Measure({
   children,
   className = "",
@@ -108,7 +80,6 @@ export function Measure({
   return <div className={`mx-auto w-full ${max} ${className}`}>{children}</div>;
 }
 
-/** A hairline that matches the panel rim. */
 export function Rule(): React.ReactElement {
-  return <div className="h-px w-full bg-white/[0.06]" />;
+  return <div className="h-px w-full bg-white/[0.08]" />;
 }

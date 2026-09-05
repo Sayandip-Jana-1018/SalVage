@@ -1,0 +1,58 @@
+# Salvage Production Caddyfile
+#
+# Caddy automatically provisions and renews Let's Encrypt TLS certificates.
+# Replace {$DOMAIN:example.com} with your actual domain name, e.g. salvage.yourdomain.com
+#
+# Route architecture:
+#   api.{$DOMAIN}     -> salvage-core:8081  (Financial Ingest, Ledger, Bounds)
+#   brain.{$DOMAIN}   -> salvage-brain:8001 (Sensing, Causal Diagnosis, Bandits)
+#   console.{$DOMAIN} -> salvage-console:3000 (Next.js Operator Console)
+
+(security_headers) {
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+api.{$DOMAIN:example.com} {
+    import security_headers
+    reverse_proxy 127.0.0.1:8081 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+brain.{$DOMAIN:example.com} {
+    import security_headers
+    reverse_proxy 127.0.0.1:8001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+console.{$DOMAIN:example.com} {
+    import security_headers
+
+    # Optional: IP allowlist or forward authentication for internal operator access
+    # @internal_only {
+    #     remote_ip 10.0.0.0/8 192.168.0.0/16 <your-ip>
+    # }
+    # handle @internal_only {
+    #     reverse_proxy 127.0.0.1:3000
+    # }
+    # respond "Access Forbidden" 403
+
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

@@ -146,23 +146,29 @@ function Boundary({
 }): React.ReactElement {
   return (
     <div
-      className={`h-full rounded-2xl border p-5 sm:p-6 ${
-        allowed ? "border-iris/25 bg-iris/[0.05]" : "border-white/[0.07] bg-white/[0.03]"
+      className={`h-full rounded-2xl border p-6 sm:p-7 backdrop-blur-md transition-all ${
+        allowed
+          ? "border-emerald-500/35 bg-gradient-to-b from-emerald-500/10 via-ink-2 to-black/30 shadow-[0_0_30px_rgba(16,185,129,0.15)]"
+          : "border-rose-500/35 bg-gradient-to-b from-rose-500/10 via-ink-2 to-black/30 shadow-[0_0_30px_rgba(244,63,94,0.15)]"
       }`}
     >
-      <p className={`eyebrow mb-4 ${allowed ? "text-iris" : "text-fg-faint"}`}>{title}</p>
-      <ul className="space-y-3">
+      <div className="flex items-center gap-2 mb-4">
+        <span className={`h-2.5 w-2.5 rounded-full ${allowed ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,1)]" : "bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,1)]"}`} />
+        <p className={`eyebrow text-[11px] font-bold tracking-wider ${allowed ? "text-emerald-400" : "text-rose-400"}`}>{title}</p>
+      </div>
+
+      <ul className="space-y-3.5">
         {points.map((point) => (
           <li
             key={point}
-            className="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-fg-muted"
+            className="flex items-start gap-3 text-[13px] leading-relaxed text-slate-200"
           >
             {allowed ? (
-              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-iris" />
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
             ) : (
-              <CircleSlash className="mt-[3px] h-3 w-3 shrink-0 text-fg-faint" />
+              <CircleSlash className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
             )}
-            {point}
+            <span>{point}</span>
           </li>
         ))}
       </ul>

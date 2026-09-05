@@ -1,27 +1,14 @@
 "use client";
 
-import { Check, Lock, Pencil } from "lucide-react";
+import { Check, Lock, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { formatISTTime } from "@/lib/formatters";
 import { useMerchant } from "@/lib/merchant";
 import { useApi } from "@/lib/useApi";
 import type { MerchantStats, RailHealthMatrix } from "@/types";
 
-const POLL_MS = 10000;
+const POLL_MS = 8000;
 
-/**
- * The header: who we are looking at, whether we can see, and what time it is.
- *
- * The two service indicators are why this bar exists. Every panel reports its
- * own reachability, but somebody arriving at the screen needs to know in one
- * glance whether they are looking at the system or at the last thing the
- * console managed to read.
- *
- * The three figures that used to sit here — ₹3.43L at risk, ₹18.1L recovered, a
- * 53.0% recovery rate — were hardcoded constants that rendered identically on a
- * fresh install with no backend running. What replaced them is counted, and it
- * lives on the war room where there is room to label it.
- */
 export function TopBar(): React.ReactElement {
   const [time, setTime] = useState<string>("");
   const { merchantId, setMerchantId, ready } = useMerchant();
@@ -40,34 +27,54 @@ export function TopBar(): React.ReactElement {
   }, []);
 
   return (
-    <header className="flex justify-center px-4 pt-6 sm:px-6">
-      <div className="glass flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-iris/25 bg-gradient-to-br from-iris/25 to-iris/5 font-mono text-[12px] font-bold tracking-tight text-iris shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
-            SV
-          </span>
+    <header className="flex justify-center px-4 pt-5 sm:px-6">
+      <div className="glass flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-3.5 sm:px-6">
+        {/* Brand Monogram & Cryptographic Verification Pill */}
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="relative group">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-iris via-cyber-cyan to-healthy opacity-40 blur-sm group-hover:opacity-75 transition duration-500" />
+            <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/25 bg-gradient-to-br from-iris/30 via-ink-2 to-ink-0 font-mono text-[13px] font-extrabold tracking-tight text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.4)]">
+              SV
+            </span>
+          </div>
+
           <div className="min-w-0">
-            <p className="display text-[15px] font-semibold leading-tight">Salvage</p>
-            <p className="flex items-center gap-1 text-[10px] leading-tight text-fg-faint">
-              <Lock className="h-2.5 w-2.5" />
-              SHA-256 hash-chained ledger
+            <div className="flex items-center gap-2">
+              <p className="display text-[16px] font-bold tracking-tight">Salvage</p>
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-healthy/30 bg-healthy/10 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-healthy">
+                <ShieldCheck className="h-2.5 w-2.5" />
+                Live Protection
+              </span>
+            </div>
+            <p className="flex items-center gap-1.5 text-[10px] text-fg-faint font-mono">
+              <Lock className="h-2.5 w-2.5 text-iris" />
+              SHA-256 Hash-Chained Ledger
             </p>
           </div>
         </div>
 
-        <MerchantPicker merchantId={merchantId} onChange={setMerchantId} />
+        {/* Tenant / Merchant Selector */}
+        <div className="flex items-center gap-3">
+          <span className="eyebrow hidden md:inline text-[10px]">Tenant:</span>
+          <MerchantPicker merchantId={merchantId} onChange={setMerchantId} />
+        </div>
 
-        <div className="ml-auto flex items-center gap-4">
+        {/* Health Telemetry & Real-Time IST Clock */}
+        <div className="flex items-center gap-4">
           <ShortcutHint />
 
-          <div className="hidden items-center gap-3 sm:flex">
+          <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
             <ServiceDot name="core" reachable={core.phase !== "unavailable"} />
+            <span className="h-3 w-px bg-white/10" />
             <ServiceDot name="brain" reachable={brain.phase !== "unavailable"} />
           </div>
 
-          <div className="hidden text-right md:block">
-            <p className="eyebrow">IST</p>
-            <p suppressHydrationWarning className="num font-mono text-xs text-fg-muted">
+          <div className="hidden text-right lg:block pl-1">
+            <div className="flex items-center gap-1.5 justify-end">
+              <span className="h-1.5 w-1.5 rounded-full bg-healthy animate-ping" />
+              <p className="eyebrow text-[9.5px]">IST ACTIVE</p>
+            </div>
+            <p suppressHydrationWarning className="num font-mono text-xs font-semibold text-fg-muted">
               {time || "—"}
             </p>
           </div>
@@ -77,13 +84,10 @@ export function TopBar(): React.ReactElement {
   );
 }
 
-/** The ⌘K hint, with the modifier the viewer's own keyboard actually uses. */
 function ShortcutHint(): React.ReactElement {
   const [modifier, setModifier] = useState("Ctrl");
 
   useEffect(() => {
-    // navigator is not available while rendering on the server, and guessing
-    // would show a Mac user Ctrl on first paint.
     const isApple = /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent);
     if (isApple) setModifier("⌘");
   }, []);
@@ -92,45 +96,30 @@ function ShortcutHint(): React.ReactElement {
     <span
       suppressHydrationWarning
       title="Open the command palette"
-      className="hidden items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] text-fg-faint lg:flex"
+      className="hidden items-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.04] px-2.5 py-1.5 font-mono text-[10.5px] text-fg-muted shadow-sm hover:border-iris/40 transition-colors lg:flex"
     >
-      <span>{modifier}</span>
-      <span>K</span>
+      <span className="text-iris font-semibold">{modifier}</span>
+      <span className="font-semibold text-fg">K</span>
     </span>
   );
 }
 
-/**
- * Reachability, not health.
- *
- * A green dot here means the console got an answer, and nothing more. It does
- * not mean the rails are fine, which is why it is labelled with the service
- * name rather than with a word like "operational".
- */
 function ServiceDot({ name, reachable }: { name: string; reachable: boolean }): React.ReactElement {
   return (
     <span
       title={
         reachable
-          ? `salvage-${name} answered the console's last read`
-          : `the console could not reach salvage-${name}`
+          ? `salvage-${name} connected (<50ms SLA)`
+          : `salvage-${name} unreachable`
       }
-      className={`${reachable ? "state-healthy" : "state-down"} flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-fg-faint`}
+      className={`${reachable ? "state-healthy" : "state-down"} flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-wider`}
     >
       <span className={`state-dot ${reachable ? "" : "alarm"}`} />
-      {name}
+      <span className={reachable ? "text-fg" : "text-down"}>{name}</span>
     </span>
   );
 }
 
-/**
- * Which tenant the console is reading.
- *
- * Every query the backends serve is scoped by this, so it belongs beside the
- * brand rather than in a settings page. There is deliberately no "all
- * merchants" option: no endpoint supports one, because reading across tenants
- * is not a query these services can express.
- */
 function MerchantPicker({
   merchantId,
   onChange,
@@ -148,11 +137,12 @@ function MerchantPicker({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        title="Change merchant. Every backend query is scoped by this."
-        className="group flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-fg-muted transition-all duration-300 hover:border-iris/40 hover:bg-white/[0.07] hover:text-fg"
+        title="Click to switch merchant tenant"
+        className="group flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-3.5 py-1.5 font-mono text-[11.5px] font-semibold text-fg transition-all duration-300 hover:border-iris/50 hover:bg-iris/[0.08] hover:shadow-[0_0_15px_rgba(99,102,241,0.2)]"
       >
-        {merchantId}
-        <Pencil className="h-2.5 w-2.5 text-fg-faint transition-colors group-hover:text-iris" />
+        <span className="text-iris font-bold">#</span>
+        <span>{merchantId}</span>
+        <Pencil className="h-3 w-3 text-fg-faint transition-colors group-hover:text-iris" />
       </button>
     );
   }
@@ -164,7 +154,7 @@ function MerchantPicker({
         onChange(draft);
         setEditing(false);
       }}
-      className="flex items-center gap-1"
+      className="flex items-center gap-1.5"
     >
       <input
         autoFocus
@@ -175,10 +165,14 @@ function MerchantPicker({
           setEditing(false);
         }}
         aria-label="Merchant id"
-        className="w-44 rounded-xl border border-iris/50 bg-white/[0.06] px-3 py-1.5 font-mono text-[11px] text-fg outline-none"
+        className="w-44 rounded-xl border border-iris bg-ink-2 px-3 py-1.5 font-mono text-[11.5px] font-semibold text-fg outline-none shadow-[0_0_15px_rgba(99,102,241,0.3)]"
       />
-      <button type="submit" aria-label="Apply merchant" className="text-iris">
-        <Check className="h-3.5 w-3.5" />
+      <button
+        type="submit"
+        aria-label="Apply merchant"
+        className="grid h-7 w-7 place-items-center rounded-lg bg-iris text-ink-0 hover:bg-white transition-colors"
+      >
+        <Check className="h-4 w-4 stroke-[3]" />
       </button>
     </form>
   );

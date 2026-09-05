@@ -6,29 +6,6 @@ import { covers, domainFor, positionIn, ticksFor, type Domain } from "@/lib/char
 import { formatAxisRupees, formatMeanPaise } from "@/lib/formatters";
 import type { PolicySummary } from "@/types";
 
-/**
- * Each policy's doubly-robust estimate, its 95% interval, and the truth.
- *
- * This chart is the evaluation's actual finding, and the table it sits above
- * cannot show it. The question the harness exists to answer is not "which
- * policy scored highest" — the ground-truth column already says that. It is
- * **does the estimator recover a value we independently know?** That is a
- * question about whether each interval covers its truth marker, and coverage is
- * a spatial relationship. In a table it is arithmetic the reader has to do
- * seven times; here it is visible at a glance, including where it fails.
- *
- * Positioned with CSS percentages rather than drawn in SVG. A `<svg>` with
- * `preserveAspectRatio="none"` stretched to the container width would turn the
- * estimate dots into ellipses, and keeping the aspect ratio would leave the
- * plot unable to fill a panel. Percentages have neither problem and reflow for
- * free.
- *
- * **Colour.** The state palette is not used here, because there are no rails on
- * this screen and emerald has one meaning in this console. The interval is the
- * accent; the truth marker is plain foreground. The only exception is the
- * not-identifiable chip, which is rose for the same reason rose is rose
- * everywhere else: this one is broken.
- */
 export function ForestPlot({ policies }: { policies: PolicySummary[] }): React.ReactElement {
   const domain = domainOf(policies);
   const ticks = ticksFor(domain);
@@ -39,26 +16,30 @@ export function ForestPlot({ policies }: { policies: PolicySummary[] }): React.R
         Doubly-robust estimate with 95% confidence interval against known ground truth, per policy.
       </figcaption>
 
-      <div className="flex items-center gap-3 pb-3 text-[10px] text-fg-faint">
-        <Key className="h-2 w-6 rounded-full bg-iris/45" label="95% CI" />
-        <Key className="h-2 w-2 rounded-full bg-iris" label="doubly-robust estimate" />
-        <Key className="h-3 w-0.5 bg-fg" label="ground truth" />
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/[0.08] mb-4">
+        <div className="flex items-center gap-4 text-[11px] font-mono text-fg-muted">
+          <Key className="h-2.5 w-6 rounded-full bg-gradient-to-r from-iris/60 to-cyber-cyan/60 shadow-[0_0_8px_rgba(99,102,241,0.5)]" label="95% CI (Doubly-Robust)" />
+          <Key className="h-3 w-3 rounded-full bg-iris shadow-[0_0_10px_rgba(99,102,241,0.8)] border border-white/50" label="Point Estimate" />
+          <Key className="h-4 w-1 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" label="Ground Truth ($V^*$)" />
+        </div>
+
+        <span className="text-[10px] font-mono text-fg-faint">Statistical Coverage Test</span>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-2">
         {policies.map((policy) => (
           <Row key={policy.policy_name} policy={policy} domain={domain} />
         ))}
       </div>
 
-      {/* The axis sits under the rows, sharing their grid so ticks line up. */}
-      <div className="mt-1 grid grid-cols-[minmax(7rem,14rem)_1fr] items-start gap-3 border-t border-white/[0.07] pt-2">
-        <span className="eyebrow">Mean value per failure</span>
-        <div className="relative h-4">
+      {/* Axis */}
+      <div className="mt-3 grid grid-cols-[minmax(8rem,16rem)_1fr] items-start gap-4 border-t border-white/[0.08] pt-3">
+        <span className="eyebrow text-[10.5px]">Mean Value Per Failure</span>
+        <div className="relative h-5">
           {ticks.map((tick) => (
             <span
               key={tick}
-              className="absolute -translate-x-1/2 font-mono text-[10px] text-fg-faint"
+              className="absolute -translate-x-1/2 font-mono text-[10.5px] font-bold text-fg-muted"
               style={{ left: `${positionIn(tick, domain)}%` }}
             >
               {formatAxisRupees(tick)}
@@ -85,18 +66,18 @@ function Row({
   const right = positionIn(dr.ci_upper, domain);
 
   return (
-    <div className="grid grid-cols-[minmax(7rem,14rem)_1fr] items-center gap-3">
+    <div className="grid grid-cols-[minmax(8rem,16rem)_1fr] items-center gap-4 group">
       <div className="min-w-0">
-        <p className="truncate text-[11px] text-fg" title={policy.policy_name}>
+        <p className="truncate text-[12.5px] font-bold text-white group-hover:text-iris transition-colors" title={policy.policy_name}>
           {policy.policy_name}
         </p>
-        <p className="num font-mono text-[10px] text-fg-faint">
-          {formatMeanPaise(truth)}
+        <p className="num font-mono text-[11px] text-fg-muted">
+          Truth: <span className="text-white font-bold">{formatMeanPaise(truth)}</span>
         </p>
       </div>
 
       <div
-        className="relative h-9 rounded-md border border-white/[0.07] bg-white/[0.02]"
+        className="relative h-11 rounded-xl border border-white/10 bg-black/30 backdrop-blur-md shadow-inner transition-all group-hover:border-white/20"
         title={
           `${policy.policy_name}\n` +
           `ground truth ${formatMeanPaise(truth)}\n` +
@@ -107,42 +88,45 @@ function Row({
       >
         {ticksBackdrop(domain)}
 
-        {/* The interval. */}
+        {/* 95% Confidence Interval Bar */}
         <span
-          className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-iris/40"
-          style={{ left: `${left}%`, width: `${Math.max(right - left, 0.4)}%` }}
+          className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full bg-gradient-to-r from-iris/50 via-cyber-cyan/50 to-iris/50 shadow-[0_0_12px_rgba(99,102,241,0.3)]"
+          style={{ left: `${left}%`, width: `${Math.max(right - left, 0.6)}%` }}
         />
-        {/* Its endpoints, so a very narrow interval is still visible. */}
         {[left, right].map((edge, index) => (
           <span
             key={index}
-            className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-iris/70"
+            className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 bg-iris shadow-[0_0_8px_rgba(99,102,241,0.8)]"
             style={{ left: `${edge}%` }}
           />
         ))}
 
-        {/* The estimate. */}
+        {/* Doubly Robust Point Estimate Dot */}
         <span
-          className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-iris shadow-[0_0_0_3px] shadow-ink-1"
+          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border-2 border-iris shadow-[0_0_12px_rgba(99,102,241,1)] z-10"
           style={{ left: `${positionIn(dr.estimated_value, domain)}%` }}
         />
 
-        {/* The answer key. Deliberately a different shape, not a different
-            colour: the two marks mean different kinds of thing, and shape
-            survives being printed, screenshotted, or read by someone who does
-            not distinguish the hues. */}
+        {/* Ground Truth Marker Pin */}
         <span
-          className="absolute top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-fg"
+          className="absolute top-1/2 h-6 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)] z-20"
           style={{ left: `${positionIn(truth, domain)}%` }}
         />
 
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-wider text-fg-faint">
-          {covered ? "covers" : "misses"}
+        {/* Status Tag */}
+        <span
+          className={`absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+            covered
+              ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+              : "border-rose-500/40 bg-rose-500/15 text-rose-400"
+          }`}
+        >
+          {covered ? "✓ covers" : "✕ misses"}
         </span>
 
         {!dr.is_identifiable ? (
-          <span className="absolute left-2 top-1/2 -translate-y-1/2">
-            <Chip>not identifiable</Chip>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2">
+            <Chip tone="down">not identifiable</Chip>
           </span>
         ) : null}
       </div>
@@ -156,7 +140,7 @@ function ticksBackdrop(domain: Domain): React.ReactElement {
       {ticksFor(domain).map((tick) => (
         <span
           key={tick}
-          className="absolute inset-y-0 w-px bg-white/[0.05]"
+          className="absolute inset-y-0 w-px bg-white/[0.04]"
           style={{ left: `${positionIn(tick, domain)}%` }}
           aria-hidden
         />
@@ -167,14 +151,13 @@ function ticksBackdrop(domain: Domain): React.ReactElement {
 
 function Key({ className, label }: { className: string; label: string }): React.ReactElement {
   return (
-    <span className="flex items-center gap-1.5">
+    <span className="flex items-center gap-2 font-semibold">
       <span className={className} />
-      {label}
+      <span>{label}</span>
     </span>
   );
 }
 
-/** Every point that will be drawn, so nothing is clipped off the edge. */
 function domainOf(policies: PolicySummary[]): Domain {
   return domainFor(
     policies.flatMap((policy) => [

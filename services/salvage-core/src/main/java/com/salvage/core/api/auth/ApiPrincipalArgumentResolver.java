@@ -1,12 +1,14 @@
 package com.salvage.core.api.auth;
 
 import org.springframework.core.MethodParameter;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.springframework.web.context.request.RequestAttributes;
 
 /**
  * Lets a controller declare {@code ApiPrincipal principal} and get the caller.
@@ -27,16 +29,16 @@ import org.springframework.web.context.request.RequestAttributes;
 public class ApiPrincipalArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
-    public boolean supportsParameter(MethodParameter parameter) {
+    public boolean supportsParameter(@NonNull MethodParameter parameter) {
         return ApiPrincipal.class.equals(parameter.getParameterType());
     }
 
     @Override
     public Object resolveArgument(
-            MethodParameter parameter,
-            ModelAndViewContainer mavContainer,
-            NativeWebRequest webRequest,
-            WebDataBinderFactory binderFactory) {
+            @NonNull MethodParameter parameter,
+            @Nullable ModelAndViewContainer mavContainer,
+            @NonNull NativeWebRequest webRequest,
+            @Nullable WebDataBinderFactory binderFactory) {
 
         Object attribute =
                 webRequest.getAttribute(
